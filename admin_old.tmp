@@ -1,0 +1,1511 @@
+// Swash Admin Dashboard logic
+
+// Loads quotes from Firestore, supports filtering, exports, email confirmations, and inline details.
+
+
+
+import {
+
+  initializeApp,
+
+  getApps,
+
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+
+import {
+
+  getFirestore,
+
+  collection,
+
+  getDocs,
+
+  updateDoc,
+
+  doc,
+
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+
+
+const firebaseConfig = {
+
+  apiKey: "AIzaSyACSZMUT6Ajq0rivSnh19bzT0aFTV755ts",
+
+  authDomain: "swash-app-ef9f8.firebaseapp.com",
+
+  projectId: "swash-app-ef9f8",
+
+  storageBucket: "swash-app-ef9f8.firebasestorage.app",
+
+  messagingSenderId: "604419687225",
+
+  appId: "1:604419687225:web:291a7d9bb55c9137af5ee8",
+
+};
+
+
+
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+
+const db = getFirestore(app);
+
+
+
+const EMAIL_SERVICE = "service_cdy739m";
+
+const EMAIL_TEMPLATE = "template_d8tlf1p";
+
+const EMAIL_PUBLIC_KEY = "7HZRYXz3JmMciex1L";
+
+
+
+const elements = {
+
+  quotesBody: document.getElementById("quotesBody"),
+
+  summaryTotal: document.getElementById("summaryTotal"),
+
+  summaryAvg: document.getElementById("summaryAvg"),
+
+  summaryUpfront: document.getElementById("summaryUpfront"),
+
+  summaryCount: document.getElementById("summaryCount"),
+
+  startDate: document.getElementById("startDate"),
+
+  endDate: document.getElementById("endDate"),
+
+  repFilter: document.getElementById("repFilter"),
+
+  applyFilters: document.getElementById("applyFilters"),
+
+  clearFilters: document.getElementById("clearFilters"),
+
+  selectAll: document.getElementById("selectAll"),
+
+  sendEmailBtn: document.getElementById("sendEmailBtn"),
+
+  deleteSelectedBtn: document.getElementById("deleteSelectedBtn"),
+
+  exportBtn: document.getElementById("exportBtn"),
+
+  popupModal: document.getElementById("popupModal"),
+
+  selectedRecipients: document.getElementById("selectedRecipients"),
+
+  cleanDate: document.getElementById("cleanDate"),
+
+  emailPreview: document.getElementById("emailPreview"),
+
+  confirmSend: document.getElementById("confirmSend"),
+
+  tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
+
+  searchInput: document.getElementById("searchQuotes"),
+
+  prevPageBtn: document.getElementById("prevPage"),
+
+  nextPageBtn: document.getElementById("nextPage"),
+
+  paginationInfo: document.getElementById("paginationInfo"),
+
+};
+
+
+
+const state = {
+
+  quotes: [],
+
+  filtered: [],
+
+  selectedForEmail: [],
+
+  previewView: "desktop",
+
+  searchQuery: "",
+
+  currentPage: 1,
+
+  pageSize: 50,
+
+};
+
+
+
+if (typeof emailjs !== "undefined" && typeof emailjs.init === "function") {
+
+  try {
+
+    emailjs.init(EMAIL_PUBLIC_KEY);
+
+  } catch (error) {
+
+    console.warn("EmailJS init failed", error);
+
+  }
+
+}
+
+
+
+function formatCurrency(value) {
+
+  const number = Number(value || 0);
+
+  return `\u00A3${number.toFixed(2)}`;
+
+}
+
+
+
+function parseDate(input) {
+
+  if (!input) return null;
+
+  if (typeof input.toDate === "function") return input.toDate();
+
+  const date = new Date(input);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+
+}
+
+
+
+function formatDate(input) {
+
+  const date = parseDate(input);
+
+  return date ? date.toLocaleDateString("en-GB") : "";
+
+}
+
+
+
+function formatTime(input) {
+
+  const date = parseDate(input);
+
+  return date ? date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
+
+}
+
+
+
+function addDays(date, days) {
+
+  const base = new Date(date);
+
+  base.setDate(base.getDate() + days);
+
+  return base;
+
+}
+
+function escapeHtml(value) {
+
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, '&#39;');
+
+}
+function formatYesNo(value) {
+
+  if (typeof value === "string") {
+    const normalised = value.trim().toLowerCase();
+    return normalised === "true" || normalised === "yes" || normalised === "1" ? "Yes" : "No";
+  }
+
+  return value ? "Yes" : "No";
+
+}
+
+function toBoolean(value) {
+
+  if (typeof value === "string") {
+    const normalised = value.trim().toLowerCase();
+    if (!normalised) return false;
+    return normalised === "true" || normalised === "yes" || normalised === "1";
+  }
+
+  return Boolean(value);
+
+}
+
+function normaliseQuote(docSnap) {
+
+  const data = docSnap.data();
+
+  const created = parseDate(data.createdAt) || parseDate(data.date);
+
+  return {
+
+    id: docSnap.id,
+
+    ...data,
+
+    date: created ? created.toISOString() : data.date || "",
+
+  };
+
+}
+
+
+
+function sortQuotes(quotes) {
+
+  return [...quotes].sort((a, b) => {
+
+    const da = parseDate(a.date)?.getTime() || 0;
+
+    const db = parseDate(b.date)?.getTime() || 0;
+
+    return db - da;
+
+  });
+
+}
+
+
+
+function filterQuotes() {
+
+  const start = elements.startDate?.value ? new Date(elements.startDate.value) : null;
+
+  const end = elements.endDate?.value ? new Date(elements.endDate.value) : null;
+
+  const repSelection = elements.repFilter?.value || "ALL";
+
+
+
+  const filtered = state.quotes.filter((quote) => {
+
+    const date = parseDate(quote.date);
+
+    if (!date) return true;
+
+    if (start && date < start) return false;
+
+    if (end) {
+
+      const endOfDay = new Date(end);
+
+      endOfDay.setHours(23, 59, 59, 999);
+
+      if (date > endOfDay) return false;
+
+    }
+
+    if (repSelection !== "ALL") {
+
+      const repCode = String(quote.repCode || "").trim().toUpperCase();
+
+      if (repCode !== repSelection) return false;
+
+    }
+
+    return true;
+
+  });
+
+
+
+  state.filtered = sortQuotes(filtered);
+
+  render();
+
+}
+
+
+
+function renderSummary() {
+
+  const list = state.filtered;
+
+  const count = list.length;
+
+  const totalUpfront = list.reduce((sum, quote) => sum + Number(quote.price || 0), 0);
+
+  const averagePrice = count ? totalUpfront / count : 0;
+
+  const averageUpfront = count
+
+    ? list.reduce((sum, quote) => sum + Number(quote.pricePerClean || 0) * 3, 0) / count
+
+    : 0;
+
+
+
+  if (elements.summaryTotal) {
+
+    elements.summaryTotal.textContent = `Total ${formatCurrency(totalUpfront)}`;
+
+  }
+
+  if (elements.summaryAvg) {
+
+    elements.summaryAvg.textContent = `Avg Price: ${formatCurrency(averagePrice)}`;
+
+  }
+
+  if (elements.summaryUpfront) {
+
+    elements.summaryUpfront.textContent = `Avg Upfront: ${formatCurrency(averageUpfront)}`;
+
+  }
+
+  if (elements.summaryCount) {
+
+    elements.summaryCount.textContent = `Count: ${count}`;
+
+  }
+
+}
+
+function applySearch(list) {
+
+  const query = state.searchQuery.trim().toLowerCase();
+
+  if (!query) return list;
+
+  return list.filter((quote) => {
+
+    const haystack = [
+
+      quote.customerName,
+
+      quote.address,
+
+      quote.email,
+
+      quote.mobile,
+
+      quote.refCode,
+
+      quote.repCode,
+
+      quote.notes,
+
+      quote.tier,
+
+      quote.status,
+
+    ]
+
+      .filter(Boolean)
+
+      .join(" ")
+
+      .toLowerCase();
+
+    return haystack.includes(query);
+
+  });
+
+}
+
+function getPaginationSnapshot() {
+
+  const searched = applySearch(state.filtered);
+
+  const totalItems = searched.length;
+
+  const totalPages = totalItems ? Math.ceil(totalItems / state.pageSize) : 1;
+
+  if (state.currentPage > totalPages) state.currentPage = totalPages;
+
+  if (state.currentPage < 1) state.currentPage = 1;
+
+  const startIndex = totalItems ? (state.currentPage - 1) * state.pageSize : 0;
+
+  const pageItems = searched.slice(startIndex, startIndex + state.pageSize);
+
+  return { pageItems, totalItems, totalPages, startIndex };
+
+}
+
+function updatePaginationControls(totalItems, totalPages, startIndex) {
+
+  if (!elements.paginationInfo || !elements.prevPageBtn || !elements.nextPageBtn) return;
+
+  const hasItems = totalItems > 0;
+
+  const start = hasItems ? startIndex + 1 : 0;
+
+  const end = hasItems ? Math.min(totalItems, startIndex + state.pageSize) : 0;
+
+  elements.paginationInfo.textContent = hasItems
+
+    ? `Showing ${start}–${end} of ${totalItems} quote${totalItems === 1 ? "" : "s"} (Page ${state.currentPage} of ${totalPages})`
+
+    : "No quotes to display";
+
+  elements.prevPageBtn.disabled = state.currentPage <= 1;
+
+  elements.nextPageBtn.disabled = !hasItems || state.currentPage >= totalPages;
+
+}
+
+function renderTable(list) {
+
+  if (!elements.quotesBody) return;
+
+  if (!list.length) {
+
+    elements.quotesBody.innerHTML = '<tr><td colspan="10">No quotes found for the current view.</td></tr>';
+
+    return;
+
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  list.forEach((quote) => {
+
+    const row = document.createElement("tr");
+
+    row.dataset.id = quote.id;
+
+    row.classList.add("quote-row");
+
+    row.setAttribute("tabindex", "0");
+
+    row.setAttribute("aria-expanded", "false");
+
+    const statusText = String(quote.status || "Pending Payment");
+
+    const statusLower = statusText.toLowerCase();
+
+    if (statusLower.includes("cancel")) {
+
+      row.classList.add("status-cancelled");
+
+    } else if (statusLower.includes("booked")) {
+
+      row.classList.add("status-booked");
+
+    } else if (statusLower.includes("pend")) {
+
+      row.classList.add("status-pending");
+
+    }
+
+    const customerName = escapeHtml(quote.customerName || "");
+
+    const address = escapeHtml(quote.address || "");
+
+    const tier = escapeHtml(quote.tier || "");
+
+    const ref = escapeHtml(quote.refCode || "");
+
+    const status = escapeHtml(statusText);
+
+    const phoneHtml = quote.mobile
+
+      ? `<span class="contact-phone">${escapeHtml(quote.mobile)}</span>`
+
+      : `<span class="contact-missing">No phone</span>`;
+
+    const emailHtml = quote.email
+
+      ? `<span class="contact-email">${escapeHtml(quote.email)}</span>`
+
+      : `<span class="contact-missing">No email</span>`;
+
+    const dateHtml = formatDate(quote.date);
+
+    const timeHtml = formatTime(quote.date);
+
+    const timeBlock = timeHtml ? `<div class="quote-time">Time Submitted: ${timeHtml}</div>` : "";
+
+    row.innerHTML = `
+
+      <td class="checkbox-cell"><input type="checkbox" data-id="${quote.id}" /></td>
+
+      <td>${dateHtml}${timeBlock}</td>
+
+      <td>${customerName}</td>
+
+      <td>${address}</td>
+
+      <td><div class="contact-info">${phoneHtml}${emailHtml}</div></td>
+
+      <td>${tier}</td>
+
+      <td>${formatCurrency(quote.pricePerClean)}</td>
+
+      <td>${formatCurrency(quote.price)}</td>
+
+      <td>${ref}</td>
+
+      <td>${status}</td>
+
+    `;
+
+    fragment.appendChild(row);
+
+  });
+
+  elements.quotesBody.innerHTML = "";
+
+  elements.quotesBody.appendChild(fragment);
+
+}
+
+function render() {
+
+  const { pageItems, totalItems, totalPages, startIndex } = getPaginationSnapshot();
+
+  renderTable(pageItems);
+
+  renderSummary();
+
+  updatePaginationControls(totalItems, totalPages, startIndex);
+
+  if (elements.selectAll) {
+
+    elements.selectAll.checked = false;
+
+  }
+
+}
+
+function toggleDetailRow(row, quote) {
+
+  if (!elements.quotesBody || !row) return;
+
+  const isOpen = row.getAttribute("aria-expanded") === "true";
+
+  elements.quotesBody
+    .querySelectorAll(".details-row")
+    .forEach((details) => details.remove());
+
+  elements.quotesBody
+    .querySelectorAll('.quote-row[aria-expanded="true"]')
+    .forEach((openRow) => openRow.setAttribute("aria-expanded", "false"));
+
+  if (isOpen) {
+
+    row.setAttribute("aria-expanded", "false");
+
+    return;
+
+  }
+
+  const columnCount =
+    row.children?.length ||
+    elements.quotesBody.querySelector("tr")?.children.length ||
+    1;
+
+  const detailsRow = buildDetailsRow(quote, columnCount);
+
+  elements.quotesBody.insertBefore(detailsRow, row.nextSibling);
+
+  row.setAttribute("aria-expanded", "true");
+
+  setupDetailForm(detailsRow, quote);
+
+}
+
+function renderSelectedRecipients() {
+
+  const container =
+
+    elements.selectedRecipients || document.getElementById("selectedRecipients");
+
+  if (!container) return;
+
+  elements.selectedRecipients = container;
+
+  const selected = state.selectedForEmail;
+
+  if (!selected.length) {
+
+    container.innerHTML =
+
+      '<strong>No recipients selected</strong><p class="text-muted" style="margin:4px 0 0;">Pick at least one quote to send booking confirmations.</p>';
+
+    return;
+
+  }
+
+  const listItems = selected
+
+    .map((quote) => {
+
+      const name = escapeHtml(quote.customerName || "Unknown customer");
+
+      const email = quote.email ? escapeHtml(quote.email) : "";
+
+      const address = quote.address ? escapeHtml(quote.address) : "";
+
+      const emailPart = email ? ` <span class="selected-email">${email}</span>` : "";
+
+      const addressPart = address ? `<div class="selected-address">${address}</div>` : "";
+
+      return `<li><strong>${name}</strong>${emailPart}${addressPart}</li>`;
+
+    })
+
+    .join("");
+
+  const countLabel = selected.length === 1 ? "recipient" : "recipients";
+
+  container.innerHTML = `
+
+    <strong>${selected.length} ${countLabel} selected</strong>
+
+    <ul>
+
+      ${listItems}
+
+    </ul>
+
+  `;
+
+}
+
+function openModal() {
+
+  if (!elements.popupModal) return;
+
+  elements.popupModal.style.display = "flex";
+
+  elements.popupModal.setAttribute("aria-hidden", "false");
+
+  document.body.style.overflow = "hidden";
+
+}
+
+function closeModal() {
+
+  if (!elements.popupModal) return;
+
+  elements.popupModal.style.display = "none";
+
+  elements.popupModal.setAttribute("aria-hidden", "true");
+
+  document.body.style.overflow = "";
+
+}
+
+
+
+function getSelectedIds() {
+
+  return Array.from(
+
+    elements.quotesBody?.querySelectorAll('input[type="checkbox"]:checked') ?? [],
+
+  ).map((checkbox) => checkbox.dataset.id);
+
+}
+
+
+
+function getSelectedQuotes() {
+
+  const ids = new Set(getSelectedIds());
+
+  return state.filtered.filter((quote) => ids.has(quote.id));
+
+}
+
+
+
+function updateLocalQuote(id, updates) {
+
+  const apply = (list) => {
+
+    const item = list.find((quote) => quote.id === id);
+
+    if (item) Object.assign(item, updates);
+
+  };
+
+  apply(state.quotes);
+
+  apply(state.filtered);
+
+  state.selectedForEmail = state.selectedForEmail.map((quote) =>
+
+    quote.id === id ? { ...quote, ...updates } : quote,
+
+  );
+
+}
+
+
+
+async function loadQuotes() {
+
+  if (!elements.quotesBody) return;
+
+  elements.quotesBody.innerHTML = '<tr><td colspan="10">Loading...</td></tr>';
+
+  try {
+
+    const snapshot = await getDocs(collection(db, "quotes"));
+
+    const quotes = snapshot.docs
+
+      .map((docSnap) => normaliseQuote(docSnap))
+
+      .filter((quote) => !quote.deleted);
+
+    state.quotes = sortQuotes(quotes);
+
+    state.filtered = [...state.quotes];
+
+    state.currentPage = 1;
+
+    const map = new Map(state.quotes.map((quote) => [quote.id, quote]));
+
+    state.selectedForEmail = state.selectedForEmail
+
+      .map((quote) => map.get(quote.id))
+
+      .filter(Boolean);
+
+    render();
+
+    renderSelectedRecipients();
+
+    updatePreview(state.previewView);
+
+  } catch (error) {
+
+    console.error("loadQuotes failed", error);
+
+    elements.quotesBody.innerHTML =
+
+      '<tr><td colspan="10">Failed to load quotes (check console)</td></tr>';
+
+  }
+
+}
+
+
+
+
+function buildDetailsRow(quote, columnCount) {
+
+  const details = document.createElement("tr");
+
+  details.className = "details-row";
+
+  details.dataset.detailFor = quote.id;
+
+
+
+  const cell = document.createElement("td");
+
+  cell.colSpan = columnCount;
+
+  const repCodeRaw = quote.repCode || "";
+  const repCodeValue = escapeHtml(repCodeRaw.toUpperCase());
+
+  const houseSizeRaw = quote.houseSize || "";
+  const houseTypeRaw = quote.houseType || "";
+  const extension = toBoolean(quote.extension);
+  const conservatory = toBoolean(quote.conservatory);
+  const skylights = Number(quote.skylights ?? 0);
+  const roofLanterns = Number(quote.roofLanterns ?? 0);
+  const partial = quote.partialCleaning ?? 100;
+  const alternating = toBoolean(quote.alternating);
+  const notesValue = escapeHtml(quote.notes || "");
+
+  const standardSizes = ["2 bed", "3 bed", "4 bed", "5 bed", "6 bed", "Other"];
+
+  const houseSizeOptionsHtml = standardSizes
+    .map((value) => {
+      const selectedAttr =
+        houseSizeRaw && value.toLowerCase() === houseSizeRaw.toLowerCase() ? " selected" : "";
+      return `<option value="${escapeHtml(value)}"${selectedAttr}>${escapeHtml(value)}</option>`;
+    })
+    .join("");
+
+  const customSizeOption =
+    houseSizeRaw &&
+    !standardSizes.some((value) => value.toLowerCase() === houseSizeRaw.toLowerCase())
+      ? `<option value="${escapeHtml(houseSizeRaw)}" selected>${escapeHtml(houseSizeRaw)}</option>`
+      : "";
+
+  const houseTypeValue = escapeHtml(houseTypeRaw);
+  const skylightsValue = escapeHtml(String(Math.max(0, skylights)));
+  const roofLanternsValue = escapeHtml(String(Math.max(0, roofLanterns)));
+  const partialValue = escapeHtml(String(Math.max(0, Math.min(100, Number(partial) || 0))));
+
+  cell.innerHTML = `
+    <form class="details-form" data-id="${quote.id}">
+      <div class="details-grid">
+        <label>
+          <span>Rep Code</span>
+          <input type="text" name="repCode" maxlength="12" value="${repCodeValue}" />
+        </label>
+        <label>
+          <span>House size</span>
+          <select name="houseSize">
+            <option value="">Select size</option>
+            ${houseSizeOptionsHtml}
+            ${customSizeOption}
+          </select>
+        </label>
+        <label>
+          <span>House type</span>
+          <input type="text" name="houseType" value="${houseTypeValue}" />
+        </label>
+        <label class="details-checkbox">
+          <input type="checkbox" name="extension"${extension ? " checked" : ""} />
+          <span>Extension</span>
+        </label>
+        <label class="details-checkbox">
+          <input type="checkbox" name="conservatory"${conservatory ? " checked" : ""} />
+          <span>Conservatory</span>
+        </label>
+        <label>
+          <span>Skylights</span>
+          <input type="number" name="skylights" min="0" max="10" step="1" value="${skylightsValue}" />
+        </label>
+        <label>
+          <span>Roof lanterns</span>
+          <input type="number" name="roofLanterns" min="0" max="10" step="1" value="${roofLanternsValue}" />
+        </label>
+        <label>
+          <span>Partial %</span>
+          <input type="number" name="partialCleaning" min="0" max="100" step="1" value="${partialValue}" />
+        </label>
+        <label class="details-checkbox">
+          <input type="checkbox" name="alternating"${alternating ? " checked" : ""} />
+          <span>Alternating clean</span>
+        </label>
+      </div>
+      <div class="details-footer">
+        <label class="details-notes">
+          <span>Notes</span>
+          <textarea name="notes" rows="4" placeholder="Add notes for this customer…">${notesValue}</textarea>
+        </label>
+        <div class="details-actions">
+          <span class="details-status" aria-live="polite"></span>
+          <button type="submit" class="btn btn-primary details-save" data-id="${quote.id}">Save changes</button>
+        </div>
+      </div>
+    </form>
+  `;
+
+  details.appendChild(cell);
+
+  return details;
+
+}
+
+function setupDetailForm(detailsEl, quote) {
+
+  const form = detailsEl.querySelector(".details-form");
+
+  if (!form) return;
+
+  const statusEl = form.querySelector(".details-status");
+  const saveButton = form.querySelector(".details-save");
+
+  const setStatus = (message, type) => {
+
+    if (!statusEl) return;
+
+    statusEl.textContent = message;
+
+    statusEl.classList.remove("success", "error");
+
+    if (type) {
+
+      statusEl.classList.add(type);
+
+    }
+
+  };
+
+  const houseSizeSelect = form.elements.houseSize;
+
+  if (houseSizeSelect) {
+
+    const value = quote.houseSize || "";
+
+    if (value && !Array.from(houseSizeSelect.options).some((option) => option.value.toLowerCase() === value.toLowerCase())) {
+
+      const option = document.createElement("option");
+
+      option.value = value;
+
+      option.textContent = value;
+
+      option.selected = true;
+
+      houseSizeSelect.appendChild(option);
+
+    }
+
+  }
+
+  form.addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+    const formData = new FormData(form);
+
+    const updates = {
+
+      repCode: (formData.get("repCode") || "").trim().toUpperCase(),
+
+      houseSize: (formData.get("houseSize") || "").trim(),
+
+      houseType: (formData.get("houseType") || "").trim(),
+
+      extension: Boolean(form.elements.extension?.checked),
+
+      conservatory: Boolean(form.elements.conservatory?.checked),
+
+      skylights: Math.max(0, Math.min(10, Number(formData.get("skylights")) || 0)),
+
+      roofLanterns: Math.max(0, Math.min(10, Number(formData.get("roofLanterns")) || 0)),
+
+      partialCleaning: Math.max(0, Math.min(100, Number(formData.get("partialCleaning")) || 0)),
+
+      alternating: Boolean(form.elements.alternating?.checked),
+
+      notes: (formData.get("notes") || "").toString().trim(),
+
+    };
+
+    setStatus("Saving...");
+
+    saveButton?.setAttribute("disabled", "disabled");
+
+    try {
+
+      await updateDoc(doc(db, "quotes", quote.id), updates);
+
+      Object.assign(quote, updates);
+
+      updateLocalQuote(quote.id, updates);
+
+      renderSelectedRecipients();
+
+      updatePreview(state.previewView);
+
+      setStatus("Saved", "success");
+
+      setTimeout(() => setStatus("", ""), 3000);
+
+    } catch (error) {
+
+      console.error("Failed to update quote", quote.id, error);
+
+      setStatus("Save failed", "error");
+
+    } finally {
+
+      saveButton?.removeAttribute("disabled");
+
+    }
+
+  });
+}
+
+function buildEmailPreview(view = state.previewView || "desktop") {
+
+  if (!state.selectedForEmail.length) {
+
+    return '<p class="text-muted">Select at least one quote to preview the email.</p>';
+
+  }
+
+  const baseDate = getFirstCleanDate() || new Date();
+
+  const secondDate = addDays(baseDate, 28);
+
+  const thirdDate = addDays(baseDate, 56);
+
+  return createEmailPreviewHtml(state.selectedForEmail[0], baseDate, secondDate, thirdDate);
+
+}
+
+function updatePreview(view = state.previewView || "desktop") {
+
+  state.previewView = view;
+
+  if (!elements.emailPreview) return;
+
+  const html = buildEmailPreview(view);
+
+  const hasSelection = state.selectedForEmail.length > 0;
+
+  elements.emailPreview.innerHTML = html;
+
+  elements.emailPreview.classList.toggle("mobile-view", view === "mobile" && hasSelection);
+
+  elements.tabButtons.forEach((button) => {
+
+    button.classList.toggle("active", button.dataset.tab === view);
+
+  });
+
+}
+
+function getFirstCleanDate() {
+
+  const input = elements.cleanDate || document.getElementById("cleanDate");
+
+  if (!input) return null;
+
+  elements.cleanDate = input;
+
+  const value = (input.value || "").trim();
+
+  if (!value) return null;
+
+  const parsed = new Date(`${value}T00:00:00`);
+
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+
+}
+
+
+
+
+
+
+
+async function sendBookingEmails() {
+
+  const selected = state.selectedForEmail.length ? state.selectedForEmail : getSelectedQuotes();
+
+  if (!selected.length) {
+
+    alert("Select at least one quote to send booking confirmations.");
+
+    return;
+
+  }
+
+  const firstClean = getFirstCleanDate();
+
+  if (!firstClean) {
+
+    alert("Choose a first clean date before sending emails.");
+
+    elements.cleanDate?.focus();
+
+    return;
+
+  }
+
+  const secondDate = addDays(firstClean, 28);
+
+  const thirdDate = addDays(firstClean, 56);
+
+  const firstCleanStr = firstClean.toLocaleDateString("en-GB");
+
+  const secondCleanStr = secondDate.toLocaleDateString("en-GB");
+
+  const thirdCleanStr = thirdDate.toLocaleDateString("en-GB");
+
+  const results = [];
+
+  for (const quote of selected) {
+
+    try {
+
+      const recipientEmail = String(
+        quote.email || quote.customerEmail || quote.contactEmail || "",
+      ).trim();
+
+      if (!recipientEmail) {
+
+        throw new Error("Recipient email missing");
+
+      }
+
+      if (window.emailjs && emailjs.send) {
+
+        await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE, {
+
+          customer_name: quote.customerName,
+
+          date: firstCleanStr,
+
+          second_date: secondCleanStr,
+
+          third_date: thirdCleanStr,
+
+          ref_code: quote.refCode,
+
+          to_email: recipientEmail,
+
+        });
+
+      }
+
+      await updateDoc(doc(db, "quotes", quote.id), {
+
+        status: `Booked - ${firstCleanStr}`,
+
+        bookedDate: firstClean.toISOString(),
+
+      });
+
+      results.push({ id: quote.id, success: true });
+
+    } catch (error) {
+
+      console.error("Failed to send booking email", quote.id, error);
+
+      results.push({ id: quote.id, success: false });
+
+    }
+
+  }
+
+  const failures = results.filter((result) => !result.success).length;
+
+  const successes = results.length - failures;
+
+  if (failures) {
+
+    alert(`${successes} sent, ${failures} failed. Check console for details.`);
+
+  } else {
+
+    alert(`Sent ${successes} booking confirmation(s).`);
+
+  }
+
+  closeModal();
+
+  await loadQuotes();
+
+}
+
+async function archiveSelected() {
+
+  const ids = getSelectedIds();
+
+  if (!ids.length) {
+
+    alert("Select at least one quote to archive.");
+
+    return;
+
+  }
+
+  const confirmed = confirm(
+
+    `Archive ${ids.length} quote(s)? They will be hidden from the dashboard.`,
+
+  );
+
+  if (!confirmed) return;
+
+
+
+  for (const id of ids) {
+
+    try {
+
+      await updateDoc(doc(db, "quotes", id), {
+
+        deleted: true,
+
+        status: "Archived",
+
+      });
+
+    } catch (error) {
+
+      console.error("Failed to archive quote", id, error);
+
+    }
+
+  }
+
+
+
+  await loadQuotes();
+
+}
+
+
+
+function exportCsv() {
+
+  const rows = [
+
+    [
+
+      "Ref Code",
+
+      "Quote Date",
+
+      "Customer",
+
+      "Address",
+
+      "Mobile",
+
+      "Email",
+
+      "Tier",
+
+      "Price Per Clean",
+
+      "Upfront Price",
+
+      "Status",
+
+    ],
+
+  ];
+
+
+
+  state.filtered.forEach((quote) => {
+
+    rows.push([
+
+      quote.refCode || "",
+
+      formatDate(quote.date),
+
+      quote.customerName || "",
+
+      quote.address || "",
+
+      quote.mobile || "",
+
+      quote.email || "",
+
+      quote.tier || "",
+
+      formatCurrency(quote.pricePerClean),
+
+      formatCurrency(quote.price),
+
+      quote.status || "",
+
+    ]);
+
+  });
+
+
+
+  const csvContent = rows
+
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+
+    .join("\n");
+
+
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
+  const link = document.createElement("a");
+
+  link.href = URL.createObjectURL(blob);
+
+  link.download = "swash-quotes.csv";
+
+  document.body.appendChild(link);
+
+  link.click();
+
+  document.body.removeChild(link);
+
+}
+
+
+
+function handleTableClick(event) {
+
+  if (event.target.closest('input[type="checkbox"]')) {
+
+    return;
+
+  }
+
+  const row = event.target.closest("tr[data-id]");
+
+  if (!row) return;
+
+  const quote = state.filtered.find((item) => item.id === row.dataset.id);
+
+  if (!quote) return;
+
+  toggleDetailRow(row, quote);
+
+}
+
+
+
+function handleTableKeydown(event) {
+
+  if (event.key !== "Enter" && event.key !== " ") return;
+
+  if (event.target.closest('input[type="checkbox"]')) return;
+
+  const row = event.target.closest("tr[data-id]");
+
+  if (!row) return;
+
+  event.preventDefault();
+
+  const quote = state.filtered.find((item) => item.id === row.dataset.id);
+
+  if (!quote) return;
+
+  toggleDetailRow(row, quote);
+
+}
+
+
+
+function attachEvents() {
+
+  elements.applyFilters?.addEventListener("click", filterQuotes);
+
+  elements.repFilter?.addEventListener("change", filterQuotes);
+
+  elements.clearFilters?.addEventListener("click", () => {
+
+    if (elements.startDate) elements.startDate.value = "";
+
+    if (elements.endDate) elements.endDate.value = "";
+
+    if (elements.repFilter) elements.repFilter.value = "ALL";
+
+    state.filtered = state.quotes;
+
+    render();
+
+  });
+
+
+
+  elements.selectAll?.addEventListener("change", (event) => {
+
+    const checked = event.target.checked;
+
+    elements.quotesBody
+
+      ?.querySelectorAll('input[type="checkbox"]')
+
+      .forEach((checkbox) => {
+
+        checkbox.checked = checked;
+
+      });
+
+  });
+
+
+
+  elements.quotesBody?.addEventListener("click", handleTableClick);
+
+  elements.quotesBody?.addEventListener("keydown", handleTableKeydown);
+
+
+
+  elements.sendEmailBtn?.addEventListener("click", () => {
+
+    const selected = getSelectedQuotes();
+
+    if (!selected.length) {
+
+      alert("Select at least one quote first.");
+
+      return;
+
+    }
+
+    state.selectedForEmail = selected;
+
+    renderSelectedRecipients();
+
+    const today = new Date();
+
+    if (elements.cleanDate && !elements.cleanDate.value) {
+
+      elements.cleanDate.value = today.toISOString().slice(0, 10);
+
+    }
+
+    state.previewView = "desktop";
+
+    updatePreview("desktop");
+
+    openModal();
+
+  });
+
+
+
+  elements.confirmSend?.addEventListener("click", sendBookingEmails);
+
+  elements.deleteSelectedBtn?.addEventListener("click", archiveSelected);
+
+  elements.exportBtn?.addEventListener("click", exportCsv);
+
+
+
+  elements.tabButtons.forEach((button) => {
+
+    button.addEventListener("click", () => {
+
+      updatePreview(button.dataset.tab);
+
+    });
+
+  });
+
+  elements.cleanDate?.addEventListener("change", () => updatePreview());
+
+  document.getElementById("refreshPreview")?.addEventListener("click", () => updatePreview());
+
+  document.getElementById("closeModal")?.addEventListener("click", closeModal);
+
+  document.getElementById("closeModalSecondary")?.addEventListener("click", closeModal);
+
+}
+
+
+
+export async function initAdmin() {
+
+  if (document.readyState === "loading") {
+
+    await new Promise((resolve) =>
+
+      document.addEventListener("DOMContentLoaded", resolve, { once: true }),
+
+    );
+
+  }
+
+
+
+  attachEvents();
+
+  renderSelectedRecipients();
+
+  updatePreview();
+
+  await loadQuotes();
+
+}
+
+
+
+export default initAdmin;

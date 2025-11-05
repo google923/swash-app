@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Swash Scheduler</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a id="rep-home-link" class="hidden" href="./rep-home.html">Rep Home</a>
+          <a id="schedule-link" class="hidden" href="./scheduler.html">Schedule</a>
+          <a id="add-customer-link" class="hidden" href="./quote.html">Add Customer</a>
+          <a id="admin-dashboard-link" class="hidden" href="./admin.html">Admin Dashboard</a>
+          <a id="manage-users-link" class="hidden" href="./admin/users.html">Manage Users</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite" hidden>
+    <form id="loginForm" class="auth-card" novalidate>
+      <h2>Sign in</h2>
+      <p class="text-muted">Use your Swash admin credentials to continue.</p>
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email" autocomplete="email" required />
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required />
+      <p id="loginError" class="status warning" hidden></p>
+      <button type="submit" class="btn btn-primary">Sign in</button>
+    </form>
+  </section>
+
+  <main id="schedulerContent" class="page">
+    <section class="card">
+      <header class="card-header">
+        <h2>4-week route planner</h2>
+        <p class="text-muted">Generate a rolling schedule from booked customers and plan upcoming cleans.</p>
+      </header>
+      
+      <div class="controls scheduler-controls" aria-label="Scheduler controls">
+        <div class="controls-left">
+          <label for="startWeek" class="control-label text-muted">Start week</label>
+          <input id="startWeek" type="date" />
+          <button id="generate" class="btn btn-primary" type="button">Generate schedule</button>
+
+          <button id="refresh" class="btn btn-secondary" type="button">Refresh data</button>
+        </div>
+        <div class="controls-right">
+          <div class="cleaner-filter">
+            <label class="text-muted" for="cleanerFilter">Cleaner</label>
+            <select id="cleanerFilter"></select>
+          </div>
+          <label class="sr-only" for="scheduleSearch">Search customer or address</label>
+          <input id="scheduleSearch" type="search" placeholder="Search customer or address" />
+        </div>
+      </div>
+
+      <div class="schedule-header">
+        <button id="showPreviousWeek" class="btn btn-secondary" type="button">Show previous week</button>
+      </div>
+
+      <div id="schedule" aria-live="polite"></div>
+      <div class="schedule-footer">
+        <button id="showNextWeek" class="btn btn-secondary" type="button">Show next week</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="dayMessageModal" class="modal" hidden>
+    <div class="modal__dialog">
+      <button type="button" class="modal__close" id="closeDayMessageModal" aria-label="Close">×</button>
+      <h3 id="dayMessageTitle">Send Messages</h3>
+      <div class="modal__recipients-section">
+        <p class="modal__recipients-label">Recipients</p>
+        <div id="dayMessageRecipients" class="modal__recipients"></div>
+      </div>
+      <label class="modal__field">
+        <span>Message template</span>
+        <select id="dayMessageTemplate">
+          <option value="">Custom message</option>
+          <option value="reminder">Reminder</option>
+          <option value="new-template">+ Create new template</option>
+        </select>
+      </label>
+      <div id="deleteTemplateSection" class="modal__field" hidden style="display: flex; align-items: center; gap: 10px;">
+        <button type="button" class="btn btn-danger btn-sm" id="deleteTemplate">🗑️ Delete this template</button>
+      </div>
+      <div id="newTemplateSection" class="modal__field" hidden>
+        <label>
+          <span>Template name</span>
+          <input type="text" id="newTemplateName" placeholder="e.g. Holiday Notice" />
+        </label>
+        <button type="button" class="btn btn-secondary btn-sm" id="saveTemplate">Save template</button>
+      </div>
+      <label class="modal__field">
+        <span>Message</span>
+        <textarea id="dayMessageBody" rows="6" placeholder="Type your message..."></textarea>
+      </label>
+      <div id="dayMessageErrors" class="modal__errors" hidden></div>
+      <div class="modal__footer">
+        <span id="dayMessageProgress" class="modal__progress" aria-live="polite"></span>
+        <div class="modal__actions">
+          <button type="button" class="btn btn-secondary" id="cancelDayMessage">Cancel</button>
+          <button type="button" class="btn btn-primary" id="sendDayMessage">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./auth-check.js"></script>
+  <script>
+    // Initialize menu dropdowns immediately
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuBtn = document.getElementById('menuBtn');
+      const menuDropdown = document.getElementById('menuDropdown');
+      
+      if (menuBtn && menuDropdown) {
+        menuBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          menuDropdown.classList.toggle('show');
+        });
+        
+        document.addEventListener('click', (e) => {
+          if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
+            menuDropdown.classList.remove('show');
+          }
+        });
+      }
+    });
+  </script>
+  <script type="module">
+    import("./scheduler.js");
+  </script>
+</body>
+</html>

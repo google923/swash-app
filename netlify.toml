@@ -1,0 +1,14 @@
+[build]
+  publish = "public"
+
+# Ensure service worker is not aggressively cached during deploy churn
+[[headers]]
+  for = "/service-worker.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# Optional: set long cache for static assets (adjust as needed)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

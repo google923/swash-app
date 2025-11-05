@@ -1,0 +1,9 @@
+{
+  "auto-run-command.commands": [
+    {
+      "match": ".*",
+      "isAsync": true,
+      "cmd": "node autodeploy.js"
+    }
+  ]
+}

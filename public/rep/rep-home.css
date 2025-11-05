@@ -1,0 +1,467 @@
+/* Rep Home Page Styles */
+
+.welcome-banner {
+  background: rgba(0, 120, 215, 0.9) !important; /* Force 90% opacity Swash blue */
+  color: white;
+  padding: 48px 24px;
+  border-radius: 16px;
+  margin-bottom: 32px;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-banner h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+}
+
+.welcome-banner__date {
+  font-size: 1.1rem;
+  opacity: 0.95;
+  font-weight: 400;
+}
+
+/* Quick Actions Grid */
+.quick-actions {
+  margin-bottom: 40px;
+}
+
+.quick-actions h2 {
+  color: #0078d7;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.action-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  aspect-ratio: 1 / 1; /* make tiles square */
+}
+
+.action-card:hover {
+  border-color: #0078d7;
+  box-shadow: 0 4px 12px rgba(0, 120, 215, 0.15);
+  transform: translateY(-2px);
+}
+
+.action-card__icon { 
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
+.action-card__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.action-card__desc {
+  display: none; /* compact app-like tiles */
+}
+
+/* Performance Snapshot */
+.performance-snapshot {
+  margin-bottom: 40px;
+}
+
+.performance-snapshot h2 {
+  color: #0078d7;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.performance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.performance-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.performance-card__value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #0078d7;
+  margin: 0 0 8px 0;
+}
+
+.performance-card__label {
+  font-size: 0.95rem;
+  color: #64748b;
+  font-weight: 500;
+  margin: 0;
+}
+
+.performance-card__trend {
+  font-size: 0.875rem;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.performance-card__trend--up {
+  color: #059669;
+}
+
+.performance-card__trend--down {
+  color: #dc2626;
+}
+
+.performance-card__trend--neutral {
+  color: #64748b;
+}
+
+/* Announcements Panel */
+.announcements-panel {
+  margin-bottom: 40px;
+}
+
+.announcements-panel h2 {
+  color: #0078d7;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.announcements-list {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.announcement-item {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.announcement-item:last-child {
+  border-bottom: none;
+}
+
+.announcement-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.announcement-item__title {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.announcement-item__date {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.announcement-item__message {
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.announcement-item__badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 12px;
+}
+
+.announcement-item__badge--new {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.announcement-item__badge--urgent {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.announcements-empty {
+  padding: 40px 24px;
+  text-align: center;
+  color: #64748b;
+}
+
+/* Motivational Quotes */
+.motivational-quotes {
+  margin-bottom: 40px;
+}
+
+.quote-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #bae6fd;
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  position: relative;
+}
+
+.quote-card__icon {
+  font-size: 2rem;
+  color: #0078d7;
+  margin-bottom: 16px;
+}
+
+.quote-card__text {
+  font-size: 1.25rem;
+  font-style: italic;
+  color: #1e293b;
+  line-height: 1.6;
+  margin: 0 0 16px 0;
+  font-weight: 500;
+}
+
+.quote-card__author {
+  font-size: 0.95rem;
+  color: #64748b;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .welcome-banner {
+    padding: 32px 20px;
+  }
+
+  .welcome-banner h1 {
+    font-size: 1.75rem;
+  }
+
+  .welcome-banner__date {
+    font-size: 1rem;
+  }
+
+  .quick-actions-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px;
+  }
+
+  .action-card {
+    padding: 10px;
+  }
+
+  .action-card__icon {
+    font-size: 1.6rem;
+  }
+
+  .action-card__title {
+    font-size: 0.8rem;
+  }
+
+  .action-card__desc { display: none; }
+
+  .performance-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .performance-card__value {
+    font-size: 2rem;
+  }
+
+  .quote-card {
+    padding: 24px 20px;
+  }
+
+  .quote-card__text {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .quick-actions-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .announcement-item__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+/* Minimal calendar layout on Rep Home */
+.rep-home-calendar { 
+  margin: 8px 0 32px; 
+  width: 100%;
+  overflow: hidden;
+}
+.cal-center { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 8px; 
+  width: 100%;
+}
+.cal-month-label { 
+  font-weight: 700; 
+  color: #1e293b; 
+  text-align: center; 
+}
+.cal-bottom-nav { 
+  display:flex; 
+  justify-content: space-between; 
+  align-items:center; 
+  width:100%; 
+  margin-top:8px; 
+}
+.cal-nav { 
+  width: 36px; 
+  height: 32px; 
+  border-radius: 6px; 
+  border: 1px solid #a8c3e8; 
+  background:#fff; 
+  color:#1e293b; 
+  font-size:18px; 
+  line-height:1; 
+  cursor:pointer; 
+  display:inline-flex; 
+  align-items:center; 
+  justify-content:center; 
+  box-shadow:0 2px 6px rgba(0,0,0,0.06); 
+}
+.cal-nav:hover { 
+  background:#f0f7ff; 
+  border-color:#a8c3e8; 
+}
+.cal-nav:active { 
+  transform: translateY(1px); 
+}
+/* Ensure calendar grid uses full width and fits container */
+.rep-home-calendar .rep-calendar { 
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.rep-home-calendar .rep-day { 
+  min-height: 50px; 
+  padding: 4px 2px;
+  font-size: 0.75rem;
+}
+.rep-home-calendar .rep-day__date { 
+  font-size: 0.7rem; 
+}
+.dashboard-wrap {
+  background: rgba(255, 255, 255, 0.6) !important; /* Force 60% white opacity */
+  border: 1px solid rgba(0, 120, 215, 0.28);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.14);
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  grid-template-areas:
+    "welcome welcome"
+    "quick   calendar"
+    "announcements calendar"
+    "performance performance";
+  gap: 20px;
+}
+
+.welcome-banner { grid-area: welcome; }
+.quick-actions { grid-area: quick; }
+.rep-home-calendar { grid-area: calendar; }
+.performance-snapshot { grid-area: performance; }
+.announcements-panel { grid-area: announcements; }
+
+/* Section separators (thin blue lines) */
+.welcome-banner,
+.quick-actions,
+.rep-home-calendar,
+.performance-snapshot,
+.announcements-panel,
+.motivational-quotes {
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(0, 120, 215, 0.30); /* slightly thicker blue lines */
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+
+/* keep welcome banner gradient while retaining border */
+.welcome-banner { padding: 32px 20px; box-shadow: 0 12px 28px rgba(0, 90, 158, 0.25); }
+.rep-home-calendar .rep-day { min-height: 80px; padding: 6px; }
+.rep-home-calendar .rep-day__date { font-size: 0.85rem; }
+
+/* Admin Event Tools */
+.admin-event-tools { grid-area: calendar; border: 2px solid rgba(0,120,215,0.30); border-radius: 12px; padding: 12px; background: rgba(255,255,255,0.06); box-shadow: 0 6px 16px rgba(15,23,42,0.12); }
+.event-form { display: flex; flex-direction: column; gap: 12px; }
+.event-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.event-field { display: flex; flex-direction: column; gap: 6px; }
+.event-field input, .event-field textarea, .event-field select { border: 1px solid rgba(15, 23, 42, 0.18); border-radius: 8px; padding: 10px 12px; font-size: 0.95rem; }
+.event-actions { display: flex; justify-content: flex-end; }
+
+/* Event badges in the calendar */
+.event-badge { display:inline-block; margin: 2px 0 0; padding: 2px 6px; border-radius: 10px; background: rgba(0,120,215,0.12); color: #0b3b77; border: 1px solid rgba(0,120,215,0.3); font-size: 0.68rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.event-badge--completed { background: rgba(28,156,93,0.12); border-color: rgba(28,156,93,0.3); color: #11633f; }
+
+/* Event Modal styles (reuse log modal layout) */
+#eventModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,0.4);z-index:60;padding:20px}
+#eventModal:not([hidden]){display:flex}
+#eventModal .modal__dialog{background:#fff;padding:24px;border-radius:16px;max-width:640px;width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04)}
+#eventModal .modal__body{display:flex;flex-direction:column;gap:10px}
+
+/* Responsive layout adjustments */
+@media (max-width: 1024px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "welcome"
+      "quick"
+      "calendar"
+      "announcements"
+      "performance";
+  }
+}
+
+@media (max-width: 768px) {
+  .action-card__icon { font-size: 1.5rem; }
+  .rep-home-calendar .rep-day { 
+    min-height: 45px; 
+    padding: 3px 2px;
+  }
+  .performance-grid { grid-template-columns: 1fr; }
+}

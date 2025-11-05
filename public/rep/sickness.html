@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Report Sickness - Swash</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <a href="../rep-home.html" class="btn btn-secondary">← Back to Home</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <header class="card-header">
+        <h1>🤒 Report Sickness</h1>
+        <p class="text-muted">Report sick leave and view your sickness history.</p>
+      </header>
+
+      <div style="padding: 20px;">
+        <p>Use this page to report illness, view your sick leave history, and submit medical certificates if required.</p>
+        
+        <h3 style="margin-top: 24px; color: #0078d7;">Report Sick Leave</h3>
+        <form style="margin-top: 12px;">
+          <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; margin-bottom: 4px; font-weight: 600;">Date of Illness</span>
+            <input type="date" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" />
+          </label>
+          <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; margin-bottom: 4px; font-weight: 600;">Expected Return Date</span>
+            <input type="date" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" />
+          </label>
+          <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; margin-bottom: 4px; font-weight: 600;">Symptoms / Reason</span>
+            <textarea rows="3" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" placeholder="Brief description of illness..."></textarea>
+          </label>
+          <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; margin-bottom: 4px; font-weight: 600;">Medical Certificate (if applicable)</span>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" />
+          </label>
+          <button type="submit" class="btn btn-primary">Submit Report</button>
+        </form>
+
+        <h3 style="margin-top: 32px; color: #0078d7;">Your Sickness History</h3>
+        <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px;">
+          <p style="margin: 0; color: #64748b;">No sick leave records to display.</p>
+        </div>
+
+        <p style="margin-top: 24px; padding: 16px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px;">
+          <strong>Note:</strong> Sickness reporting will be stored in Firestore and automatically notify management. File uploads will use Firebase Storage.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="../auth-check.js"></script>
+  <script type="module" src="../under-dev.js"></script>
+</body>
+</html>

@@ -1,0 +1,1362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Territory Map - Swash</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+  <style>
+    .map-container {
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 2px solid #0078d7;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    #territoryMap {
+      width: 100%;
+      height: 600px;
+      border-radius: 8px;
+      border: 2px solid #e5e7eb;
+      margin-bottom: 20px;
+    }
+    .map-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .map-controls button {
+      padding: 10px 16px;
+      border: 2px solid #0078d7;
+      background: white;
+      color: #0078d7;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+    }
+    .map-controls button:hover {
+      background: #0078d7;
+      color: white;
+    }
+    .map-controls button.active {
+      background: #0078d7;
+      color: white;
+    }
+    .map-controls select {
+      padding: 10px 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .map-info {
+      background: #f8fafc;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #0078d7;
+      border: 2px solid #0078d7;
+    }
+    .map-info p {
+      margin: 8px 0;
+      color: #475569;
+    }
+    .territory-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .stat-card {
+      padding: 16px;
+      background: white;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .stat-card p {
+      margin: 0;
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+    .stat-card .value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #0078d7;
+      margin-top: 8px;
+    }
+
+    /* Territory Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+    .modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background-color: white;
+      padding: 32px;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+    .modal-header {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #0078d7;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 0.95rem;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #0078d7;
+      box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.1);
+    }
+    .form-group input[type="color"] {
+      height: 40px;
+      cursor: pointer;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .modal-actions button {
+      flex: 1;
+      padding: 12px 20px;
+      border-radius: 6px;
+      border: 2px solid #0078d7;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .modal-actions button.primary {
+      background: #0078d7;
+      color: white;
+    }
+    .modal-actions button.primary:hover {
+      background: #1084e8;
+      border-color: #1084e8;
+    }
+    .modal-actions button.secondary {
+      background: white;
+      color: #0078d7;
+    }
+    .modal-actions button.secondary:hover {
+      background: #f0f7ff;
+    }
+
+    /* Territories List */
+    .territories-section {
+      margin-top: 40px;
+    }
+    .territories-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .territory-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: white;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    .territory-item:hover {
+      border-color: #0078d7;
+      box-shadow: 0 4px 8px rgba(0, 120, 215, 0.1);
+    }
+    .territory-color {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 2px solid #e5e7eb;
+    }
+    .territory-info {
+      flex: 1;
+    }
+    .territory-name {
+      font-weight: 700;
+      color: #1e293b;
+      font-size: 0.95rem;
+    }
+    .territory-meta {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .territory-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .territory-actions button {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .territory-actions .edit-btn {
+      background: #0078d7;
+      color: white;
+    }
+    .territory-actions .edit-btn:hover {
+      background: #1084e8;
+    }
+    .territory-actions .delete-btn {
+      background: #ef4444;
+      color: white;
+    }
+    .territory-actions .delete-btn:hover {
+      background: #dc2626;
+    }
+
+    /* Rep Tags */
+    .rep-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #0078d7;
+      color: white;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .rep-tag button {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0;
+      line-height: 1;
+    }
+    .rep-tag button:hover {
+      opacity: 0.8;
+    }
+
+    /* Log Details Modal */
+    .log-detail-modal {
+      display: none;
+      position: fixed;
+      z-index: 1001;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
+      overflow: auto;
+      padding: 16px;
+    }
+    .log-detail-modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .log-detail-content {
+      background-color: white;
+      padding: 24px;
+      border-radius: 12px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+    .log-detail-header {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #0078d7;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 12px;
+      flex-shrink: 0;
+    }
+    .log-detail-body {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 16px;
+      padding-right: 8px;
+    }
+    .log-detail-body::-webkit-scrollbar {
+      width: 6px;
+    }
+    .log-detail-body::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    .log-detail-body::-webkit-scrollbar-thumb {
+      background: #0078d7;
+      border-radius: 10px;
+    }
+    .log-detail-body::-webkit-scrollbar-thumb:hover {
+      background: #1084e8;
+    }
+    .log-detail-field {
+      margin-bottom: 16px;
+    }
+    .log-detail-field label {
+      display: block;
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+    }
+    .log-detail-field value {
+      display: block;
+      color: #475569;
+      font-size: 0.95rem;
+      padding: 8px;
+      background: #f8fafc;
+      border-radius: 4px;
+      word-break: break-word;
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .log-detail-actions {
+      display: flex;
+      gap: 12px;
+      flex-shrink: 0;
+      margin-top: auto;
+      border-top: 2px solid #e5e7eb;
+      padding-top: 16px;
+    }
+    .log-detail-actions button {
+      flex: 1;
+      padding: 12px 20px;
+      border-radius: 6px;
+      border: 2px solid #0078d7;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .log-detail-actions .close-btn {
+      background: white;
+      color: #0078d7;
+    }
+    .log-detail-actions .close-btn:hover {
+      background: #f0f7ff;
+    }
+
+    @media (max-width: 600px) {
+      .log-detail-modal {
+        padding: 8px;
+      }
+      .log-detail-content {
+        max-height: 95vh;
+        padding: 16px;
+        border-radius: 8px;
+      }
+      .log-detail-header {
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+      }
+      .log-detail-field {
+        margin-bottom: 12px;
+      }
+      .log-detail-field label {
+        font-size: 0.85rem;
+      }
+      .log-detail-field value {
+        font-size: 0.9rem;
+        padding: 6px;
+      }
+      .log-detail-actions {
+        gap: 8px;
+        padding-top: 12px;
+      }
+      .log-detail-actions button {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <a href="../rep-home.html" class="btn btn-secondary">← Back to Home</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="map-container">
+      <h1 style="color: #0078d7; margin-bottom: 8px;">🗺️ Territory Map</h1>
+      <p style="color: #64748b; margin-bottom: 24px;">View your assigned territory in Maldon, Essex (10-mile radius)</p>
+
+      <!-- Map Controls -->
+      <div class="map-controls">
+        <button id="drawPolygonBtn" type="button">✏️ Draw Territory</button>
+        <button id="clearPolygonBtn" type="button">🗑️ Clear Territory</button>
+        <button id="savePolygonBtn" type="button" style="background: #10b981; border-color: #10b981; color: white;">💾 Save Territory</button>
+        <select id="mapTypeSelect">
+          <option value="hybrid">Hybrid View (Roads & Satellite)</option>
+          <option value="satellite">Satellite View</option>
+          <option value="roadmap">Normal Map</option>
+          <option value="terrain">Terrain</option>
+        </select>
+      </div>
+
+      <!-- Territory Creation Modal -->
+      <div id="territoryModal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">Create Territory</div>
+          <form id="territoryForm">
+            <div class="form-group">
+              <label for="territoryName">Territory Name *</label>
+              <input type="text" id="territoryName" name="name" placeholder="e.g., Maldon North Zone" required>
+            </div>
+
+            <div class="form-group">
+              <label for="territoryColor">Territory Color *</label>
+              <input type="color" id="territoryColor" name="color" value="#0078d7" required>
+            </div>
+
+            <div class="form-group">
+              <label for="territoryReps">Assign to Reps *</label>
+              <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <input type="text" id="repNameInput" placeholder="Enter rep name" style="flex: 1;">
+                <button type="button" id="addRepBtn" style="padding: 10px 16px; background: #0078d7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">+ Add</button>
+              </div>
+              <div id="repTagsContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+                <!-- Rep tags will appear here -->
+              </div>
+              <input type="hidden" id="territoryRepsHidden" name="reps">
+              <p style="font-size: 0.8rem; color: #64748b;">Type a rep name and click Add to assign them to this territory</p>
+            </div>
+
+            <div class="form-group">
+              <label for="territoryFocusFromDate">Focus Period - From Date</label>
+              <input type="date" id="territoryFocusFromDate" name="focusFromDate">
+            </div>
+
+            <div class="form-group">
+              <label for="territoryFocusToDate">Focus Period - To Date</label>
+              <input type="date" id="territoryFocusToDate" name="focusToDate">
+              <p style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">Date range for reps to focus on this territory</p>
+            </div>
+
+            <div class="modal-actions">
+              <button type="submit" class="primary">✓ Create Territory</button>
+              <button type="button" class="secondary" id="closeTerritoryModal">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Log Detail Modal -->
+      <div id="logDetailModal" class="log-detail-modal">
+        <div class="log-detail-content">
+          <div id="logDetailHeader" class="log-detail-header"></div>
+          <div id="logDetailBody" class="log-detail-body"></div>
+          <div class="log-detail-actions">
+            <button type="button" class="close-btn" onclick="closeLogDetailModal()">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Info Box -->
+      <div class="map-info">
+        <p><strong>📍 Territory Center:</strong> Maldon, Essex</p>
+        <p><strong>📏 Radius:</strong> 10 miles from center</p>
+        <p><strong>🗺️ View:</strong> Hybrid view showing satellite imagery with road names and labels</p>
+        <p id="drawingStatus" style="color: #0078d7; font-weight: 600; display: none;">Click on the map to draw your territory polygon. Double-click to finish.</p>
+      </div>
+
+      <!-- Google Map -->
+      <div id="territoryMap"></div>
+
+      <!-- Territory Stats -->
+      <div class="territory-stats">
+        <div class="stat-card">
+          <p>Territory Area</p>
+          <div class="value" id="areaValue">--</div>
+          <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">sq miles</p>
+        </div>
+        <div class="stat-card">
+          <p>Polygon Vertices</p>
+          <div class="value" id="verticesValue">0</div>
+        </div>
+        <div class="stat-card">
+          <p>Last Saved</p>
+          <div class="value" id="lastSavedValue">Never</div>
+          <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Check browser storage</p>
+        </div>
+      </div>
+
+      <!-- Saved Territories -->
+      <div class="territories-section">
+        <h2 style="color: #1e293b; margin-bottom: 12px; font-size: 1.2rem;">📍 Your Territories</h2>
+        <div id="territoriesList" class="territories-list">
+          <p style="color: #94a3b8; font-size: 0.95rem; padding: 16px; text-align: center; background: #f8fafc; border-radius: 8px;">No territories created yet. Draw and save one to get started.</p>
+        </div>
+      </div>
+
+      <p style="margin-top: 24px; padding: 16px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px; color: #1e293b;">
+        <strong>💡 How to use:</strong> Click "Draw Territory" to start creating your territory polygon. Click on the map to add points. Double-click to finish. The territory will be saved to your browser storage.
+      </p>
+    </div>
+  </main>
+
+  <!-- Log Detail Modal -->
+  <div id="logDetailModal" class="log-detail-modal">
+    <div class="log-detail-content">
+      <div class="log-detail-header" id="logDetailHeader">Log Details</div>
+      <div id="logDetailBody">
+        <!-- Log details will be populated here -->
+      </div>
+      <div class="log-detail-actions">
+        <button type="button" class="close-btn" onclick="closeLogDetailModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="../auth-check.js"></script>
+
+  <!-- Google Maps API -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=drawing,geometry"></script>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCLmrWYAY4e7tQD9Cknxp7cKkzqJgndm0I",
+      authDomain: "swash-app-436a1.firebaseapp.com",
+      projectId: "swash-app-436a1",
+      storageBucket: "swash-app-436a1.firebasestorage.app",
+      messagingSenderId: "724611205173",
+      appId: "1:724611205173:web:d17474ad848856d6c3497c",
+    };
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Make loadLogs and related functions global for inline script
+    window.firebaseDb = db;
+  </script>
+
+  <script>
+    // Maldon, Essex coordinates
+    const MALDON_CENTER = { lat: 51.7356, lng: 0.6756 };
+    const RADIUS_MILES = 10;
+
+    let map;
+    let drawingManager;
+    let polygon = null;
+    let circle = null;
+    let isDrawing = false;
+    let polygonPath = [];
+    let territories = []; // Array of territory objects
+    let currentPolygonBeingSaved = null;
+    const territoryOverlays = {}; // Map territory IDs to their map overlays
+    let selectedReps = []; // Track selected reps for new territory
+    let repLogs = []; // Array of rep logs
+    const logPins = {}; // Map log IDs to marker objects
+    const repColors = {}; // Map rep names to colors for pins
+
+    // Role-based access
+    let currentUser = null;
+    let userRole = null;
+    let currentRepName = null;
+
+    // Generate consistent color for each rep
+    function getRepColor(repName) {
+      if (!repColors[repName]) {
+        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#A8E6CF'];
+        const hash = repName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        repColors[repName] = colors[hash % colors.length];
+      }
+      return repColors[repName];
+    }
+
+    // Create custom marker icon (droplet shape)
+    function createMarkerIcon(color) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="${color}" stroke="white" stroke-width="1">
+        <path d="M12 2c-5 6-8 9-8 12a8 8 0 0 0 16 0c0-3-3-6-8-12z"/>
+      </svg>`;
+      return {
+        url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+        scaledSize: new google.maps.Size(32, 40),
+        origin: new google.maps.Point(0, 0),
+        anchor: new google.maps.Point(16, 40),
+      };
+    }
+
+    // Load logs from Firestore
+    async function loadLogs() {
+      try {
+        const db = window.firebaseDb;
+        if (!db) return;
+
+        const { getDocs, collection } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const querySnapshot = await getDocs(collection(db, "repLogs"));
+        repLogs = [];
+        
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.location && data.location.lat && data.location.lng) {
+            repLogs.push({
+              id: doc.id,
+              rep: data.rep,
+              dateISO: data.dateISO,
+              logText: data.logText,
+              odometerStart: data.odometerStart,
+              odometerEnd: data.odometerEnd,
+              location: data.location,
+            });
+          }
+        });
+
+        renderLogPins();
+      } catch (err) {
+        console.error("Error loading logs:", err);
+      }
+    }
+
+    // Render log pins on map
+    function renderLogPins() {
+      // Clear existing pins
+      Object.values(logPins).forEach(marker => marker.setMap(null));
+      Object.keys(logPins).forEach(key => delete logPins[key]);
+
+      // Add new pins
+      repLogs.forEach((log, index) => {
+        const color = getRepColor(log.rep);
+        const marker = new google.maps.Marker({
+          position: { lat: log.location.lat, lng: log.location.lng },
+          map: map,
+          icon: createMarkerIcon(color),
+          title: `${log.rep} - ${log.dateISO}`,
+          optimized: false,
+        });
+
+        marker.addListener('click', () => {
+          showLogDetailModal(log);
+        });
+
+        logPins[log.id] = marker;
+      });
+    }
+
+    // Show log detail modal
+    function showLogDetailModal(log) {
+      const header = document.getElementById('logDetailHeader');
+      const body = document.getElementById('logDetailBody');
+
+      header.textContent = `📍 ${log.rep}'s Log`;
+      body.innerHTML = `
+        <div class="log-detail-field">
+          <label>Rep Name</label>
+          <value>${escapeHtml(log.rep)}</value>
+        </div>
+        <div class="log-detail-field">
+          <label>Date</label>
+          <value>${escapeHtml(log.dateISO)}</value>
+        </div>
+        <div class="log-detail-field">
+          <label>Location</label>
+          <value>${log.location.lat.toFixed(4)}, ${log.location.lng.toFixed(4)}</value>
+        </div>
+        <div class="log-detail-field">
+          <label>Odometer Start</label>
+          <value>${escapeHtml(log.odometerStart || 'N/A')}</value>
+        </div>
+        <div class="log-detail-field">
+          <label>Odometer End</label>
+          <value>${escapeHtml(log.odometerEnd || 'N/A')}</value>
+        </div>
+        <div class="log-detail-field">
+          <label>Log Text</label>
+          <value>${escapeHtml(log.logText)}</value>
+        </div>
+      `;
+
+      document.getElementById('logDetailModal').classList.add('show');
+    }
+
+    // Close log detail modal
+    function closeLogDetailModal() {
+      document.getElementById('logDetailModal').classList.remove('show');
+    }
+
+    // Check user role and filter UI
+    async function checkUserRole() {
+      try {
+        const db = window.firebaseDb;
+        const { getAuth, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js");
+        const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        
+        const auth = getAuth();
+        
+        return new Promise((resolve) => {
+          onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+              resolve();
+              return;
+            }
+
+            currentUser = user;
+
+            try {
+              const snap = await getDoc(doc(db, "users", user.uid));
+              if (snap.exists()) {
+                userRole = snap.data().role;
+                currentRepName = snap.data().repName || snap.data().displayName;
+              }
+            } catch (err) {
+              console.error("Error fetching user role:", err);
+            }
+
+            updateUIForRole();
+            resolve();
+          });
+        });
+      } catch (err) {
+        console.error("Error checking user role:", err);
+      }
+    }
+
+    // Update UI based on user role
+    function updateUIForRole() {
+      const drawBtn = document.getElementById('drawPolygonBtn');
+      const clearBtn = document.getElementById('clearPolygonBtn');
+      const saveBtn = document.getElementById('savePolygonBtn');
+      const territoryList = document.querySelector('.territories-section');
+      const mapControls = document.querySelector('.map-controls');
+
+      if (userRole === 'admin') {
+        // Admin: Show all controls
+        if (drawBtn) drawBtn.style.display = 'block';
+        if (clearBtn) clearBtn.style.display = 'block';
+        if (saveBtn) saveBtn.style.display = 'block';
+        if (territoryList) territoryList.style.display = 'block';
+      } else if (userRole === 'rep') {
+        // Rep: Hide territory creation controls
+        if (drawBtn) drawBtn.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (territoryList) territoryList.style.display = 'none';
+
+        // Filter territories to only show assigned ones
+        filterTerritoriesForRep();
+        filterLogsForRep();
+      }
+    }
+
+    // Filter territories to only show those assigned to current rep
+    function filterTerritoriesForRep() {
+      if (!currentRepName) return;
+
+      const displayTerritories = territories.filter(t => 
+        t.reps.includes(currentRepName)
+      );
+
+      // Hide non-assigned territories from map
+      territories.forEach(t => {
+        if (territoryOverlays[t.id]) {
+          territoryOverlays[t.id].setMap(
+            displayTerritories.find(dt => dt.id === t.id) ? map : null
+          );
+        }
+      });
+
+      // Update list to show only assigned territories
+      const container = document.getElementById('territoriesList');
+      if (displayTerritories.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; font-size: 0.95rem; padding: 16px; text-align: center; background: #f8fafc; border-radius: 8px;">No territories assigned to you yet.</p>';
+        return;
+      }
+
+      container.innerHTML = displayTerritories.map(territory => `
+        <div class="territory-item">
+          <div class="territory-color" style="background-color: ${territory.color};"></div>
+          <div class="territory-info">
+            <div class="territory-name">${escapeHtml(territory.name)}</div>
+            <div class="territory-meta">
+              📐 ${territory.area.toFixed(2)} sq mi
+              ${territory.focusFromDate && territory.focusToDate ? ` | 📅 ${territory.focusFromDate} to ${territory.focusToDate}` : territory.focusFromDate ? ` | 📅 From ${territory.focusFromDate}` : territory.focusToDate ? ` | 📅 Until ${territory.focusToDate}` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Filter logs to show only current rep's logs (optional)
+    function filterLogsForRep() {
+      if (!currentRepName || userRole !== 'rep') return;
+      // Logs are already displayed on map, reps can see all logs to see what areas have been worked
+      // If you want reps to see ONLY their logs, uncomment below:
+      // repLogs = repLogs.filter(log => log.rep === currentRepName);
+      // renderLogPins();
+    }
+
+    // Initialize map
+    async function initMap() {
+      map = new google.maps.Map(document.getElementById('territoryMap'), {
+        zoom: 12,
+        center: MALDON_CENTER,
+        mapTypeId: 'hybrid',
+        disableDefaultUI: false,
+        zoomControl: true,
+        mapTypeControl: true,
+      });
+
+      // Add drawing manager
+      drawingManager = new google.maps.drawing.DrawingManager({
+        drawingMode: null,
+        drawingControl: false,
+        polygonOptions: {
+          fillColor: '#0078d7',
+          fillOpacity: 0.4,
+          strokeColor: '#0078d7',
+          strokeWeight: 2,
+          editable: true,
+          draggable: true
+        },
+        circleOptions: {
+          fillColor: '#0078d7',
+          fillOpacity: 0.4,
+          strokeColor: '#0078d7',
+          strokeWeight: 2,
+          editable: true,
+          draggable: true
+        }
+      });
+      drawingManager.setMap(map);
+
+      // Add 10-mile radius circle (visual reference)
+      const radiusCircle = new google.maps.Circle({
+        center: MALDON_CENTER,
+        radius: RADIUS_MILES * 1609.34, // Convert miles to meters
+        map: map,
+        fillColor: '#0078d7',
+        fillOpacity: 0.08,
+        strokeColor: '#0078d7',
+        strokeOpacity: 0.4,
+        strokeWeight: 2,
+      });
+
+      // Event listeners for drawing manager
+      google.maps.event.addListener(drawingManager, 'polygoncomplete', function(poly) {
+        polygon = poly;
+        circle = null;
+        drawingManager.setDrawingMode(null);
+        document.getElementById('drawPolygonBtn').textContent = '✏️ Draw Territory';
+        document.getElementById('drawPolygonBtn').style.background = 'white';
+        document.getElementById('drawPolygonBtn').style.color = '#0078d7';
+        updateStats();
+        // Show modal to create territory
+        showTerritoryModal();
+      });
+
+      google.maps.event.addListener(drawingManager, 'circlecomplete', function(circ) {
+        circle = circ;
+        polygon = null;
+        drawingManager.setDrawingMode(null);
+        document.getElementById('drawPolygonBtn').textContent = '✏️ Draw Territory';
+        document.getElementById('drawPolygonBtn').style.background = 'white';
+        document.getElementById('drawPolygonBtn').style.color = '#0078d7';
+        updateStats();
+        // Show modal to create territory
+        showTerritoryModal();
+      });
+
+      // Load saved territories from localStorage (fallback)
+      loadTerritories();
+
+      // Try to load territories from Firestore (will be used if available)
+      const hasFirestoreTerritories = await loadTerritoriesFirestore();
+
+      renderAllTerritories();
+      renderTerritoriesList();
+
+      // Load logs from Firestore
+      await loadLogs();
+
+      // Map type selector
+      document.getElementById('mapTypeSelect').addEventListener('change', (e) => {
+        map.setMapTypeId(e.target.value);
+      });
+
+      // Draw polygon button
+      document.getElementById('drawPolygonBtn').addEventListener('click', toggleDrawing);
+      document.getElementById('clearPolygonBtn').addEventListener('click', clearPolygon);
+      document.getElementById('savePolygonBtn').addEventListener('click', startTerritoryCreation);
+
+      // Modal handlers
+      document.getElementById('closeTerritoryModal').addEventListener('click', closeTerritoryModal);
+      document.getElementById('territoryForm').addEventListener('submit', handleTerritoryFormSubmit);
+
+      // Rep management
+      document.getElementById('addRepBtn').addEventListener('click', addRep);
+      document.getElementById('repNameInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addRep();
+        }
+      });
+
+      // Close modal when clicking outside
+      document.getElementById('territoryModal').addEventListener('click', (e) => {
+        if (e.target.id === 'territoryModal') closeTerritoryModal();
+      });
+    }
+
+    function toggleDrawing() {
+      const btn = document.getElementById('drawPolygonBtn');
+      const status = document.getElementById('drawingStatus');
+      
+      if (drawingManager.getDrawingMode() === null) {
+        // Start drawing
+        drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+        btn.style.background = '#ef4444';
+        btn.style.borderColor = '#ef4444';
+        btn.style.color = 'white';
+        btn.textContent = '⏹️ Stop Drawing';
+        status.style.display = 'block';
+      } else {
+        // Stop drawing
+        drawingManager.setDrawingMode(null);
+        btn.style.background = 'white';
+        btn.style.borderColor = '#0078d7';
+        btn.style.color = '#0078d7';
+        btn.textContent = '✏️ Draw Territory';
+        status.style.display = 'none';
+      }
+    }
+
+    function clearPolygon() {
+      if (polygon) {
+        polygon.setMap(null);
+        polygon = null;
+      }
+      if (circle) {
+        circle.setMap(null);
+        circle = null;
+      }
+      polygonPath = [];
+      document.getElementById('verticesValue').textContent = '0';
+      document.getElementById('areaValue').textContent = '--';
+      document.getElementById('homesValue').textContent = '--';
+    }
+
+    function calculatePolygonArea(path) {
+      return google.maps.geometry.spherical.computeArea(path) / (1609.34 * 1609.34); // Convert to square miles
+    }
+
+    function updateStats() {
+      if (polygon) {
+        const path = polygon.getPath();
+        document.getElementById('verticesValue').textContent = path.length;
+        
+        if (path.length >= 3) {
+          const area = calculatePolygonArea(path);
+          document.getElementById('areaValue').textContent = area.toFixed(2);
+        } else {
+          document.getElementById('areaValue').textContent = '--';
+        }
+      } else if (circle) {
+        const radius = circle.getRadius();
+        const radiusMiles = radius / 1609.34;
+        const area = Math.PI * radiusMiles * radiusMiles;
+        document.getElementById('areaValue').textContent = area.toFixed(2);
+        document.getElementById('verticesValue').textContent = 'Circle';
+      }
+    }
+
+    function startTerritoryCreation() {
+      if (!polygon && !circle) {
+        alert('Please draw a territory (polygon or circle) before saving.');
+        return;
+      }
+      currentPolygonBeingSaved = polygon || circle;
+      showTerritoryModal();
+    }
+
+    function showTerritoryModal() {
+      document.getElementById('territoryModal').classList.add('show');
+    }
+
+    function closeTerritoryModal() {
+      document.getElementById('territoryModal').classList.remove('show');
+      document.getElementById('territoryForm').reset();
+      selectedReps = [];
+      renderRepTags();
+    }
+
+    function addRep() {
+      const input = document.getElementById('repNameInput');
+      const repName = input.value.trim();
+
+      if (!repName) {
+        alert('Please enter a rep name');
+        return;
+      }
+
+      if (selectedReps.includes(repName)) {
+        alert('This rep is already added');
+        input.value = '';
+        return;
+      }
+
+      selectedReps.push(repName);
+      renderRepTags();
+      input.value = '';
+      input.focus();
+    }
+
+    function removeRep(repName) {
+      selectedReps = selectedReps.filter(r => r !== repName);
+      renderRepTags();
+    }
+
+    function renderRepTags() {
+      const container = document.getElementById('repTagsContainer');
+      document.getElementById('territoryRepsHidden').value = JSON.stringify(selectedReps);
+
+      if (selectedReps.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = selectedReps.map(rep => `
+        <div class="rep-tag">
+          ${escapeHtml(rep)}
+          <button type="button" onclick="removeRep('${rep.replace(/'/g, "\\'")}')">×</button>
+        </div>
+      `).join('');
+    }
+
+    function handleTerritoryFormSubmit(e) {
+      e.preventDefault();
+
+      const name = document.getElementById('territoryName').value;
+      const color = document.getElementById('territoryColor').value;
+      const focusFromDate = document.getElementById('territoryFocusFromDate').value;
+      const focusToDate = document.getElementById('territoryFocusToDate').value;
+
+      if (!name || selectedReps.length === 0) {
+        alert('Please fill in territory name and add at least one rep.');
+        return;
+      }
+
+      // Build territory object
+      let territoryData = {
+        id: Date.now().toString(),
+        name: name,
+        color: color,
+        reps: [...selectedReps],
+        focusFromDate: focusFromDate || null,
+        focusToDate: focusToDate || null,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Add polygon/circle data
+      if (currentPolygonBeingSaved) {
+        if (currentPolygonBeingSaved instanceof google.maps.Polygon) {
+          const path = currentPolygonBeingSaved.getPath();
+          territoryData.type = 'polygon';
+          territoryData.path = [];
+          path.forEach(point => {
+            territoryData.path.push({
+              lat: point.lat(),
+              lng: point.lng(),
+            });
+          });
+          const area = calculatePolygonArea(path);
+          territoryData.area = area;
+        } else if (currentPolygonBeingSaved instanceof google.maps.Circle) {
+          const center = currentPolygonBeingSaved.getCenter();
+          territoryData.type = 'circle';
+          territoryData.center = {
+            lat: center.lat(),
+            lng: center.lng(),
+          };
+          territoryData.radius = currentPolygonBeingSaved.getRadius();
+          const radiusMiles = territoryData.radius / 1609.34;
+          const area = Math.PI * radiusMiles * radiusMiles;
+          territoryData.area = area;
+        }
+      }
+
+      // Add to territories array
+      territories.push(territoryData);
+      saveTerritories();
+
+      // Update map
+      renderTerritory(territoryData);
+      renderTerritoriesList();
+
+      // Clear drawing
+      if (polygon) {
+        polygon.setMap(null);
+        polygon = null;
+      }
+      if (circle) {
+        circle.setMap(null);
+        circle = null;
+      }
+      currentPolygonBeingSaved = null;
+      selectedReps = [];
+      clearPolygon();
+
+      // Close modal
+      closeTerritoryModal();
+      alert(`✓ Territory "${name}" created successfully!`);
+    }
+
+    function renderTerritory(territory) {
+      if (!territory) return;
+
+      let overlay;
+
+      if (territory.type === 'polygon' && territory.path) {
+        const path = territory.path.map(point => new google.maps.LatLng(point.lat, point.lng));
+        overlay = new google.maps.Polygon({
+          path: path,
+          geodesic: true,
+          strokeColor: territory.color,
+          strokeOpacity: 1.0,
+          strokeWeight: 2,
+          fillColor: territory.color,
+          fillOpacity: 0.3,
+          map: map,
+          title: territory.name,
+        });
+      } else if (territory.type === 'circle' && territory.center) {
+        overlay = new google.maps.Circle({
+          center: new google.maps.LatLng(territory.center.lat, territory.center.lng),
+          radius: territory.radius,
+          strokeColor: territory.color,
+          strokeOpacity: 1.0,
+          strokeWeight: 2,
+          fillColor: territory.color,
+          fillOpacity: 0.3,
+          map: map,
+          title: territory.name,
+        });
+      }
+
+      if (overlay) {
+        territoryOverlays[territory.id] = overlay;
+      }
+    }
+
+    function renderAllTerritories() {
+      territories.forEach(territory => {
+        renderTerritory(territory);
+      });
+    }
+
+    function renderTerritoriesList() {
+      const container = document.getElementById('territoriesList');
+      
+      if (territories.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; font-size: 0.95rem; padding: 16px; text-align: center; background: #f8fafc; border-radius: 8px;">No territories created yet. Draw and save one to get started.</p>';
+        return;
+      }
+
+      container.innerHTML = territories.map(territory => `
+        <div class="territory-item">
+          <div class="territory-color" style="background-color: ${territory.color};"></div>
+          <div class="territory-info">
+            <div class="territory-name">${escapeHtml(territory.name)}</div>
+            <div class="territory-meta">
+              📍 ${territory.reps.join(', ')} | 📐 ${territory.area.toFixed(2)} sq mi
+              ${territory.focusFromDate && territory.focusToDate ? ` | 📅 ${territory.focusFromDate} to ${territory.focusToDate}` : territory.focusFromDate ? ` | 📅 From ${territory.focusFromDate}` : territory.focusToDate ? ` | 📅 Until ${territory.focusToDate}` : ''}
+            </div>
+          </div>
+          <div class="territory-actions">
+            <button class="edit-btn" onclick="editTerritory('${territory.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteTerritory('${territory.id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function deleteTerritory(id) {
+      if (!confirm('Are you sure you want to delete this territory?')) return;
+
+      territories = territories.filter(t => t.id !== id);
+      
+      // Remove from map
+      if (territoryOverlays[id]) {
+        territoryOverlays[id].setMap(null);
+        delete territoryOverlays[id];
+      }
+
+      saveTerritories();
+      renderTerritoriesList();
+    }
+
+    function editTerritory(id) {
+      const territory = territories.find(t => t.id === id);
+      if (!territory) return;
+
+      document.getElementById('territoryName').value = territory.name;
+      document.getElementById('territoryColor').value = territory.color;
+      document.getElementById('territoryFocusFromDate').value = territory.focusFromDate || '';
+      document.getElementById('territoryFocusToDate').value = territory.focusToDate || '';
+      
+      // Set reps selection
+      selectedReps = [...territory.reps];
+      renderRepTags();
+
+      // Show modal and prepare for save
+      currentPolygonBeingSaved = territoryOverlays[id];
+      showTerritoryModal();
+
+      // Change form submission to update instead
+      const form = document.getElementById('territoryForm');
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        
+        territory.name = document.getElementById('territoryName').value;
+        territory.color = document.getElementById('territoryColor').value;
+        territory.reps = [...selectedReps];
+        territory.focusFromDate = document.getElementById('territoryFocusFromDate').value || null;
+        territory.focusToDate = document.getElementById('territoryFocusToDate').value || null;
+
+        // Update overlay color
+        if (territoryOverlays[id]) {
+          if (territoryOverlays[id] instanceof google.maps.Polygon) {
+            territoryOverlays[id].setOptions({ strokeColor: territory.color, fillColor: territory.color });
+          } else if (territoryOverlays[id] instanceof google.maps.Circle) {
+            territoryOverlays[id].setOptions({ strokeColor: territory.color, fillColor: territory.color });
+          }
+        }
+
+        saveTerritories();
+        renderTerritoriesList();
+        closeTerritoryModal();
+        form.onsubmit = handleTerritoryFormSubmit; // Reset to create mode
+      };
+    }
+
+    function saveTerritories() {
+      localStorage.setItem('territories', JSON.stringify(territories));
+      // Also save to Firestore if admin
+      saveTerritoriesFirestore();
+    }
+
+    function loadTerritories() {
+      const saved = localStorage.getItem('territories');
+      if (saved) {
+        try {
+          territories = JSON.parse(saved);
+        } catch (e) {
+          console.error('Error loading territories:', e);
+          territories = [];
+        }
+      }
+    }
+
+    // Save territories to Firestore
+    async function saveTerritoriesFirestore() {
+      if (userRole !== 'admin') return; // Only admins can save territories
+
+      try {
+        const db = window.firebaseDb;
+        const { setDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+
+        const territoriesDoc = doc(db, "system", "territories");
+        await setDoc(territoriesDoc, { 
+          data: territories,
+          updatedAt: new Date().toISOString(),
+          updatedBy: currentUser.uid,
+        });
+
+        console.log("Territories saved to Firestore");
+      } catch (err) {
+        console.error("Error saving territories to Firestore:", err);
+      }
+    }
+
+    // Load territories from Firestore
+    async function loadTerritoriesFirestore() {
+      try {
+        const db = window.firebaseDb;
+        const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+
+        const territoriesDoc = doc(db, "system", "territories");
+        const snap = await getDoc(territoriesDoc);
+
+        if (snap.exists() && snap.data().data) {
+          territories = snap.data().data;
+          console.log("Territories loaded from Firestore:", territories.length);
+          return true;
+        }
+      } catch (err) {
+        console.error("Error loading territories from Firestore:", err);
+      }
+      return false;
+    }
+
+    // Utility function to escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Initialize map when page loads
+    document.addEventListener('DOMContentLoaded', async () => {
+      await checkUserRole();
+      await initMap();
+    });
+  </script>
+</body>
+</html>

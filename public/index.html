@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <meta name="google-site-verification" content="Tonc5cIN27DjhCRG2R8B9FMVGnGgWn_RFuBKYM2865Q" />
+  <title>Swash - Sign In</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    body.login-page {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #0078d7 0%, #005a9c 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .login-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      padding: 40px;
+      max-width: 400px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .login-container__logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-container__logo img {
+      display: block;
+      width: 100%;
+      max-width: 100%; /* bound to container width to prevent overlap */
+      height: auto;
+    }
+
+    .login-container__title {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      color: #0078d7;
+      margin: 0 0 8px;
+    }
+
+    .login-container__subtitle {
+      text-align: center;
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 32px;
+    }
+
+    .login-form__field {
+      margin-bottom: 20px;
+    }
+
+    .login-form__label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+
+    .login-form__input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 16px;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+
+    .login-form__input:focus {
+      outline: none;
+      border-color: #0078d7;
+      box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.1);
+    }
+
+    .login-form__submit {
+      width: 100%;
+      padding: 12px 16px;
+      background: #0078d7;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+
+    .login-form__submit:hover {
+      background: #005a9c;
+    }
+
+    .login-form__submit:active {
+      background: #004578;
+    }
+
+    .login-form__submit:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+    }
+
+    .login-form__error {
+      color: #dc2626;
+      font-size: 14px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #fee2e2;
+      border-radius: 6px;
+      display: none;
+    }
+
+    .login-form__error.show {
+      display: block;
+    }
+
+    .login-form__loading {
+      display: none;
+      text-align: center;
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 16px;
+    }
+
+    .login-form__loading.show {
+      display: block;
+    }
+
+    @media (max-width: 600px) {
+      .login-container {
+        padding: 32px 20px;
+        margin: 20px;
+      }
+
+      .login-container__title {
+        font-size: 20px;
+      }
+
+      .login-container__logo img {
+        width: 100%;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body class="login-page">
+  <div class="login-container">
+    <div class="login-container__logo">
+      <img src="./assets/blue-logo.png" alt="Swash logo" />
+    </div>
+    <p class="login-container__subtitle">Field Sales Management</p>
+
+    <form id="loginForm" class="login-form">
+      <div id="errorMessage" class="login-form__error"></div>
+      <div id="loadingMessage" class="login-form__loading">Signing in...</div>
+
+      <div class="login-form__field">
+        <label for="email" class="login-form__label">Email Address</label>
+        <input
+          id="email"
+          type="email"
+          class="login-form__input"
+          placeholder="your@email.com"
+          required
+          autocomplete="email"
+        />
+      </div>
+
+      <div class="login-form__field">
+        <label for="password" class="login-form__label">Password</label>
+        <input
+          id="password"
+          type="password"
+          class="login-form__input"
+          placeholder="••••••••"
+          required
+          autocomplete="current-password"
+        />
+      </div>
+
+      <button type="submit" class="login-form__submit" id="submitBtn">Sign In</button>
+    </form>
+  </div>
+
+  <script type="module" src="./index-login.js"></script>
+</body>
+</html>

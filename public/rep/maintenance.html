@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Swash Maintenance</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0b62b8 0%, #0f7ed3 100%);
+      color: #ffffff;
+      text-align: center;
+    }
+    .maintenance-card {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 48px 36px;
+      max-width: 480px;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(6px);
+    }
+    .maintenance-card h1 {
+      margin-bottom: 16px;
+      font-size: 2.2rem;
+      font-weight: 700;
+    }
+    .maintenance-card p {
+      margin-bottom: 24px;
+      line-height: 1.6;
+      font-size: 1.05rem;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.2);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      margin-bottom: 18px;
+    }
+    .contact-line {
+      font-size: 0.95rem;
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <main class="maintenance-card" aria-live="polite">
+    <div class="status-badge">Scheduled Maintenance</div>
+    <h1>We&rsquo;ll be right back</h1>
+    <p>
+      Swash is undergoing a short update to keep everything running smoothly.
+      The system will be unavailable for a few minutes while we deploy changes.
+    </p>
+    <p class="contact-line">
+      If you need urgent assistance, please email <a href="mailto:contact@swashcleaning.co.uk">contact@swashcleaning.co.uk</a>.
+    </p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- QUOTES COLLECTION ---
+    match /quotes/{quoteId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isRep() {
+        return request.auth != null && userDoc().data.role == "rep";
+      }
+      
+      // Allow creating quotes from:
+      // 1) Public calculator (unauthenticated) with a restricted set of fields
+      // 2) Authenticated reps and admins (internal flow)
+      allow create: if (
+          // Public unauthenticated create with strict field whitelist
+          (request.auth == null
+            && request.resource.data.keys().hasOnly([
+              "repCode", "date", "customerName", "address", "mobile", "email",
+              "tier", "houseType", "houseSize", "extension", "conservatory",
+              "skylights", "roofLanterns", "partialCleaning", "alternating",
+              "pricePerClean", "price", "refCode", "status", "notes", "createdAt"
+            ])
+            && request.resource.data.status == "Pending Payment"
+          )
+          || isRep()
+          || isAdmin()
+        );
+
+      // Allow admins full control (read, update, delete)
+      allow read, update, delete: if isAdmin();
+
+      // Allow reps to read ONLY quotes assigned to them (by name match)
+      allow read: if isRep() && 
+        (resource.data.assignedCleaner == userDoc().data.name ||
+         resource.data.repCode == userDoc().data.name);
+    }
+
+
+    // --- REP LOGS COLLECTION ---
+    match /repLogs/{logId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isRep() {
+        return request.auth != null && userDoc().data.role == "rep";
+      }
+
+      // Everyone authenticated (rep/admin) can read logs
+      allow read: if isAdmin() || isRep();
+
+      // Create allowed for reps and admins
+      allow create: if isAdmin() || isRep();
+
+      // Update and delete restricted to admins only
+      allow update, delete: if isAdmin();
+    }
+
+
+    // --- REP CHAT COLLECTION ---
+    match /repChat/{messageId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isRep() {
+        return request.auth != null && userDoc().data.role == "rep";
+      }
+
+      // Everyone authenticated (rep/admin) can read and create messages
+      allow read, create: if isAdmin() || isRep();
+
+      // Delete restricted to admins only (for moderation)
+      allow delete: if isAdmin();
+    }
+
+
+    // --- USERS COLLECTION ---
+    match /users/{userId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      
+      // Users can read/write their own document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Admins can read/write ALL user documents (for user management)
+      allow read, write: if isAdmin();
+    }
+
+
+    // --- ANNOUNCEMENTS COLLECTION ---
+    match /announcements/{announcementId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isRep() {
+        return request.auth != null && userDoc().data.role == "rep";
+      }
+
+      // Everyone authenticated can read announcements
+      allow read: if isAdmin() || isRep();
+
+      // Only admins can create, update, delete announcements
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}

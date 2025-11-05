@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Book Holiday - Swash</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <a href="../rep-home.html" class="btn btn-secondary">← Back to Home</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <header class="card-header">
+        <h1>📅 Book Holiday</h1>
+        <p class="text-muted">Request time off and view your holiday allowance.</p>
+      </header>
+
+      <div style="padding: 20px;">
+        <p>Use this page to submit holiday requests, view your remaining holiday days, and check approved/pending requests.</p>
+        
+        <h3 style="margin-top: 24px; color: #0078d7;">Your Holiday Balance</h3>
+        <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px;">
+          <p style="margin: 0;"><strong>Total Allowance:</strong> [To be populated]</p>
+          <p style="margin: 8px 0 0;"><strong>Used:</strong> [To be populated]</p>
+          <p style="margin: 8px 0 0;"><strong>Remaining:</strong> [To be populated]</p>
+        </div>
+
+        <h3 style="margin-top: 24px; color: #0078d7;">Request Holiday</h3>
+        <form style="margin-top: 12px;">
+          <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; margin-bottom: 4px; font-weight: 600;">Start Date</span>
+            <input type="date" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" />
+          </label>
+          <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; margin-bottom: 4px; font-weight: 600;">End Date</span>
+            <input type="date" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" />
+          </label>
+          <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; margin-bottom: 4px; font-weight: 600;">Notes (optional)</span>
+            <textarea rows="3" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" placeholder="Any additional information..."></textarea>
+          </label>
+          <button type="submit" class="btn btn-primary">Submit Request</button>
+        </form>
+
+        <p style="margin-top: 24px; padding: 16px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px;">
+          <strong>Note:</strong> Holiday request form will be connected to Firestore. Admins will receive notifications and approve requests via the admin dashboard.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="../auth-check.js"></script>
+  <script type="module" src="../under-dev.js"></script>
+</body>
+</html>

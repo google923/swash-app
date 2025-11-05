@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <meta name="google-site-verification" content="Tonc5cIN27DjhCRG2R8B9FMVGnGgWn_RFuBKYM2865Q" />
+  <title>Swash Quote Calculator</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+</head>
+<body>
+  <main class="page">
+    <section class="card" id="quoteEmbedCard">
+      <header class="card-header">
+        <h2>Quote Builder</h2>
+        <p id="tierDescription">Select a service tier to see the details.</p>
+      </header>
+
+      <form id="quoteForm" class="form-grid" autocomplete="off">
+        <label class="form-section" for="repCode" hidden>
+          <span>Rep Code</span>
+          <input id="repCode" name="repCode" required value="Website Quote" />
+        </label>
+
+        <label class="form-section" for="quoteDate" hidden>
+          <span>Quote Date</span>
+          <input id="quoteDate" name="quoteDate" readonly />
+        </label>
+
+        <label class="form-section" for="serviceTier">
+          <span>Service Tier</span>
+          <select id="serviceTier" name="serviceTier">
+            <option value="gold" selected>Gold</option>
+            <option value="silver">Silver</option>
+          </select>
+        </label>
+
+        <div class="inline-two">
+          <label class="form-section" for="houseSize">
+            <span>House Size</span>
+            <select id="houseSize" name="houseSize">
+              <option>2 bed</option>
+              <option>3 bed</option>
+              <option>4 bed</option>
+              <option>5 bed</option>
+              <option>6 bed</option>
+            </select>
+          </label>
+
+          <label class="form-section" for="houseType">
+            <span>House Type</span>
+            <select id="houseType" name="houseType">
+              <option value="Bungalow">Bungalow</option>
+              <option value="Maisonette">Maisonette</option>
+              <option value="Terrace">Terrace</option>
+              <option value="Semi-Detached">Semi-Detached</option>
+              <option value="Detached">Detached</option>
+              <option value="Mobile Home">Mobile Home</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="inline-two">
+          <label class="form-section checkbox checkbox--lg" for="conservatory">
+            <input type="checkbox" id="conservatory" />
+            <span>Conservatory</span>
+          </label>
+
+          <label class="form-section checkbox checkbox--lg" for="extension">
+            <input type="checkbox" id="extension" />
+            <span>Extension</span>
+          </label>
+        </div>
+
+        <label class="form-section" for="roofLanterns">
+          <span>Roof Lanterns</span>
+          <div class="slider-row">
+            <input type="range" id="roofLanterns" min="0" max="10" value="0" step="1" />
+            <span class="slider-value" id="roofLanternsValue">0</span>
+          </div>
+        </label>
+
+        <label class="form-section" for="skylights">
+          <span>Skylights</span>
+          <div class="slider-row">
+            <input type="range" id="skylights" min="0" max="10" value="0" step="1" />
+            <span class="slider-value" id="skylightsValue">0</span>
+          </div>
+        </label>
+
+        <!-- Alternating checkbox moved into price panel header -->
+
+        <input type="hidden" id="partialCleaning" value="100" />
+        <input type="hidden" id="addVAT" value="true" />
+
+        <label class="form-section form-section--notes" for="notes">
+          <span>Notes</span>
+          <textarea id="notes" rows="3" placeholder="Add any customer notes or access information..."></textarea>
+        </label>
+
+        <!-- Auto-calc enabled: no calculate button needed -->
+      </form>
+
+  <section id="result" class="result-panel" aria-live="polite">
+    <div id="resultContent" class="result-content"></div>
+  </section>
+  <div class="form-actions" style="justify-content:flex-start;margin-top:8px">
+    <label class="checkbox checkbox--lg" for="alternating" style="margin:0">
+      <input type="checkbox" id="alternating" />
+      <span>Alternating Clean</span>
+    </label>
+  </div>
+  <div class="form-actions" style="justify-content:flex-start;margin-top:12px;gap:12px" hidden>
+    <button type="button" id="applyOfferBtn" class="btn btn-offer">Apply Special Offer</button>
+  </div>
+
+      <section id="customerFields" class="customer-section" hidden>
+        <h3>Customer Details</h3>
+        <div class="form-grid">
+          <label for="customerName">Full Name</label>
+          <input id="customerName" autocomplete="name" required />
+
+          <label for="address">Address</label>
+          <input id="address" autocomplete="street-address" required />
+
+          <label for="mobile">Mobile</label>
+          <input id="mobile" autocomplete="tel" required />
+
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" required />
+        </div>
+        <!-- Send Quote button moved to bottom -->
+      </section>
+
+      <aside id="paymentRefBox" class="payment-ref" hidden>
+        <p><strong>Payment Reference:</strong> <span id="paymentRefValue"></span></p>
+      </aside>
+
+      <section id="emailPreviewCard" class="email-preview-card" hidden>
+        <div class="email-preview-header">
+          <h3>Email Preview</h3>
+          <p id="emailPreviewSubject" class="email-preview-subject"></p>
+        </div>
+        <div id="emailPreviewBody" class="email-preview-body"></div>
+      </section>
+
+      <section id="queueAlerts" class="queue-alerts" hidden aria-live="polite"></section>
+
+      <div class="form-actions" style="justify-content:flex-end;margin-top:12px">
+        <button type="button" id="submitBtn" class="btn btn-primary">Pay &amp; Get Booking</button>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./quote-embed.js"></script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Swash Rep Dashboard</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./assets/rep-dashboard.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Rep Resources</div>
+          <a href="./rep-home.html">🏠 Home</a>
+          <a href="./rep-dashboard.html">🧾 Record Daily Log</a>
+          <a href="./rep/chat.html">💬 Rep Chat</a>
+          <a href="./rep/policy.html">📘 Policy Handbook</a>
+          <a href="./rep/holiday.html">📅 Book Holiday</a>
+          <a href="./rep/sickness.html">🤒 Report Sickness</a>
+          <a href="./rep/commission.html">🧮 Commission & Mileage</a>
+          <a href="./rep/map.html">🗺️ Territory Map</a>
+          <a href="./rep/feedback.html">💡 Feedback / Ideas</a>
+          <a href="./rep/performance.html">🎯 Performance Dashboard</a>
+          <a href="./rep/contact.html">🧍 Contact Management</a>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-title">System</div>
+          <a id="add-customer-link" class="hidden" href="./quote.html">Add Customer</a>
+          <a id="admin-dashboard-link" class="hidden" href="./admin.html">Admin Dashboard</a>
+          <a id="schedule-link" class="hidden" href="./scheduler.html">Schedule</a>
+          <a id="manage-users-link" class="hidden" href="./admin/users.html">Manage Users</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <header class="card-header">
+        <h2>Add Log</h2>
+        <p class="text-muted">Enter your log details, odometer readings, and submit your daily door knock activity.</p>
+      </header>
+
+      <div class="rep-controls">
+        <button id="btnCopyTemplate" class="btn btn-primary" type="button">Copy Log Template</button>
+        <input id="logDate" type="date" />
+        <input id="repName" type="text" placeholder="Your name" readonly style="background: #f1f5f9; cursor: default;" />
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <label class="modal__field">
+          <span class="text-muted">Odometer Start</span>
+          <input id="odometerStart" type="number" placeholder="e.g., 12345" />
+        </label>
+        <label class="modal__field">
+          <span class="text-muted">Odometer End</span>
+          <input id="odometerEnd" type="number" placeholder="e.g., 12456" />
+        </label>
+      </div>
+
+      <label class="modal__field">
+        <span class="text-muted">Paste your log</span>
+        <textarea id="logText" rows="10" placeholder="Paste your log here..."></textarea>
+      </label>
+
+      <div style="margin-bottom: 24px; padding: 12px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; color: #1e293b;">
+          <input type="checkbox" id="captureLocation" style="cursor: pointer; width: 18px; height: 18px;">
+          📍 Capture location when submitting (optional)
+        </label>
+        <p style="margin: 8px 0 0 26px; color: #64748b; font-size: 0.85rem;">Your current GPS coordinates will be saved with this log.</p>
+        <div id="locationStatus" style="margin: 8px 0 0 26px; font-size: 0.85rem; color: #94a3b8; display: none;">
+          📍 <span id="locationCoords">--</span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button id="btnSubmitLog" class="btn btn-success" type="button">Submit Log</button>
+      </div>
+
+      <hr />
+
+      <div class="calendar-controls">
+        <div class="month-tabs">
+          <button class="month-tab active" data-offset="0">This month</button>
+          <button class="month-tab" data-offset="-1">Last month</button>
+          <button class="month-tab" data-offset="-2">2 months ago</button>
+          <button class="month-tab" data-offset="-3">3 months ago</button>
+        </div>
+        <select id="filterRep">
+          <option value="ALL">All reps</option>
+        </select>
+      </div>
+      <div id="calendar" class="rep-calendar" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <div id="logModal" class="modal" hidden>
+    <div class="modal__dialog modal__dialog--large">
+      <h3 id="logModalTitle">Log</h3>
+      <div id="logModalContent" class="log-content"></div>
+      <div class="modal__footer" style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:16px">
+        <button type="button" class="btn btn-danger hidden" id="deleteLogBtn" title="Delete this log">Delete</button>
+        <button type="button" class="btn btn-primary" id="closeLogModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./auth-check.js"></script>
+  <script>
+    // Initialize menu dropdowns immediately
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuBtn = document.getElementById('menuBtn');
+      const menuDropdown = document.getElementById('menuDropdown');
+      
+      if (menuBtn && menuDropdown) {
+        menuBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          menuDropdown.classList.toggle('show');
+        });
+      }
+      
+      document.addEventListener('click', (e) => {
+        if (menuBtn && !menuBtn.contains(e.target) && !menuDropdown?.contains(e.target)) {
+          menuDropdown?.classList.remove('show');
+        }
+      });
+    });
+  </script>
+  <script type="module">
+    import("./rep-dashboard.js");
+  </script>
+</body>
+</html>

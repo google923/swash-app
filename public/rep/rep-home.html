@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Swash Rep Home</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./rep-home.css" />
+  <!-- Reuse the calendar styling from the Rep Dashboard -->
+  <link rel="stylesheet" href="./assets/rep-dashboard.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Rep Resources</div>
+          <a href="./rep-home.html">🏠 Home</a>
+          <a href="./add-log.html">📝 Log</a>
+          <a href="./rep/chat.html">💬 Rep Chat</a>
+          <a href="./rep/policy.html">📘 Policy Handbook</a>
+          <a href="./rep/holiday.html">📅 Book Holiday</a>
+          <a href="./rep/sickness.html">🤒 Report Sickness</a>
+          <a href="./rep/commission.html">💷 Commission & Mileage</a>
+          <a href="./rep/map.html">🗺️ Territory Map</a>
+          <a href="./rep/feedback.html">💡 Feedback / Ideas</a>
+          <a href="./rep/performance.html">🎯 Performance Dashboard</a>
+          <a href="./rep/contact.html">🧍 Contact Management</a>
+          <a href="./rep/training.html">📚 Training</a>
+          <a href="./rep/contract.html">📄 Employment Contract</a>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-title">System</div>
+          <a id="add-customer-link" class="hidden" href="./quote.html">Add Customer</a>
+          <a id="admin-dashboard-link" class="hidden" href="./admin.html">Admin Dashboard</a>
+          <a id="schedule-link" class="hidden" href="./scheduler.html">Schedule</a>
+          <a id="manage-users-link" class="hidden" href="./admin/users.html">Manage Users</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="dashboard-wrap">
+      <div class="dashboard">
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+      <h1>Welcome back, <span id="repNameDisplay">Rep</span>! 👋</h1>
+      <div class="welcome-banner__date" id="currentDate"></div>
+    </div>
+
+    <!-- Quick Actions -->
+    <section class="quick-actions">
+      <h2>Quick Actions</h2>
+      <div class="quick-actions-grid">
+        <a href="./rep-dashboard.html" class="action-card">
+          <img src="./assets/logs-icon.png" alt="Logs" class="action-card__icon">
+          <h3 class="action-card__title">Record Log</h3>
+          <p class="action-card__desc">Submit daily mileage</p>
+        </a>
+        <a href="./rep/chat.html" class="action-card">
+          <img src="./assets/chat-icon.png" alt="Chat" class="action-card__icon">
+          <h3 class="action-card__title">Rep Chat</h3>
+          <p class="action-card__desc">Team messaging</p>
+        </a>
+        <a href="./rep/policy.html" class="action-card">
+          <img src="./assets/policy-icon.png" alt="Policy" class="action-card__icon">
+          <h3 class="action-card__title">Policy Handbook</h3>
+          <p class="action-card__desc">Company guidelines</p>
+        </a>
+        <a href="./rep/commission.html" class="action-card">
+          <img src="./assets/commission-icon.png" alt="Commission" class="action-card__icon">
+          <h3 class="action-card__title">Commission</h3>
+          <p class="action-card__desc">View earnings</p>
+        </a>
+        <a href="./rep/holiday.html" class="action-card">
+          <img src="./assets/cal-icon.png" alt="Calendar" class="action-card__icon">
+          <h3 class="action-card__title">Book Holiday</h3>
+          <p class="action-card__desc">Request time off</p>
+        </a>
+        <a href="./rep/sickness.html" class="action-card">
+          <img src="./assets/sick-icon.png" alt="Sickness" class="action-card__icon">
+          <h3 class="action-card__title">Report Sickness</h3>
+          <p class="action-card__desc">Notify management</p>
+        </a>
+        <a href="./rep/map.html" class="action-card">
+          <img src="./assets/map-icon.png" alt="Map" class="action-card__icon">
+          <h3 class="action-card__title">Territory Map</h3>
+          <p class="action-card__desc">View your area</p>
+        </a>
+        <a href="./rep/feedback.html" class="action-card">
+          <img src="./assets/feedback-icon.png" alt="Feedback" class="action-card__icon">
+          <h3 class="action-card__title">Feedback</h3>
+          <p class="action-card__desc">Share your ideas</p>
+        </a>
+        <a href="./rep/performance.html" class="action-card">
+          <img src="./assets/targets-icon.png" alt="Targets" class="action-card__icon">
+          <h3 class="action-card__title">Performance</h3>
+          <p class="action-card__desc">Track your stats</p>
+        </a>
+        <a href="./rep/competitions.html" class="action-card">
+          <img src="./assets/competitions-icon.png" alt="Competitions" class="action-card__icon">
+          <h3 class="action-card__title">Competitions</h3>
+          <p class="action-card__desc">Monthly prizes</p>
+        </a>
+        <a href="./rep/training.html" class="action-card">
+          <img src="./assets/Training-icon.png" alt="Training" class="action-card__icon">
+          <h3 class="action-card__title">Training</h3>
+          <p class="action-card__desc">Learning resources</p>
+        </a>
+        <a href="./rep/contract.html" class="action-card">
+          <img src="./assets/contract.png" alt="Contract" class="action-card__icon">
+          <h3 class="action-card__title">Contract</h3>
+          <p class="action-card__desc">Employment agreement</p>
+        </a>
+    </section>
+
+    <!-- Minimal Month Calendar (current month by default, simple arrows to navigate) -->
+    <!-- Admin Event Tools (hidden for reps) -->
+    <section id="adminEventTools" class="admin-event-tools" hidden>
+      <h2>Create Event</h2>
+      <form id="eventForm" class="event-form" novalidate>
+        <label class="event-field" for="eventTitle">
+          <span>Title</span>
+          <input id="eventTitle" type="text" placeholder="e.g., Team Meeting" required />
+        </label>
+        <div class="event-row">
+          <label class="event-field" for="eventDate">
+            <span>Date</span>
+            <input id="eventDate" type="date" required />
+          </label>
+          <label class="event-field" for="eventTime">
+            <span>Time</span>
+            <input id="eventTime" type="time" />
+          </label>
+        </div>
+        <label class="event-field" for="eventDesc">
+          <span>Description</span>
+          <textarea id="eventDesc" rows="3" placeholder="Add details...\nLocation, agenda, etc."></textarea>
+        </label>
+        <label class="event-field" for="eventAssignees">
+          <span>Assign reps</span>
+          <select id="eventAssignees" multiple size="5"></select>
+          <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+        </label>
+        <div class="event-actions">
+          <button id="createEventBtn" type="submit" class="btn btn-primary">Add Event</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Minimal Month Calendar (current month by default, simple arrows to navigate) -->
+    <section class="rep-home-calendar" aria-label="Month calendar">
+      <div class="cal-center">
+        <div id="calendarMonth" class="cal-month-label"></div>
+        <div id="calendar" class="rep-calendar" aria-live="polite"></div>
+        <div class="cal-bottom-nav">
+          <button id="prevMonth" class="cal-nav cal-nav--bottom" aria-label="Previous month" title="Previous month">&#8249;</button>
+          <button id="nextMonth" class="cal-nav cal-nav--bottom" aria-label="Next month" title="Next month">&#8250;</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Announcements (moved above performance for layout) -->
+    <section class="announcements-panel">
+      <h2>Announcements</h2>
+      <div id="announcementsList" class="announcements-list">
+        <div class="announcements-empty">Loading announcements...</div>
+      </div>
+    </section>
+
+    <!-- Performance Snapshot at bottom spanning full width -->
+    <section class="performance-snapshot">
+      <h2>Performance Snapshot</h2>
+      <div class="performance-grid">
+        <div class="performance-card">
+          <div class="performance-card__value" id="weeklySignups">--</div>
+          <div class="performance-card__label">Weekly Signups</div>
+          <div class="performance-card__trend performance-card__trend--neutral" id="weeklyTrend">--</div>
+        </div>
+        <div class="performance-card">
+          <div class="performance-card__value" id="monthlyMileage">--</div>
+          <div class="performance-card__label">Monthly Mileage</div>
+          <div class="performance-card__trend performance-card__trend--neutral" id="mileageTrend">--</div>
+        </div>
+        <div class="performance-card">
+          <div class="performance-card__value" id="avgDailySignups">--</div>
+          <div class="performance-card__label">Avg Daily Signups</div>
+          <div class="performance-card__trend performance-card__trend--neutral" id="avgTrend">--</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Motivational Quote -->
+    <section class="motivational-quotes">
+      <div class="quote-card">
+        <div class="quote-card__icon">💪</div>
+        <p class="quote-card__text" id="quoteText"></p>
+        <p class="quote-card__author" id="quoteAuthor"></p>
+      </div>
+    </section>
+      </div>
+    </section>
+  </main>
+
+  <!-- Log Modal (reused) -->
+  <div id="logModal" class="modal" hidden>
+    <div class="modal__dialog modal__dialog--large">
+      <h3 id="logModalTitle">Log</h3>
+      <div id="logModalContent" class="log-content"></div>
+      <div class="modal__footer" style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:16px">
+        <button type="button" class="btn btn-danger hidden" id="deleteLogBtn" title="Delete this log">Delete</button>
+        <button type="button" class="btn btn-primary" id="closeLogModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Modal -->
+  <div id="eventModal" class="modal" hidden>
+    <div class="modal__dialog">
+      <h3 id="eventModalTitle">Event</h3>
+      <div id="eventModalBody" class="modal__body"></div>
+      <div class="modal__footer">
+        <div class="left">
+          <button type="button" class="btn btn-secondary" id="eventEditBtn" hidden>Edit</button>
+          <button type="button" class="btn btn-success" id="eventCompleteBtn" hidden>Mark Completed</button>
+          <button type="button" class="btn btn-danger" id="eventDeleteBtn" hidden>Delete</button>
+        </div>
+        <div class="right">
+          <button type="button" class="btn" id="eventCloseBtn">Close</button>
+          <button type="button" class="btn btn-primary" id="eventSaveBtn" hidden>Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./auth-check.js"></script>
+  <script>
+    // Initialize menu dropdown
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuBtn = document.getElementById('menuBtn');
+      const menuDropdown = document.getElementById('menuDropdown');
+      
+      if (menuBtn && menuDropdown) {
+        menuBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          menuDropdown.classList.toggle('show');
+        });
+      }
+      
+      document.addEventListener('click', (e) => {
+        if (menuBtn && !menuBtn.contains(e.target) && !menuDropdown?.contains(e.target)) {
+          menuDropdown?.classList.remove('show');
+        }
+      });
+    });
+  </script>
+  <script type="module" src="./rep-home.js"></script>
+</body>
+</html>

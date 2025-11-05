@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Employment Contract - Swash Cleaning Ltd</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+  <style>
+    .contract-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: white;
+    }
+    .contract-header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 3px solid #0078d7;
+    }
+    .contract-header .subtitle {
+      color: #64748b;
+      font-size: 1.1rem;
+      margin: 8px 0;
+    }
+    .contract-header .contact-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+      font-size: 0.95rem;
+      color: #475569;
+    }
+    .contact-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .contact-item strong {
+      color: #0078d7;
+    }
+    .contract-section {
+      margin: 40px 0;
+      page-break-inside: avoid;
+    }
+    .contract-section h2 {
+      color: #0078d7;
+      font-size: 1.4rem;
+      margin: 0 0 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .contract-section h3 {
+      color: #1e293b;
+      font-size: 1.1rem;
+      margin: 16px 0 8px 0;
+    }
+    .contract-section p {
+      line-height: 1.7;
+      color: #475569;
+      margin: 12px 0;
+    }
+    .contract-section ul, .contract-section ol {
+      line-height: 1.8;
+      color: #475569;
+      margin: 12px 0 12px 20px;
+    }
+    .contract-section li {
+      margin: 8px 0;
+    }
+    .highlight-box {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 16px;
+      border-radius: 4px;
+      margin: 16px 0;
+    }
+    .footer-text {
+      text-align: center;
+      color: #64748b;
+      font-size: 0.9rem;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+    @media print {
+      body { background: white; }
+      .contract-container { max-width: 100%; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <a href="../rep-home.html" class="btn btn-secondary">← Back to Home</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="contract-container">
+      <!-- Header with Logo -->
+      <div class="contract-header">
+        <div style="margin-bottom: 24px;">
+          <img 
+            src="../assets/blue-logo.png" 
+            alt="Swash Cleaning Ltd Logo" 
+            style="height: 80px; object-fit: contain;"
+          >
+        </div>
+        <p class="subtitle">Employment Contract – Field Sales Representative (Version 1.2)</p>
+        <div class="contact-info">
+          <div class="contact-item">
+            <strong>Registered Address</strong>
+            71–75 Shelton Street, London, WC2H 9JQ
+          </div>
+          <div class="contact-item">
+            <strong>Email</strong>
+            contact@swashcleaning.co.uk
+          </div>
+          <div class="contact-item">
+            <strong>Telephone</strong>
+            03300 436 345
+          </div>
+          <div class="contact-item">
+            <strong>Director</strong>
+            Christopher Wessell
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 1 -->
+      <div class="contract-section">
+        <h2>1. Parties</h2>
+        <p>This Employment Contract is made between Swash Cleaning Ltd ("the Employer") and the undersigned employee ("the Employee").</p>
+        <ul>
+          <li><strong>Employer:</strong> Swash Cleaning Ltd, 71–75 Shelton Street, London, WC2H 9JQ</li>
+          <li><strong>Position:</strong> Field Sales Representative</li>
+        </ul>
+        
+        <div style="margin-top: 20px;">
+          <label for="employeeNameContract" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Employee Name:</label>
+          <input 
+            type="text" 
+            id="employeeNameContract" 
+            name="employeeNameContract" 
+            required
+            placeholder="Enter your full name"
+            style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 1rem; box-sizing: border-box; font-family: Arial, sans-serif;"
+          >
+        </div>
+
+        <div style="margin-top: 16px;">
+          <label for="startDate" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Start Date:</label>
+          <input 
+            type="date" 
+            id="startDate" 
+            name="startDate"
+            style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 1rem; box-sizing: border-box; font-family: Arial, sans-serif;"
+          >
+        </div>
+      </div>
+
+      <!-- Section 2 -->
+      <div class="contract-section">
+        <h2>2. Nature of Employment</h2>
+        <p>This is a permanent, full-time position governed by UK employment law. The Employee agrees to perform the duties and responsibilities of the role as outlined by the Employer.</p>
+      </div>
+
+      <!-- Section 3 -->
+      <div class="contract-section">
+        <h2>3. Place of Work</h2>
+        <p>The Employee will operate primarily in Essex and surrounding areas as directed. The role involves door-to-door field sales activities and customer engagement.</p>
+      </div>
+
+      <!-- Section 4 -->
+      <div class="contract-section">
+        <h2>4. Working Hours</h2>
+        <p>The Employee will work 40 hours per week, typically 5 days out of 7 (Monday to Sunday).</p>
+        <p><strong>Typical shifts:</strong> 10:00am–6:30pm or 11:00am–7:30pm, including a 30-minute unpaid break.</p>
+      </div>
+
+      <!-- Section 5 -->
+      <div class="contract-section">
+        <h2>5. Pay and Commission</h2>
+        <ul>
+          <li><strong>Base Pay:</strong> £12.21 per hour (PAYE).</li>
+          <li><strong>Commission:</strong> Tiered, as per the Swash Cleaning Ltd Policy Handbook.</li>
+          <li><strong>On-Target Earnings (OTE):</strong> £36,000–£46,800 per annum depending on verified customer signups.</li>
+        </ul>
+        <p>Commission is paid monthly in arrears with base pay, provided signups are verified as completed customers.</p>
+        <h3>Commission Dispute Clause</h3>
+        <p>Any dispute over commission must be raised in writing within 14 days of payment. The Company will review and resolve disputes within one pay cycle.</p>
+      </div>
+
+      <!-- Section 6 -->
+      <div class="contract-section">
+        <h2>6. Probationary Period</h2>
+        <p>The first 8 weeks of employment constitute a probationary period. Performance is reviewed regularly. Either party may terminate employment during this period with one week's notice.</p>
+      </div>
+
+      <!-- Section 7 -->
+      <div class="contract-section">
+        <h2>7. Holidays and Absence</h2>
+        <p>The Employee is entitled to 28 days paid holiday per year, inclusive of public holidays (pro-rata where applicable). Holiday requests must be submitted at least 2 weeks in advance.</p>
+        <p>Absence due to illness must be reported by 9:30am on the first day. Absences exceeding 7 days require a Fit Note from a GP.</p>
+      </div>
+
+      <!-- Section 8 -->
+      <div class="contract-section">
+        <h2>8. Vehicle and Travel</h2>
+        <p>The Employee must hold a valid UK driving licence and have a roadworthy, insured vehicle for business use.</p>
+        <h3>Mileage Reimbursement</h3>
+        <p>45p per mile for the first 10,000 miles annually, for approved business journeys only.</p>
+        <p>The Employee must complete the Driving Licence & Vehicle Declaration prior to starting work.</p>
+      </div>
+
+      <!-- Section 9 -->
+      <div class="contract-section">
+        <h2>9. Use of Technology & Apps</h2>
+        <p>The Employee must comply with the Technology & App Usage Policy. All digital tools, apps, and customer data used during work remain the property of Swash Cleaning Ltd.</p>
+        <p>Personal use of company systems during working hours is not permitted. Breaches of this policy may lead to disciplinary action.</p>
+      </div>
+
+      <!-- Section 10 -->
+      <div class="contract-section">
+        <h2>10. Confidentiality and GDPR</h2>
+        <p>The Employee must handle all customer and company data in compliance with GDPR and company policies. Data must not be shared externally or used for personal gain during or after employment.</p>
+      </div>
+
+      <!-- Section 11 -->
+      <div class="contract-section">
+        <h2>11. Performance and Conduct</h2>
+        <p>The Employee agrees to meet the company's performance standards of at least 4 verified new customer signups per working day, averaged across each monthly pay cycle.</p>
+        <p>Failure to maintain this may trigger a Performance Improvement Plan (PIP) or, during probation, result in termination.</p>
+        <p>The Employee must always act professionally, wear the company uniform, and represent Swash Cleaning Ltd positively.</p>
+      </div>
+
+      <!-- Section 12 -->
+      <div class="contract-section">
+        <h2>12. Disciplinary and Grievance Procedures</h2>
+        <p>Company disciplinary and grievance processes are detailed in the Field Sales Team Policy Handbook, in line with ACAS guidelines.</p>
+      </div>
+
+      <!-- Section 13 -->
+      <div class="contract-section">
+        <h2>13. Termination of Employment</h2>
+        <p>Following probation, either party may terminate employment with written notice:</p>
+        <ul>
+          <li><strong>Employee:</strong> One month's notice</li>
+          <li><strong>Employer:</strong> One week per year of continuous service (minimum one week)</li>
+        </ul>
+        <p>Immediate termination may occur for gross misconduct.</p>
+      </div>
+
+      <!-- Section 14 -->
+      <div class="contract-section">
+        <h2>14. Non-Compete & Post-Employment Clause</h2>
+        <p>For six (6) months after employment ends, the Employee agrees not to:</p>
+        <ul>
+          <li>Provide or promote window cleaning or similar services to Swash Cleaning Ltd customers engaged within the past 12 months.</li>
+          <li>Operate or assist a competing window cleaning business within 15 miles of their last assigned sales area.</li>
+        </ul>
+      </div>
+
+      <!-- Section 15 -->
+      <div class="contract-section">
+        <h2>15. Acknowledgment of Policies</h2>
+        <p>By signing this contract, the Employee confirms they have read and understood the Field Sales Team Policy Handbook and agree to comply with all company policies.</p>
+      </div>
+
+      <!-- Section 16 -->
+      <div class="contract-section">
+        <h2>16. Governing Law</h2>
+        <p>This contract is governed by the laws of England and Wales.</p>
+      </div>
+
+      <!-- Signatures -->
+      <div class="contract-section">
+        <h2>Signatures</h2>
+        
+        <form id="contractAcknowledgementForm" style="margin-top: 30px;">
+          <!-- Employee Signature Section -->
+          <div style="margin-bottom: 32px;">
+            <h3 style="margin-bottom: 20px;">Employee</h3>
+
+            <div style="margin-bottom: 24px;">
+              <label for="contractEmployeeSignature" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Employee Signature:</label>
+              <div style="border: 2px solid #e5e7eb; border-radius: 6px; background: #f8fafc; padding: 8px; max-width: 600px;">
+                <canvas 
+                  id="contractEmployeeSignature" 
+                  width="600" 
+                  height="200"
+                  style="display: block; cursor: crosshair; background: white; border-radius: 4px; touch-action: none; width: 100%; height: auto;"
+                ></canvas>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <button 
+                  type="button" 
+                  id="clearContractEmployee" 
+                  class="btn btn-secondary"
+                  style="flex: 1;"
+                >Clear Signature</button>
+                <button 
+                  type="button" 
+                  id="undoContractEmployee" 
+                  class="btn btn-secondary"
+                  style="flex: 1;"
+                >Undo</button>
+              </div>
+              <p style="font-size: 0.85rem; color: #64748b; margin-top: 8px;">Click and drag to sign above</p>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+              <label for="contractEmployeeDate" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Date:</label>
+              <input 
+                type="text" 
+                id="contractEmployeeDate" 
+                name="contractEmployeeDate" 
+                readonly
+                style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 1rem; box-sizing: border-box; background: #f8fafc; color: #64748b;"
+              >
+            </div>
+          </div>
+
+          <!-- Director Section -->
+          <div style="margin-top: 40px; padding-top: 24px; border-top: 2px solid #e5e7eb;">
+            <h3 style="margin-bottom: 20px;">For Swash Cleaning Ltd</h3>
+            
+            <div style="margin-bottom: 24px;">
+              <p style="margin: 0 0 8px 0; font-weight: 600; color: #1e293b;">Christopher Wessell (Director)</p>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+              <label for="contractDirectorSignature" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Signature:</label>
+              <div style="border: 2px solid #e5e7eb; border-radius: 6px; background: #f8fafc; padding: 8px; max-width: 600px;">
+                <canvas 
+                  id="contractDirectorSignature" 
+                  width="600" 
+                  height="200"
+                  style="display: block; cursor: crosshair; background: white; border-radius: 4px; touch-action: none; width: 100%; height: auto;"
+                ></canvas>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <button 
+                  type="button" 
+                  id="clearContractDirector" 
+                  class="btn btn-secondary"
+                  style="flex: 1;"
+                >Clear Signature</button>
+                <button 
+                  type="button" 
+                  id="undoContractDirector" 
+                  class="btn btn-secondary"
+                  style="flex: 1;"
+                >Undo</button>
+              </div>
+              <p style="font-size: 0.85rem; color: #64748b; margin-top: 8px;">Click and drag to sign above</p>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+              <label for="contractDirectorDate" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Date:</label>
+              <input 
+                type="text" 
+                id="contractDirectorDate" 
+                name="contractDirectorDate" 
+                readonly
+                style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 1rem; box-sizing: border-box; background: #f8fafc; color: #64748b;"
+              >
+            </div>
+
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 4px; margin-top: 16px;">
+              <p style="margin: 0; font-size: 0.95rem; color: #92400e;">
+                <strong>ℹ️ Note:</strong> The director signature and date will be added by Swash management once you submit your contract. Your submission will be saved automatically.
+              </p>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div style="margin-top: 32px; display: flex; gap: 12px;">
+            <button 
+              type="submit" 
+              class="btn btn-primary"
+              style="flex: 1; padding: 12px 24px; font-size: 1rem;"
+            >Submit Contract</button>
+            <button 
+              type="reset" 
+              class="btn btn-secondary"
+              style="flex: 1; padding: 12px 24px; font-size: 1rem;"
+            >Reset Form</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer-text">
+        <p>Swash Cleaning Ltd | Employment Contract | Field Sales Representative | Version 1.2 | © 2025<br>
+        contact@swashcleaning.co.uk | 03300 436 345</p>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="../auth-check.js"></script>
+
+  <script>
+    // Signature Canvas Handler
+    class SignatureCanvas {
+      constructor(canvasId, clearBtnId, undoBtnId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.isDrawing = false;
+        this.paths = [];
+        this.currentPath = [];
+
+        this.resizeCanvas();
+        
+        this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
+        this.canvas.addEventListener('mousemove', (e) => this.draw(e));
+        this.canvas.addEventListener('mouseup', () => this.stopDrawing());
+        this.canvas.addEventListener('mouseout', () => this.stopDrawing());
+
+        this.canvas.addEventListener('touchstart', (e) => this.startDrawing(e));
+        this.canvas.addEventListener('touchmove', (e) => this.draw(e));
+        this.canvas.addEventListener('touchend', () => this.stopDrawing());
+
+        document.getElementById(clearBtnId).addEventListener('click', () => this.clearCanvas());
+        document.getElementById(undoBtnId).addEventListener('click', () => this.undoPath());
+      }
+
+      resizeCanvas() {
+        const rect = this.canvas.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+        this.redrawCanvas();
+      }
+
+      startDrawing(e) {
+        this.isDrawing = true;
+        this.currentPath = [];
+        const pos = this.getPosition(e);
+        this.currentPath.push(pos);
+        this.ctx.beginPath();
+        this.ctx.moveTo(pos.x, pos.y);
+      }
+
+      draw(e) {
+        if (!this.isDrawing) return;
+        
+        const pos = this.getPosition(e);
+        this.currentPath.push(pos);
+        
+        this.ctx.lineTo(pos.x, pos.y);
+        this.ctx.lineWidth = 2;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        this.ctx.strokeStyle = '#0078d7';
+        this.ctx.stroke();
+      }
+
+      stopDrawing() {
+        if (!this.isDrawing) return;
+        this.isDrawing = false;
+        this.ctx.closePath();
+        if (this.currentPath.length > 0) {
+          this.paths.push(this.currentPath);
+        }
+      }
+
+      getPosition(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        if (e.touches) {
+          return {
+            x: e.touches[0].clientX - rect.left,
+            y: e.touches[0].clientY - rect.top
+          };
+        }
+        return {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+      }
+
+      clearCanvas() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.paths = [];
+        this.currentPath = [];
+      }
+
+      undoPath() {
+        this.paths.pop();
+        this.redrawCanvas();
+      }
+
+      redrawCanvas() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.paths.forEach(path => {
+          this.ctx.beginPath();
+          this.ctx.moveTo(path[0].x, path[0].y);
+          for (let i = 1; i < path.length; i++) {
+            this.ctx.lineTo(path[i].x, path[i].y);
+          }
+          this.ctx.lineWidth = 2;
+          this.ctx.lineCap = 'round';
+          this.ctx.lineJoin = 'round';
+          this.ctx.strokeStyle = '#0078d7';
+          this.ctx.stroke();
+          this.ctx.closePath();
+        });
+      }
+
+      getSignatureData() {
+        return this.canvas.toDataURL('image/png');
+      }
+
+      hasSignature() {
+        return this.paths.length > 0;
+      }
+    }
+
+    // Initialize signature canvases
+    const employeeSignature = new SignatureCanvas('contractEmployeeSignature', 'clearContractEmployee', 'undoContractEmployee');
+    const directorSignature = new SignatureCanvas('contractDirectorSignature', 'clearContractDirector', 'undoContractDirector');
+
+    // Auto-fill dates
+    function formatDate(date) {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    const today = new Date();
+    document.getElementById('contractEmployeeDate').value = formatDate(today);
+    document.getElementById('contractDirectorDate').value = formatDate(today);
+
+    // Form submission handler
+    document.getElementById('contractAcknowledgementForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const employeeName = document.getElementById('employeeNameContract').value.trim();
+      const startDate = document.getElementById('startDate').value;
+
+      if (!employeeName) {
+        alert('Please enter your name');
+        return;
+      }
+
+      if (!startDate) {
+        alert('Please enter your start date');
+        return;
+      }
+
+      if (!employeeSignature.hasSignature()) {
+        alert('Please sign in the employee signature box');
+        return;
+      }
+
+      const formData = {
+        employeeName: employeeName,
+        startDate: startDate,
+        employeeSignature: employeeSignature.getSignatureData(),
+        employeeDate: document.getElementById('contractEmployeeDate').value,
+        directorSignature: directorSignature.hasSignature() ? directorSignature.getSignatureData() : null,
+        directorDate: document.getElementById('contractDirectorDate').value,
+        submittedAt: new Date().toISOString(),
+        contractAccepted: true
+      };
+
+      console.log('Employment contract form ready for submission:', formData);
+      
+      alert('✓ Employment contract submitted successfully. Your response has been saved. Thank you!');
+    });
+
+    window.addEventListener('resize', () => {
+      employeeSignature.resizeCanvas();
+      directorSignature.resizeCanvas();
+    });
+  </script>
+</body>
+</html>

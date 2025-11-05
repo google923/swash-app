@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <meta name="google-site-verification" content="Tonc5cIN27DjhCRG2R8B9FMVGnGgWn_RFuBKYM2865Q" />
+  <title>Swash - Add Customer</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+</head>
+<body class="quote-page">
+  <div id="maintenanceOverlay" class="maintenance-overlay">
+    <div class="maintenance-message">
+      <h1>Under Maintenance</h1>
+      <p>The quote system is temporarily unavailable.<br>Please check back later.</p>
+    </div>
+  </div>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Rep Resources</div>
+          <a id="rep-home-link" class="hidden" href="./rep-home.html">🏠 Home</a>
+          <a id="add-customer-link" class="hidden" href="./quote.html">➕ Add Customer</a>
+          <a href="./add-log.html">📝 Log</a>
+          <a href="./rep/chat.html">💬 Rep Chat</a>
+          <a href="./rep/policy.html">📘 Policy Handbook</a>
+          <a href="./rep/holiday.html">📅 Book Holiday</a>
+          <a href="./rep/sickness.html">🤒 Report Sickness</a>
+          <a href="./rep/commission.html">💷 PAY + Commission</a>
+          <a href="./rep/map.html">🗺️ Territory Map</a>
+          <a href="./rep/feedback.html">💡 Feedback / Ideas</a>
+          <a href="./rep/performance.html">🎯 Performance Dashboard</a>
+          <a href="./rep/contact.html">🧍 Contact Management</a>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-title">System</div>
+          <a id="login-link" href="./login.html">Sign in</a>
+          <a id="quotes-link" class="hidden" href="./admin.html">Quotes Dashboard</a>
+          <a id="admin-dashboard-link" class="hidden" href="./admin.html">Admin Dashboard</a>
+          <a id="schedule-link" class="hidden" href="./scheduler.html">Schedule</a>
+          <a id="manage-users-link" class="hidden" href="./admin/users.html">Manage Users</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+  <main class="page">
+    <section class="card">
+      <header class="card-header">
+        <h2>Add Customer</h2>
+        <p id="tierDescription">Select a service tier to see the details.</p>
+      </header>
+
+      <!-- Customer details box moved above service tier -->
+      <section id="customerFields" class="customer-section customer-box" hidden>
+        <h3>Customer Details</h3>
+        <div class="form-grid">
+          <label for="customerName">Full Name</label>
+          <input id="customerName" autocomplete="name" required />
+
+          <label for="address">Address</label>
+          <input id="address" autocomplete="street-address" required />
+
+          <label for="mobile">Mobile</label>
+          <input id="mobile" autocomplete="tel" required />
+
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" required />
+        </div>
+        <!-- Submit button moved to bottom under price box -->
+      </section>
+
+      <form id="quoteForm" class="form-grid" autocomplete="off">
+        <label class="form-section" for="repCode" hidden>
+          <span>Rep Code</span>
+          <input id="repCode" name="repCode" required value="Website Quote" />
+        </label>
+
+        <label class="form-section" for="quoteDate" hidden>
+          <span>Quote Date</span>
+          <input id="quoteDate" name="quoteDate" readonly />
+        </label>
+
+        <div class="options-box">
+          <div class="form-grid">
+            <label class="form-section" for="serviceTier">
+              <span>Service Tier</span>
+              <select id="serviceTier" name="serviceTier">
+                <option value="gold" selected>Gold</option>
+                <option value="silver">Silver</option>
+              </select>
+            </label>
+
+            <!-- Side-by-side: House Size (left) and House Type (right) -->
+            <div class="inline-two">
+              <label class="form-section" for="houseSize">
+                <span>House Size</span>
+                <select id="houseSize" name="houseSize">
+                  <option>2 bed</option>
+                  <option>3 bed</option>
+                  <option>4 bed</option>
+                  <option>5 bed</option>
+                  <option>6 bed</option>
+                </select>
+              </label>
+
+              <label class="form-section" for="houseType">
+                <span>House Type</span>
+                <select id="houseType" name="houseType">
+                  <option value="Bungalow">Bungalow</option>
+                  <option value="Maisonette">Maisonette</option>
+                  <option value="Terrace">Terrace</option>
+                  <option value="Semi-Detached">Semi-Detached</option>
+                  <option value="Detached">Detached</option>
+                  <option value="Mobile Home">Mobile Home</option>
+                </select>
+              </label>
+            </div>
+
+            <!-- Side-by-side larger checkboxes (stay inline on mobile) -->
+            <div class="inline-two inline-two--mobile-2">
+              <label class="form-section checkbox checkbox--lg" for="conservatory">
+                <input type="checkbox" id="conservatory" />
+                <span>Conservatory</span>
+              </label>
+
+              <label class="form-section checkbox checkbox--lg" for="extension">
+                <input type="checkbox" id="extension" />
+                <span>Extension</span>
+              </label>
+            </div>
+
+            <label class="form-section" for="roofLanterns">
+              <span>Roof Lanterns</span>
+              <div class="slider-row">
+                <input type="range" id="roofLanterns" min="0" max="10" value="0" step="1" />
+                <span class="slider-value" id="roofLanternsValue">0</span>
+              </div>
+            </label>
+
+            <label class="form-section" for="skylights">
+              <span>Skylights</span>
+              <div class="slider-row">
+                <input type="range" id="skylights" min="0" max="10" value="0" step="1" />
+                <span class="slider-value" id="skylightsValue">0</span>
+              </div>
+            </label>
+
+            <!-- Alternating moved below price area next to offer button -->
+
+            <input type="hidden" id="partialCleaning" value="100" />
+            <input type="hidden" id="addVAT" value="true" />
+
+            <label class="form-section form-section--notes" for="notes">
+              <span>Notes</span>
+              <textarea id="notes" rows="3" placeholder="Add any customer notes or access information..."></textarea>
+            </label>
+          </div>
+        </div>
+
+        <!-- Auto-calc enabled: no calculate button needed -->
+      </form>
+
+      <section id="result" class="result-panel" aria-live="polite"></section>
+      <div class="form-actions form-actions--end form-actions--compact">
+        <label class="checkbox checkbox--lg" for="alternating">
+          <input type="checkbox" id="alternating" />
+          <span>Alternating Clean</span>
+        </label>
+        <button type="button" id="applyOfferBtn" class="btn btn-offer">Apply Special Offer</button>
+      </div>
+      
+      <div class="form-grid">
+        <label class="form-section" for="emailMessage" hidden>
+          <span>Email message</span>
+          <textarea id="emailMessage" rows="10" placeholder="This message will be sent to the customer."></textarea>
+        </label>
+      </div>
+      <div class="form-actions form-actions--end">
+        <button type="button" id="submitBtn" class="btn btn-primary">Send Quote</button>
+      </div>
+
+      <aside id="paymentRefBox" class="payment-ref" hidden>
+        <p><strong>Payment Reference:</strong> <span id="paymentRefValue"></span></p>
+      </aside>
+
+      <section id="emailPreviewCard" class="email-preview-card" hidden>
+        <div class="email-preview-header">
+          <h3>Email Preview</h3>
+          <p id="emailPreviewSubject" class="email-preview-subject"></p>
+        </div>
+        <div id="emailPreviewBody" class="email-preview-body"></div>
+      </section>
+
+      <section id="queueAlerts" class="queue-alerts" hidden aria-live="polite"></section>
+    </section>
+  </main>
+  <script>
+    // Fallback menu toggle to ensure dropdown works even if modules load late
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuBtn = document.getElementById('menuBtn');
+      const menuDropdown = document.getElementById('menuDropdown');
+      if (!menuBtn || !menuDropdown) return;
+      menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const show = menuDropdown.classList.toggle('show');
+        menuBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
+      });
+      document.addEventListener('click', (e) => {
+        if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
+          menuDropdown.classList.remove('show');
+          menuBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+  </script>
+  <script type="module" src="./auth-check.js"></script>
+  <script type="module" src="./script.js"></script>
+</body>
+</html>

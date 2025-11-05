@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>User Management - Swash Admin</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+  <style>
+    .user-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .user-card {
+      padding: 16px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+    }
+    .user-card__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 12px;
+    }
+    .user-card__name {
+      font-weight: 700;
+      color: #0078d7;
+      font-size: 1.1rem;
+    }
+    .user-card__role {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .user-card__role--admin {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .user-card__role--rep {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .user-card__info {
+      font-size: 0.9rem;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .user-card__actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    /* Centered Edit Modal */
+    #editModal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 80;
+      padding: 20px;
+    }
+
+    #editModal:not([hidden]) { display: flex; }
+
+    #editModal .modal__dialog {
+      background: #fff;
+      padding: 24px;
+      border-radius: 16px;
+      width: min(520px, 95vw);
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+    }
+
+    /* Small icon buttons (e.g., delete X) */
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      min-height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: #dc2626;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn:hover { background: #fee2e2; }
+    .icon-btn:focus { outline: 2px solid #fecaca; outline-offset: 2px; }
+
+    .user-card__header-right{ display:flex; align-items:center; gap:8px; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <a href="../admin.html" class="btn btn-secondary">← Back to Admin Dashboard</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <header class="card-header">
+        <h1>👥 User Management</h1>
+        <p class="text-muted">Add new reps, update user details, and manage access permissions.</p>
+      </header>
+
+      <div style="padding: 20px;">
+        <h3 style="color: #0078d7; margin-bottom: 16px;">Add New Rep</h3>
+        <form id="addUserForm">
+          <div class="form-row">
+            <label style="display: block;">
+              <span style="display: block; margin-bottom: 4px; font-weight: 600;">Email *</span>
+              <input type="email" id="newEmail" required style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" placeholder="rep@swashcleaning.co.uk" />
+            </label>
+            <label style="display: block;">
+              <span style="display: block; margin-bottom: 4px; font-weight: 600;">Password *</span>
+              <input type="password" id="newPassword" required minlength="6" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" placeholder="Minimum 6 characters" />
+            </label>
+          </div>
+          <div class="form-row">
+            <label style="display: block;">
+              <span style="display: block; margin-bottom: 4px; font-weight: 600;">Username *</span>
+              <input type="text" id="newName" required style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" placeholder="e.g., Chris, Glen, Harvie" />
+            </label>
+            <label style="display: block;">
+              <span style="display: block; margin-bottom: 4px; font-weight: 600;">Role *</span>
+              <select id="newRole" required style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;">
+                <option value="rep">Rep</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary">Create User</button>
+        </form>
+
+        <hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;" />
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="color: #0078d7; margin: 0;">Current Users</h3>
+          <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+        </div>
+        
+        <div id="usersContainer" class="user-grid">
+          <p style="color: #64748b; text-align: center; padding: 40px;">Loading users...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Edit User Modal -->
+  <div id="editModal" class="modal" hidden>
+    <div class="modal__dialog">
+      <h3 style="margin:0">Edit User</h3>
+      <form id="editUserForm">
+        <input type="hidden" id="editUserId" />
+        <label class="modal__field">
+          <span>Username</span>
+          <input type="text" id="editName" required />
+        </label>
+        <label class="modal__field">
+          <span>Email</span>
+          <input type="email" id="editEmail" disabled style="background: #f9fafb; cursor: not-allowed;" />
+          <small style="color: #64748b;">Email cannot be changed after creation</small>
+        </label>
+        <label class="modal__field">
+          <span>Role</span>
+          <select id="editRole" required>
+            <option value="rep">Rep</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+        <div class="modal__actions">
+          <button type="button" class="btn btn-secondary" id="cancelEdit">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="../auth-check.js"></script>
+  <script type="module" src="./users.js"></script>
+</body>
+</html>

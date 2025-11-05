@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Feedback & Ideas - Swash</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <a href="../rep-home.html" class="btn btn-secondary">← Back to Home</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <header class="card-header">
+        <h1>💬 Feedback & Ideas</h1>
+        <p class="text-muted">Share your thoughts, suggestions, and report issues.</p>
+      </header>
+
+      <div style="padding: 20px;">
+        <p>We value your input! Use this page to submit feedback, suggest improvements, or report any issues you encounter.</p>
+        
+        <h3 style="margin-top: 24px; color: #0078d7;">Submit Feedback</h3>
+        <form style="margin-top: 12px;">
+          <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; margin-bottom: 4px; font-weight: 600;">Category</span>
+            <select style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;">
+              <option value="">Select a category...</option>
+              <option value="suggestion">Suggestion / Improvement</option>
+              <option value="issue">Report an Issue</option>
+              <option value="process">Process Improvement</option>
+              <option value="equipment">Equipment / Tools</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; margin-bottom: 4px; font-weight: 600;">Subject</span>
+            <input type="text" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" placeholder="Brief summary..." />
+          </label>
+          <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; margin-bottom: 4px; font-weight: 600;">Details</span>
+            <textarea rows="6" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" placeholder="Please provide as much detail as possible..."></textarea>
+          </label>
+          <label style="display: block; margin-bottom: 16px;">
+            <input type="checkbox" style="margin-right: 8px;" />
+            <span>I would like a response from management</span>
+          </label>
+          <button type="submit" class="btn btn-primary">Submit Feedback</button>
+        </form>
+
+        <h3 style="margin-top: 32px; color: #0078d7;">Your Previous Submissions</h3>
+        <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px;">
+          <p style="margin: 0; color: #64748b;">No previous feedback submissions to display.</p>
+        </div>
+
+        <p style="margin-top: 24px; padding: 16px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px;">
+          <strong>Note:</strong> All feedback is confidential and will be reviewed by management. You can track the status of your submissions here.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="../auth-check.js"></script>
+  <script type="module" src="../under-dev.js"></script>
+</body>
+</html>

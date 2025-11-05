@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Performance Dashboard - Swash</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <a href="../rep-home.html" class="btn btn-secondary">← Back to Home</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <header class="card-header">
+        <h1>🎯 Performance Dashboard</h1>
+        <p class="text-muted">Track your performance metrics, targets, and achievements.</p>
+      </header>
+
+      <div style="padding: 20px;">
+        <p>View your key performance indicators, compare against targets, and track your progress over time.</p>
+        
+        <h3 style="margin-top: 24px; color: #0078d7;">Monthly Performance</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 12px;">
+          <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Quotes Generated</p>
+            <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;">[To be calculated]</p>
+            <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b;">Target: [X]</p>
+          </div>
+          <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Conversion Rate</p>
+            <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;">[To be calculated]</p>
+            <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b;">Target: [X]%</p>
+          </div>
+          <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Customer Retention</p>
+            <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;">[To be calculated]</p>
+            <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b;">Target: [X]%</p>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 32px; color: #0078d7;">Quarterly Trends</h3>
+        <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px; min-height: 200px; display: flex; align-items: center; justify-content: center; color: #64748b;">
+          <p style="margin: 0;">[Performance chart will be displayed here using Chart.js or similar]</p>
+        </div>
+
+        <h3 style="margin-top: 32px; color: #0078d7;">Recent Achievements</h3>
+        <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px;">
+          <p style="margin: 0; color: #64748b;">Your recent milestones and achievements will be displayed here.</p>
+        </div>
+
+        <p style="margin-top: 24px; padding: 16px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px;">
+          <strong>Note:</strong> Performance data will be calculated from your submitted quotes (repCode field) and conversion metrics from the quotes collection. Targets will be set by management.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="../auth-check.js"></script>
+  <script type="module" src="../under-dev.js"></script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Swash Login</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+    </div>
+  </header>
+
+  <main class="page" style="display: flex; align-items: center; justify-content: center; min-height: 60vh;">
+    <section class="auth-card" style="max-width: 400px; width: 100%;">
+      <h2>Sign in to Swash</h2>
+      <p class="text-muted">Use your Swash credentials to continue.</p>
+      <form id="loginForm" novalidate>
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" autocomplete="email" required />
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required />
+        <p id="loginError" class="status warning" hidden></p>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+      </form>
+    </section>
+  </main>
+
+  <script type="module">
+    // ---------- OFFLINE BYPASS (for local testing only) ----------
+    // Set to `true` to skip Firebase login when running on localhost.
+    // IMPORTANT: Set to false before deploying to production.
+    const OFFLINE_BYPASS = true;
+    const ALLOW_BYPASS_ON = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+    if (OFFLINE_BYPASS && ALLOW_BYPASS_ON) {
+      // Redirect straight to admin page for offline testing
+      // Use a root-relative path so it works from any subfolder
+      window.location.href = '/admin.html';
+    }
+    // ------------------------------------------------------------
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCLmrWYAY4e7tQD9Cknxp7cKkzqJgndm0I",
+      authDomain: "swash-app-436a1.firebaseapp.com",
+      projectId: "swash-app-436a1",
+      storageBucket: "swash-app-436a1.firebasestorage.app",
+      messagingSenderId: "724611205173",
+      appId: "1:724611205173:web:d17474ad848856d6c3497c",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const loginForm = document.getElementById("loginForm");
+    const loginError = document.getElementById("loginError");
+    const loginEmail = document.getElementById("loginEmail");
+    const loginPassword = document.getElementById("loginPassword");
+
+    function showError(message) {
+      loginError.textContent = message;
+      loginError.hidden = false;
+    }
+
+    function clearError() {
+      loginError.hidden = true;
+    }
+
+    function getRedirectParam() {
+      const params = new URLSearchParams(window.location.search);
+      const dest = params.get("redirect");
+      return dest && dest.startsWith("/") ? dest : null;
+    }
+
+    async function redirectBasedOnRole(user) {
+      const redirectTarget = getRedirectParam();
+      if (redirectTarget) {
+        window.location.href = redirectTarget;
+        return;
+      }
+      try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        const role = snap.exists() ? snap.data().role : "none";
+        
+        if (role === "rep") {
+          window.location.href = "/rep-home.html";
+        } else if (role === "admin") {
+          window.location.href = "/admin.html";
+        } else {
+          showError("Access denied: unknown role.");
+          await auth.signOut();
+        }
+      } catch (err) {
+        console.error("Failed to load user role", err);
+        showError("Unable to verify role. Please try again.");
+        await auth.signOut();
+      }
+    }
+
+    // Check if user is already logged in
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        redirectBasedOnRole(user);
+      }
+    });
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const email = loginEmail.value.trim();
+      const password = loginPassword.value;
+
+      if (!email || !password) {
+        showError("Enter your email address and password.");
+        return;
+      }
+
+      const submitButton = loginForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      submitButton.textContent = "Signing in...";
+
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        await redirectBasedOnRole(userCredential.user);
+      } catch (error) {
+        const code = error?.code || "";
+        if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+          showError("Email or password is incorrect.");
+        } else if (code === "auth/user-not-found") {
+          showError("Account not found. Contact an administrator.");
+        } else {
+          showError(error?.message || "Sign in failed. Please try again.");
+        }
+        submitButton.disabled = false;
+        submitButton.textContent = "Sign in";
+      }
+    });
+  </script>
+</body>
+</html>
