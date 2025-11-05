@@ -3,7 +3,7 @@
 
 console.log("[Quote DEBUG] script.js module loading...");
 
-import initMenuDropdown from "./menu.js";
+import initMenuDropdown from "./assets/rep/menu.js";
 console.log("[Quote DEBUG] menu.js imported successfully");
 import {
   queueOfflineSubmission,
