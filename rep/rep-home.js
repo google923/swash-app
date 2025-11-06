@@ -1,5 +1,5 @@
 import { auth, db } from '../firebase-init.js';
-import { authStateReady } from '../auth-check.js';
+import { authStateReady, handlePageRouting } from '../auth-check.js';
 import { getFirestore, collection, doc, getDoc, getDocs, query, orderBy, limit, where, deleteDoc, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
@@ -128,7 +128,7 @@ async function init() {
     logoutBtn.addEventListener("click", async () => {
       try {
         await signOut(auth);
-        window.location.href = "/index.html";
+        window.location.href = "/index-login.html";
       } catch (err) {
         console.error("Logout error:", err);
         alert("Failed to sign out. Please try again.");
@@ -138,12 +138,10 @@ async function init() {
 
   await authStateReady();
   console.log("[Page] Auth ready, userRole:", window.userRole);
-  if (window.userRole !== "rep") {
-    console.warn("[Rep] Non-rep user detected on rep page. Redirecting to login.");
-    window.location.replace("/index-login.html");
-    return;
-  }
+  const routing = await handlePageRouting("rep");
+  if (routing.redirected) return;
 
+  console.log("[Rep] Auth OK");
   await delay(100);
   initRepPage();
 }

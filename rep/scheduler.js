@@ -1,6 +1,6 @@
 // scheduler.js - 4-week route planner with drag-and-drop rescheduling and 28-day recurring cadence
 import initMenuDropdown from "./assets/rep/menu.js";
-import { authStateReady } from "../auth-check.js";
+import { authStateReady, handlePageRouting } from "../auth-check.js";
 import {
   initializeApp,
   getApps,
@@ -1138,11 +1138,9 @@ async function initScheduler() {
 async function bootstrapSchedulerPage() {
   await authStateReady();
   console.log("[Page] Auth ready, userRole:", window.userRole);
-  if (window.userRole !== "admin") {
-    console.warn("[Scheduler] Non-admin user detected. Redirecting to login.");
-    window.location.replace("/index-login.html");
-    return;
-  }
+  const routing = await handlePageRouting("admin");
+  if (routing.redirected) return;
+  console.log("[Scheduler] Auth OK");
   await delay(100);
   await initScheduler();
 }

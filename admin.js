@@ -5,7 +5,7 @@
 
 
 import { app, auth, db } from "./firebase-init.js";
-import { authStateReady } from "./auth-check.js";
+import { authStateReady, handlePageRouting } from "./auth-check.js";
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 const EMAIL_PUBLIC_KEY = "7HZRYXz3JmMciex1L";
@@ -3023,11 +3023,9 @@ export function initAdmin() {
     try {
       await authStateReady();
       console.log("[Page] Auth ready, userRole:", window.userRole);
-      if (window.userRole !== "admin") {
-        console.warn("[Admin] Access denied for non-admin user, redirecting to login");
-        window.location.replace("/index-login.html");
-        return;
-      }
+      const routing = await handlePageRouting("admin");
+      if (routing.redirected) return;
+      console.log("[Admin] Auth OK");
       await waitForDomReady();
       await delay(100);
       await startAdminApp();

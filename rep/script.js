@@ -4,7 +4,7 @@
 console.log("[Quote DEBUG] script.js module loading...");
 
 import initMenuDropdown from "./assets/rep/menu.js";
-import { authStateReady } from "../auth-check.js";
+import { authStateReady, handlePageRouting } from "../auth-check.js";
 console.log("[Quote DEBUG] menu.js imported successfully");
 import {
   queueOfflineSubmission,
@@ -56,17 +56,15 @@ function waitForDomReady() {
 }
 
 await waitForDomReady();
+await authStateReady();
+console.log("[Page] Auth ready, userRole:", window.userRole);
 
 if (!isEmbedMode) {
-  await authStateReady();
-  console.log("[Page] Auth ready, userRole:", window.userRole);
-  if (window.userRole !== "admin") {
-    console.warn("[Quote] Non-admin user detected on add-customer page. Redirecting to login.");
-    window.location.replace("/index-login.html");
-    throw new Error("Access denied to add-customer page");
+  const routing = await handlePageRouting("admin");
+  if (routing.redirected) {
+    console.log("[Quote] Redirect scheduled; halting calculator bootstrap");
+    await new Promise(() => {});
   }
-} else {
-  console.log("[Page] Auth ready, userRole:", window.userRole);
 }
 
 await delay(100);
@@ -903,7 +901,7 @@ async function initApp() {
     logoutBtn.addEventListener("click", async () => {
       try {
         await signOut(auth);
-        window.location.href = "/index.html";
+        window.location.href = "/index-login.html";
       } catch (err) {
         console.error("Logout error:", err);
         alert("Failed to sign out. Please try again.");

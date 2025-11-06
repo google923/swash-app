@@ -1,5 +1,5 @@
 import { auth, db } from './firebase-init.js';
-import { authStateReady } from './auth-check.js';
+import { authStateReady, handlePageRouting } from './auth-check.js';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // Track captured location
@@ -44,10 +44,10 @@ function waitForDomReady() {
 await waitForDomReady();
 await authStateReady();
 console.log("[Page] Auth ready, userRole:", window.userRole);
-if (window.userRole !== "rep") {
-  console.warn("[Add Log] Non-rep user detected. Redirecting to login.");
-  window.location.replace("/index-login.html");
-  throw new Error("Access denied to add-log page");
+const routing = await handlePageRouting("rep");
+if (routing.redirected) {
+  console.log("[Add Log] Redirect scheduled; halting log initialisation");
+  await new Promise(() => {});
 }
 await delay(100);
 

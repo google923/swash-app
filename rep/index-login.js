@@ -1,13 +1,7 @@
 // Login page handler
-import { auth, db } from '../firebase-init.js';
-import { 
-  signInWithEmailAndPassword, 
-  onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { 
-  doc, 
-  getDoc 
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { auth } from '../firebase-init.js';
+import { authStateReady, handlePageRouting } from '../auth-check.js';
+import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const els = {
   form: document.getElementById("loginForm"),
@@ -18,84 +12,67 @@ const els = {
   loadingMessage: document.getElementById("loadingMessage"),
 };
 
-// Check if user is already logged in
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    try {
-      const snap = await getDoc(doc(db, "users", user.uid));
-      if (snap.exists()) {
-        const role = snap.data().role || "rep";
-        // Redirect to appropriate dashboard
-        if (role === "admin") {
-          window.location.href = "/admin.html";
-        } else if (role === "rep") {
-          window.location.href = "/rep/rep-home.html";
-        }
-      }
-    } catch (err) {
-      console.error("Failed to check user role", err);
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function initLoginPage() {
+  if (!els.form) return;
+
+  await authStateReady();
+  console.log("[Page] Auth ready, userRole:", window.userRole);
+  const routing = await handlePageRouting("login");
+  if (routing.redirected) return;
+
+  els.form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const email = els.email.value.trim();
+    const password = els.password.value;
+
+    if (!email || !password) {
+      showError("Please enter both email and password.");
+      return;
     }
-  }
-});
 
-// Handle login form submission
-els.form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+    els.submitBtn.disabled = true;
+    els.loadingMessage.classList.add("show");
+    els.errorMessage.classList.remove("show");
 
-  const email = els.email.value.trim();
-  const password = els.password.value;
-
-  if (!email || !password) {
-    showError("Please enter both email and password.");
-    return;
-  }
-
-  els.submitBtn.disabled = true;
-  els.loadingMessage.classList.add("show");
-  els.errorMessage.classList.remove("show");
-
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    // Get user role
-    const snap = await getDoc(doc(db, "users", user.uid));
-    const role = snap.exists() ? snap.data().role : "rep";
-
-    // Redirect based on role
-    if (role === "admin") {
-      window.location.href = "/admin.html";
-    } else if (role === "rep") {
-      window.location.href = "/rep/rep-home.html";
-    } else {
-      showError("Your account does not have a valid role. Please contact administrator.");
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      await delay(200);
+      const result = await handlePageRouting("login");
+      if (!result.redirected) {
+        els.submitBtn.disabled = false;
+        els.loadingMessage.classList.remove("show");
+        showError("Unable to determine your access level. Please contact administrator.");
+      }
+    } catch (error) {
       els.submitBtn.disabled = false;
       els.loadingMessage.classList.remove("show");
+
+      let message = "Failed to sign in. Please try again.";
+
+      if (error.code === "auth/user-not-found") {
+        message = "Email address not found.";
+      } else if (error.code === "auth/wrong-password") {
+        message = "Incorrect password.";
+      } else if (error.code === "auth/invalid-email") {
+        message = "Invalid email address.";
+      } else if (error.code === "auth/user-disabled") {
+        message = "This account has been disabled.";
+      } else if (error.code === "auth/too-many-requests") {
+        message = "Too many failed login attempts. Please try again later.";
+      }
+
+      showError(message);
+      console.error("Login error:", error);
     }
-  } catch (error) {
-    els.submitBtn.disabled = false;
-    els.loadingMessage.classList.remove("show");
-
-    let message = "Failed to sign in. Please try again.";
-
-    if (error.code === "auth/user-not-found") {
-      message = "Email address not found.";
-    } else if (error.code === "auth/wrong-password") {
-      message = "Incorrect password.";
-    } else if (error.code === "auth/invalid-email") {
-      message = "Invalid email address.";
-    } else if (error.code === "auth/user-disabled") {
-      message = "This account has been disabled.";
-    } else if (error.code === "auth/too-many-requests") {
-      message = "Too many failed login attempts. Please try again later.";
-    }
-
-    showError(message);
-    console.error("Login error:", error);
-  }
-});
+  });
+}
 
 function showError(message) {
   els.errorMessage.textContent = message;
   els.errorMessage.classList.add("show");
 }
+
+initLoginPage();

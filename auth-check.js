@@ -27,16 +27,81 @@ const adminOnly = ["admin-dashboard-link", "schedule-link", "quotes-link", "mana
 const loginLink = "login-link";
 
 console.log("[Auth] auth-check.js module loaded");
-console.log("[Auth] Module loaded");
+console.log("[Auth] Initialising");
 
-let authStateReadyResolver;
-let authStateReadyResolved = false;
-const authStateReadyPromise = new Promise((resolve) => {
-  authStateReadyResolver = resolve;
-});
+const REDIRECT_DELAY_MS = 200;
+
+const authStateManager = (() => {
+  let resolveReady;
+  const readyPromise = new Promise((resolve) => {
+    resolveReady = resolve;
+  });
+
+  const state = {
+    user: null,
+    role: "unauthorised",
+    ready: false,
+    isRedirecting: false,
+    hasRedirected: false,
+    currentUid: null,
+  };
+
+  const listeners = new Set();
+
+  return {
+    state,
+    resolveReady(user, role) {
+      if (!state.ready) {
+        state.ready = true;
+        resolveReady({ user, role });
+      }
+      listeners.forEach((listener) => {
+        try {
+          listener({ user, role });
+        } catch (error) {
+          console.warn("[Auth] Listener error", error);
+        }
+      });
+    },
+    async authStateReady() {
+      if (state.ready) {
+        return { user: state.user, role: state.role };
+      }
+      return readyPromise;
+    },
+    subscribe(listener) {
+      if (typeof listener !== "function") return () => {};
+      listeners.add(listener);
+      if (state.ready) {
+        try {
+          listener({ user: state.user, role: state.role });
+        } catch (error) {
+          console.warn("[Auth] Listener error", error);
+        }
+      }
+      return () => listeners.delete(listener);
+    },
+  };
+})();
 
 export function authStateReady() {
-  return authStateReadyPromise;
+  return authStateManager.authStateReady();
+}
+
+export function onAuthStateChange(listener) {
+  return authStateManager.subscribe(listener);
+}
+
+const PAGE_TYPE = (() => {
+  const path = (window.location && window.location.pathname) || "/";
+  if (/\/(index|index-login)\.html?$/.test(path) || path === "/") return "login";
+  if (/\/admin\.html$/.test(path) || /\/admin\//.test(path) || /\/scheduler\.html$/.test(path)) return "admin";
+  if (/\/rep\//.test(path) || /rep-home\.html$/.test(path) || /rep-dashboard\.html$/.test(path) || /add-log\.html$/.test(path) || /quote\.html$/.test(path)) return "rep";
+  return null;
+})();
+
+if (typeof window !== "undefined" && typeof window.authRedirectDone === "undefined") {
+  window.authRedirectDone = false;
 }
 
 console.log("[Auth] Awaiting Firebase auth...");
@@ -80,31 +145,106 @@ function redirectToLogin() {
   // Redirect to dedicated login page
   const { pathname, search, hash } = window.location;
   const here = encodeURIComponent(`${pathname}${search || ""}${hash || ""}`);
-  const url = `/index.html${pathname !== "/" ? `?redirect=${here}` : ""}`;
+  const url = `/index-login.html${pathname !== "/" ? `?redirect=${here}` : ""}`;
   scheduleRedirect(url);
 }
 
 let logoutListenerAttached = false;
 let redirectTimer = null;
-const REDIRECT_DELAY_MS = 250;
-let lastRedirectTarget = null;
+
+function normalisePath(targetUrl) {
+  try {
+    return new URL(targetUrl, window.location.origin).pathname;
+  } catch (_) {
+    return targetUrl;
+  }
+}
+
+function markRedirect(targetUrl) {
+  authStateManager.state.isRedirecting = true;
+  authStateManager.state.hasRedirected = true;
+  window.authRedirectDone = targetUrl || true;
+}
+
+function canRedirect(targetUrl) {
+  const targetPath = normalisePath(targetUrl);
+  const currentPath = window.location.pathname;
+  if (!targetUrl) return false;
+  if (targetPath === currentPath) {
+    console.log("[Auth] Suppressed duplicate redirect (already on target path)");
+    return false;
+  }
+  if (authStateManager.state.isRedirecting) {
+    console.log("[Auth] Suppressed duplicate redirect (already redirecting)");
+    return false;
+  }
+  if (window.authRedirectDone) {
+    console.log("[Auth] Bypass redirect (authRedirectDone already true)");
+    return false;
+  }
+  return true;
+}
 
 function scheduleRedirect(targetUrl) {
-  if (!targetUrl) return;
-  if (window.location.pathname === targetUrl || window.location.href === targetUrl) return;
+  if (!canRedirect(targetUrl)) return false;
   if (redirectTimer) {
     clearTimeout(redirectTimer);
     redirectTimer = null;
   }
-  lastRedirectTarget = targetUrl;
+  markRedirect(targetUrl);
   redirectTimer = setTimeout(() => {
-    console.log(`[Auth] Redirecting → ${targetUrl}`);
+    console.log(`[Auth] Redirect → ${targetUrl}`);
     try {
       window.location.replace(targetUrl);
     } catch (_) {
       window.location.href = targetUrl;
     }
   }, REDIRECT_DELAY_MS);
+  return true;
+}
+
+export async function handlePageRouting(pageType = "login") {
+  const { user, role } = await authStateReady();
+  const status = { user, role, redirected: false };
+  const loginUrl = "/index-login.html";
+
+  if (pageType === "login") {
+    if (!user) return status;
+    if (role === "admin") {
+      status.redirected = scheduleRedirect("/admin.html");
+      return status;
+    }
+    if (role === "rep") {
+      status.redirected = scheduleRedirect("/rep/rep-home.html");
+      return status;
+    }
+    return status;
+  }
+
+  if (!user) {
+    status.redirected = scheduleRedirect(loginUrl);
+    return status;
+  }
+
+  if (pageType === "admin") {
+    if (role !== "admin") {
+      status.redirected = scheduleRedirect(loginUrl);
+      return status;
+    }
+    console.log("[Auth] Role matches admin, staying on page");
+    return status;
+  }
+
+  if (pageType === "rep") {
+    if (role !== "rep") {
+      status.redirected = scheduleRedirect(loginUrl);
+      return status;
+    }
+    console.log("[Auth] Role matches rep, staying on page");
+    return status;
+  }
+
+  return status;
 }
 
 function attachLogoutListener() {
@@ -114,7 +254,7 @@ function attachLogoutListener() {
   logoutBtn.addEventListener("click", () => {
     signOut(auth)
       .then(() => {
-        scheduleRedirect("/index.html");
+        scheduleRedirect("/index-login.html");
       })
       .catch((error) => {
         console.warn("Sign out failed", error);
@@ -124,68 +264,70 @@ function attachLogoutListener() {
 }
 
 onAuthStateChanged(auth, async (user) => {
-  if (!authStateReadyResolved) {
-    authStateReadyResolved = true;
-    authStateReadyResolver(user);
+  const previousUid = authStateManager.state.currentUid;
+  const nextUid = user?.uid || null;
+  if (previousUid !== nextUid) {
+    authStateManager.state.isRedirecting = false;
+    authStateManager.state.hasRedirected = false;
+    window.authRedirectDone = false;
   }
 
-  console.log("[Auth] User detected:", user?.email || "none");
-  const path = (window.location && window.location.pathname) || "/";
-  const isIndex = path === "/" || /\/(index\.html)?$/.test(path);
-  const isAdminPage = /\/(admin\.html|scheduler\.html|admin\/users\.html)/.test(path);
-  const isRepPage = /\/(rep-home\.html|rep-dashboard\.html|add-log\.html|quote\.html|rep\/)/.test(path);
-  const isAdminDashboard = /\/admin\.html$/.test(path);
+  authStateManager.state.user = user || null;
+  authStateManager.state.currentUid = nextUid;
 
   if (!user) {
+    console.log("[Auth] User: none");
+    authStateManager.state.role = "unauthorised";
     window.userRole = undefined;
     hideAllMenuItems();
-    console.log("[Auth] Role loaded: unauthorised");
-    if (!isIndex) {
-      redirectToLogin();
+
+    const overlay = document.getElementById("authOverlay");
+    if (overlay) {
+      overlay.hidden = false;
+      overlay.style.display = "flex";
+    }
+
+    authStateManager.resolveReady(null, "unauthorised");
+    if (PAGE_TYPE && PAGE_TYPE !== "login") {
+      await handlePageRouting(PAGE_TYPE);
     }
     return;
   }
 
+  console.log(`[Auth] User: ${user.email}`);
+
+  let role = "unauthorised";
   try {
-    console.log(`[Auth] Auth confirmed for user: ${user.email}`);
     const snap = await getDoc(doc(db, "users", user.uid));
-    const role = snap.exists() ? (snap.data().role || "rep") : "unauthorised";
-    window.userRole = role;
-    console.log(`[Auth] Role loaded: ${role}`);
+    role = snap.exists() ? (snap.data().role || "rep") : "unauthorised";
+  } catch (error) {
+    console.error("Failed to load user role", error);
+    role = "unauthorised";
+  }
 
-    const overlay = document.getElementById("authOverlay");
-    if (overlay) {
-      overlay.hidden = true;
-      overlay.style.display = "none";
-    }
+  authStateManager.state.role = role;
+  window.userRole = role;
+  console.log(`[Auth] Role: ${role}`);
 
-    attachLogoutListener();
+  const overlay = document.getElementById("authOverlay");
+  if (overlay) {
+    overlay.hidden = true;
+    overlay.style.display = "none";
+  }
 
-    if (role === "admin") {
-      showAdminMenu();
-      if (isRepPage && !isAdminDashboard) {
-        console.log("[Auth] Admin user on rep route, redirecting to admin dashboard");
-        scheduleRedirect("/admin.html");
-        return;
-      }
-    } else if (role === "rep") {
-      showRepMenu();
-      if (isAdminPage) {
-        console.log("[Auth] Rep user on admin route, redirecting to rep home");
-        scheduleRedirect("/rep/rep-home.html");
-        return;
-      }
-    } else {
-      alert("Access denied: unknown role.");
-      hideAllMenuItems();
-      redirectToLogin();
-    }
-  } catch (err) {
-    console.error("Failed to load user role", err);
-    window.userRole = undefined;
-    console.log("[Auth] Role loaded: unauthorised");
-    alert("Access denied: unable to verify role.");
+  attachLogoutListener();
+
+  if (role === "admin") {
+    showAdminMenu();
+  } else if (role === "rep") {
+    showRepMenu();
+  } else {
     hideAllMenuItems();
-    redirectToLogin();
+  }
+
+  authStateManager.resolveReady(user, role);
+
+  if (PAGE_TYPE) {
+    await handlePageRouting(PAGE_TYPE);
   }
 });
