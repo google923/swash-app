@@ -1,5 +1,8 @@
 import { auth, db } from '../firebase-init.js';
+import { authStateReady, handlePageRouting } from '../auth-check.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { initMenuDropdown } from "./menu.js";
 
 // Elements
 const chatFeed = document.getElementById('chatFeed');
@@ -12,6 +15,22 @@ let currentUser = null;
 let currentRepName = null;
 let unsubscribe = null;
 let isAdmin = false;
+let chatInitialised = false;
+
+function waitForDomReady() {
+  if (document.readyState === "loading") {
+    return new Promise((resolve) => document.addEventListener("DOMContentLoaded", resolve, { once: true }));
+  }
+  return Promise.resolve();
+}
+
+await waitForDomReady();
+await authStateReady();
+console.log("[Page] Auth ready, userRole:", window.userRole);
+const routing = await handlePageRouting("shared");
+if (routing.redirected) {
+  console.log("[Chat] Redirect scheduled; aborting chat bootstrap");
+}
 
 // Format timestamp
 function formatTime(timestamp) {
@@ -77,7 +96,11 @@ function startListening() {
     orderBy('timestamp', 'desc'),
     limit(100)
   );
-  
+
+  if (unsubscribe) {
+    unsubscribe();
+  }
+
   unsubscribe = onSnapshot(q, (snapshot) => {
     chatFeed.innerHTML = '';
     
@@ -190,6 +213,10 @@ async function deleteMessage(messageId) {
 
 // Initialize
 function init() {
+  if (chatInitialised) return;
+  chatInitialised = true;
+
+  initMenuDropdown();
   messageInput.addEventListener('input', updateCharCounter);
   
   messageInput.addEventListener('keydown', (e) => {
@@ -215,6 +242,7 @@ function init() {
 }
 
 // Auth state
+if (!routing.redirected) {
 onAuthStateChanged(auth, async (user) => {
   if (!user) return; // auth-check.js will redirect
   
@@ -232,3 +260,4 @@ onAuthStateChanged(auth, async (user) => {
   
   init();
 });
+}
