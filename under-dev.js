@@ -2,7 +2,7 @@
 // Pages include this file as a module.
 
 (function(){
-  const OVERLAY_SELECTOR = '.under-development';
+  const OVERLAY_SELECTOR = '.under-development, .maintenance-overlay';
   const KEY_PREFIX = 'devUnlock:';
   function ready(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
   ready(() => {

@@ -92,6 +92,11 @@ export function onAuthStateChange(listener) {
   return authStateManager.subscribe(listener);
 }
 
+// Expose for modules that need to react after auth resolves without importing
+if (typeof window !== "undefined") {
+  window.onAuthStateChange = onAuthStateChange;
+}
+
 const PAGE_TYPE = (() => {
   const path = (window.location && window.location.pathname) || "/";
   if (/\/(index|index-login)\.html?$/.test(path) || path === "/") return "login";

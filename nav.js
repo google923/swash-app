@@ -84,6 +84,22 @@ function initRepViewToggle() {
       location.href = "/admin.html";
     }
   });
+  
+  // Subscribe to auth changes to re-show/hide toggle as needed
+  if (typeof window.onAuthStateChange === "function") {
+    try {
+      window.onAuthStateChange(() => {
+        const updatedRole = window.userRole;
+        if (updatedRole === "admin") {
+          toggleWrap.classList.remove("hidden");
+        } else {
+          toggleWrap.classList.add("hidden");
+        }
+      });
+    } catch (e) {
+      console.warn("[Nav] Failed to subscribe to auth changes", e);
+    }
+  }
 }
 
 // Generic modal open/close via data attributes

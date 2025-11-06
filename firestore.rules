@@ -120,5 +120,46 @@ service cloud.firestore {
       // Only admins can create, update, delete announcements
       allow create, update, delete: if isAdmin();
     }
+
+    // --- TERRITORIES COLLECTION ---
+    match /territories/{territoryId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isRep() {
+        return request.auth != null && userDoc().data.role == "rep";
+      }
+
+      // Everyone authenticated can read territories
+      allow read: if isAdmin() || isRep();
+
+      // Only admins can create, update, delete territories
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- EVENTS COLLECTION ---
+    match /events/{eventId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isRep() {
+        return request.auth != null && userDoc().data.role == "rep";
+      }
+
+      // Everyone authenticated can read events
+      allow read: if isAdmin() || isRep();
+
+      // Only admins and reps can create/update events
+      allow create, update: if isAdmin() || isRep();
+
+      // Delete restricted to admins only
+      allow delete: if isAdmin();
+    }
   }
-}
+}
