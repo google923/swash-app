@@ -2,6 +2,7 @@
 // Works across pages; initializes Firebase app if needed using the same config.
 
 import { auth, db } from './firebase-init.js';
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // NOTE: This project does not have a shared config.js. We inline the config and reuse an existing app if present.
