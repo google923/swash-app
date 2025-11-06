@@ -1,9 +1,8 @@
 // Role-based menu visibility and access control
 // Works across pages; initializes Firebase app if needed using the same config.
 
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { auth, db } from './firebase-init.js';
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // NOTE: This project does not have a shared config.js. We inline the config and reuse an existing app if present.
 const firebaseConfig = {

@@ -12,29 +12,9 @@ import {
 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 
-import {
-
-  getFirestore,
-
-  collection,
-
-  getDocs,
-
-  addDoc,
-
-  updateDoc,
-
-  doc,
-
-  serverTimestamp,
-
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { app, auth, db } from "./firebase-init.js";
+import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 
 
@@ -90,60 +70,6 @@ function notifyQuotesUpdated(source = SYNC_SOURCE) {
     });
   } catch (error) {
     console.warn("Quotes sync broadcast failed", error);
-  }
-}
-
-function populateCleanerSelect(
-  select,
-  { includePlaceholder = false, placeholderLabel = "Select cleaner", includeAll = false, includeUnassigned = false } = {},
-) {
-  if (!select || select.dataset.cleanerInit) return;
-  const options = [];
-  if (includePlaceholder) {
-    options.push(`<option value="">${escapeHtml(placeholderLabel)}</option>`);
-  }
-  if (includeAll) {
-    options.push(`<option value="${CLEANER_ALL}">All cleaners</option>`);
-  }
-  if (includeUnassigned) {
-    options.push(`<option value="${CLEANER_UNASSIGNED}">Unassigned</option>`);
-  }
-  CLEANER_OPTIONS.forEach((label) => {
-    const safe = escapeHtml(label);
-    options.push(`<option value="${safe}">${safe}</option>`);
-  });
-  select.innerHTML = options.join("");
-  select.dataset.cleanerInit = "1";
-}
-
-// Populate all cleaner selects used across Admin (filters, schedule modal, email modal)
-function populateAllCleanerSelects() {
-  try {
-    // Table filter: allow All and Unassigned
-    populateCleanerSelect(elements.assignCleanerSelect, {
-      includePlaceholder: true,
-      placeholderLabel: "All cleaners",
-      includeAll: true,
-      includeUnassigned: true,
-    });
-
-    // Schedule modal: optional assignment (include Unassigned option)
-    populateCleanerSelect(elements.scheduleCleaner, {
-      includePlaceholder: true,
-      placeholderLabel: "Select cleaner (optional)",
-      includeAll: false,
-      includeUnassigned: true,
-    });
-
-    // Email modal: filter target recipients by cleaner
-    populateCleanerSelect(elements.emailCleaner, {
-      includePlaceholder: true,
-      placeholderLabel: "All cleaners",
-      includeAll: true,
-      includeUnassigned: true,
-    });
-  } catch (e) {
-    console.warn("populateAllCleanerSelects failed", e);
   }
 }
 

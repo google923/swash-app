@@ -1,19 +1,5 @@
-// Add Log: log routes + mileage with calendar view
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCLmrWYAY4e7tQD9Cknxp7cKkzqJgndm0I",
-  authDomain: "swash-app-436a1.firebaseapp.com",
-  projectId: "swash-app-436a1",
-  storageBucket: "swash-app-436a1.firebasestorage.app",
-  messagingSenderId: "724611205173",
-  appId: "1:724611205173:web:d17474ad848856d6c3497c",
-};
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+import { auth, db } from './firebase-init.js';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // Track captured location
 let capturedLocation = null;
@@ -609,20 +595,6 @@ function init() {
     tab.addEventListener('click', () => {
       setMonthTab(parseInt(tab.dataset.offset));
     });
-  });
-}
-
-// Setup logout button
-const logoutBtn = document.getElementById("logoutBtn");
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", async () => {
-    try {
-      await signOut(auth);
-      window.location.href = "./index.html";
-    } catch (err) {
-      console.error("Logout error:", err);
-      alert("Failed to sign out. Please try again.");
-    }
   });
 }
 
