@@ -182,11 +182,123 @@ const state = {
   assignCleaner: "",
   scheduleCleaner: "",
   emailCleaner: "",
+  cleaners: [],
 };
 
 let adminAppInitialised = false;
 let adminBootstrapRegistered = false;
 let adminRolePoller = null;
+
+function resolveCleanerLabel(data = {}, fallback = "") {
+  const candidates = [
+    typeof data === "string" ? data : "",
+    data?.name,
+    data?.displayName,
+    data?.cleanerName,
+    data?.label,
+    data?.fullName,
+  ];
+  const match = candidates.find((value) => typeof value === "string" && value.trim());
+  const resolved = match ? match.trim() : fallback;
+  return resolved || "";
+}
+
+function uniqueCleanerList(values = []) {
+  const set = new Set();
+  values.forEach((value) => {
+    if (typeof value !== "string") return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    set.add(trimmed);
+  });
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+}
+
+function populateCleanerSelect(target, options = {}) {
+  if (!target) return;
+  const {
+    includePlaceholder = false,
+    placeholderLabel = "Select cleaner",
+    placeholderValue = "",
+    includeAll = false,
+    includeUnassigned = false,
+    selectedValue,
+    defaultValue = "",
+  } = options;
+
+  const cleaners = state.cleaners.length ? state.cleaners : CLEANER_OPTIONS;
+  const uniqueCleaners = uniqueCleanerList(cleaners);
+  const currentValue = selectedValue !== undefined ? selectedValue : target.value;
+
+  const createOption = (value, label) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    return option;
+  };
+
+  const fragment = document.createDocumentFragment();
+  if (includePlaceholder) {
+    fragment.appendChild(createOption(placeholderValue, placeholderLabel));
+  }
+  if (includeAll) {
+    fragment.appendChild(createOption(CLEANER_ALL, "All cleaners"));
+  }
+  uniqueCleaners.forEach((label) => {
+    fragment.appendChild(createOption(label, label));
+  });
+  if (includeUnassigned && !uniqueCleaners.includes(CLEANER_UNASSIGNED)) {
+    fragment.appendChild(createOption(CLEANER_UNASSIGNED, "Unassigned"));
+  }
+
+  target.innerHTML = "";
+  target.appendChild(fragment);
+
+  const normalisedValue = currentValue && target.querySelector(`option[value="${currentValue}"]`)
+    ? currentValue
+    : defaultValue;
+  if (normalisedValue !== undefined && normalisedValue !== null) {
+    target.value = normalisedValue;
+  }
+}
+
+export async function populateAllCleanerSelects() {
+  try {
+    const snap = await getDocs(collection(db, "cleaners"));
+    const cleanersFromDb = snap.docs.map((docSnap) => {
+      const data = docSnap.data() || {};
+      return resolveCleanerLabel(data, docSnap.id);
+    });
+    const resolved = uniqueCleanerList(cleanersFromDb.length ? cleanersFromDb : CLEANER_OPTIONS);
+    state.cleaners = resolved.length ? resolved : [...CLEANER_OPTIONS];
+  } catch (error) {
+    console.error("[Admin] Failed to load cleaners list, falling back to defaults", error);
+    state.cleaners = [...CLEANER_OPTIONS];
+  }
+
+  const targets = new Set([
+    elements.assignCleanerSelect,
+    elements.scheduleCleaner,
+    elements.emailCleaner,
+  ]);
+  targets.forEach((target) => {
+    if (!target) return;
+    populateCleanerSelect(target, {
+      includePlaceholder: true,
+      placeholderLabel:
+        target === elements.assignCleanerSelect ? "Select cleaner" : "Keep current",
+      includeUnassigned: true,
+      selectedValue:
+        target === elements.assignCleanerSelect
+          ? state.assignCleaner
+          : target === elements.scheduleCleaner
+            ? state.scheduleCleaner
+            : state.emailCleaner,
+    });
+  });
+
+  console.log("[Admin] populateAllCleanerSelects OK");
+}
 
 
 
@@ -2889,9 +3001,14 @@ async function startAdminApp() {
   try {
     await waitForDomReady();
     await loadQuotes();
-    await populateAllCleanerSelects();
+    try {
+      await populateAllCleanerSelects();
+    } catch (error) {
+      console.error("[Admin] Cleaner select population failed", error);
+    }
     attachEvents();
     renderSelectedRecipients();
+    console.log("[Admin] Navigation unlocked");
   } catch (error) {
     console.error("Failed to start admin app", error);
     throw error;
