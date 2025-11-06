@@ -311,25 +311,7 @@
       }
     });
   </script>
-  <script type="module">
-
-    import("./admin.js").then((mod) => {
-      if (typeof mod.initAdmin === "function") return mod.initAdmin();
-      if (typeof mod.default === "function") return mod.default();
-      throw new Error("Admin module missing initAdmin export");
-    });
-
-    document.getElementById("closeModal")?.addEventListener("click", () => {
-      document.getElementById("popupModal").style.display = "none";
-      document.body.style.overflow = "";
-    });
-
-    document.getElementById("closeModalSecondary")?.addEventListener("click", () => {
-      document.getElementById("popupModal").style.display = "none";
-      document.body.style.overflow = "";
-    });
-
-  </script>
+  <script type="module" src="./admin.js"></script>
 
 </body>
 

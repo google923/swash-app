@@ -6,14 +6,14 @@
   <meta name="theme-color" content="#0078d7" />
   <title>Swash Rep Dashboard</title>
   <link rel="manifest" href="./manifest.json" />
-  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
-  <link rel="stylesheet" href="./style.css" />
-  <link rel="stylesheet" href="./assets/rep-dashboard.css" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="./rep-dashboard.css" />
 </head>
 <body>
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+  <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
     </div>
     <div class="header-actions">
       <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
@@ -115,7 +115,7 @@
     </div>
   </div>
 
-  <script type="module" src="./auth-check.js"></script>
+  <script type="module" src="../auth-check.js"></script>
   <script>
     // Initialize menu dropdowns immediately
     document.addEventListener('DOMContentLoaded', () => {
@@ -136,8 +136,6 @@
       });
     });
   </script>
-  <script type="module">
-    import("./rep-dashboard.js");
-  </script>
+  <script type="module" src="./rep-dashboard.js"></script>
 </body>
 </html>
