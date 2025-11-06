@@ -1,5 +1,5 @@
 // scheduler.js - 4-week route planner with drag-and-drop rescheduling and 28-day recurring cadence
-import initMenuDropdown from "./menu.js";
+import { initMenuDropdown } from "./menu.js";
 import { authStateReady, handlePageRouting } from "../auth-check.js";
 import {
   initializeApp,

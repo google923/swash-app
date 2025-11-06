@@ -3,7 +3,7 @@
 
 console.log("[Quote DEBUG] script.js module loading...");
 
-import initMenuDropdown from "./menu.js";
+import { initMenuDropdown } from "./menu.js";
 import { authStateReady, handlePageRouting } from "../auth-check.js";
 console.log("[Quote DEBUG] menu.js imported successfully");
 import {
