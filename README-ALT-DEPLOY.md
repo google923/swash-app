@@ -15,14 +15,17 @@ Netlify config (already in repo): `netlify.toml` publishes `public/` and sets he
 
 ## Option B — Vercel
 1. Create a Vercel account → "Add New..." → Project.
-2. Import this repo. In Project Settings, set the **Root Directory** to `/` and the **Output/Build** as static:
-   - No build command
-   - Framework: Other
-   - Output directory: `public`
+2. Import this repo. In Project Settings:
+   - Framework Preset: Other
+   - Build Command: (leave empty)
+   - Output Directory: (leave empty — files are at repo root)
+   - Root Directory: `/` (default)
 3. Deploy to get `https://<name>.vercel.app`.
 4. Custom domain: add it in Vercel → Domains and follow the CNAME instructions.
 
-Vercel config (already in repo): `vercel.json` routes all requests to `/public/*`.
+Notes:
+- `vercel.json` has been simplified to filesystem routing for a multi-page static site. Each HTML (e.g. `/admin.html`, `/rep/quote.html`) is served directly.
+- No SPA fallback is used; unknown paths return 404.
 
 ## Firebase services remain the same
 - We do NOT change Firestore/Auth. The existing `firebaseConfig` continues to point at the same project `swash-app-436a1`.
