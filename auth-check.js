@@ -27,7 +27,19 @@ const adminOnly = ["admin-dashboard-link", "schedule-link", "quotes-link", "mana
 const loginLink = "login-link";
 
 console.log("[Auth] auth-check.js module loaded");
-console.log('[Auth] Module loaded');
+console.log("[Auth] Module loaded");
+
+let authStateReadyResolver;
+let authStateReadyResolved = false;
+const authStateReadyPromise = new Promise((resolve) => {
+  authStateReadyResolver = resolve;
+});
+
+export function authStateReady() {
+  return authStateReadyPromise;
+}
+
+console.log("[Auth] Awaiting Firebase auth...");
 
 function setHidden(id, hidden) {
   const el = document.getElementById(id);
@@ -69,11 +81,31 @@ function redirectToLogin() {
   const { pathname, search, hash } = window.location;
   const here = encodeURIComponent(`${pathname}${search || ""}${hash || ""}`);
   const url = `/index.html${pathname !== "/" ? `?redirect=${here}` : ""}`;
-  console.log("[Auth] No authOverlay found, redirecting to", url);
-  window.location.href = url;
+  scheduleRedirect(url);
 }
 
 let logoutListenerAttached = false;
+let redirectTimer = null;
+const REDIRECT_DELAY_MS = 250;
+let lastRedirectTarget = null;
+
+function scheduleRedirect(targetUrl) {
+  if (!targetUrl) return;
+  if (window.location.pathname === targetUrl || window.location.href === targetUrl) return;
+  if (redirectTimer) {
+    clearTimeout(redirectTimer);
+    redirectTimer = null;
+  }
+  lastRedirectTarget = targetUrl;
+  redirectTimer = setTimeout(() => {
+    console.log(`[Auth] Redirecting → ${targetUrl}`);
+    try {
+      window.location.replace(targetUrl);
+    } catch (_) {
+      window.location.href = targetUrl;
+    }
+  }, REDIRECT_DELAY_MS);
+}
 
 function attachLogoutListener() {
   const logoutBtn = document.getElementById("logoutBtn");
@@ -82,7 +114,7 @@ function attachLogoutListener() {
   logoutBtn.addEventListener("click", () => {
     signOut(auth)
       .then(() => {
-        window.location.href = "/index.html";
+        scheduleRedirect("/index.html");
       })
       .catch((error) => {
         console.warn("Sign out failed", error);
@@ -92,15 +124,22 @@ function attachLogoutListener() {
 }
 
 onAuthStateChanged(auth, async (user) => {
+  if (!authStateReadyResolved) {
+    authStateReadyResolved = true;
+    authStateReadyResolver(user);
+  }
+
   console.log("[Auth] User detected:", user?.email || "none");
   const path = (window.location && window.location.pathname) || "/";
   const isIndex = path === "/" || /\/(index\.html)?$/.test(path);
   const isAdminPage = /\/(admin\.html|scheduler\.html|admin\/users\.html)/.test(path);
   const isRepPage = /\/(rep-home\.html|rep-dashboard\.html|add-log\.html|quote\.html|rep\/)/.test(path);
+  const isAdminDashboard = /\/admin\.html$/.test(path);
 
   if (!user) {
     window.userRole = undefined;
     hideAllMenuItems();
+    console.log("[Auth] Role loaded: unauthorised");
     if (!isIndex) {
       redirectToLogin();
     }
@@ -108,9 +147,11 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   try {
+    console.log(`[Auth] Auth confirmed for user: ${user.email}`);
     const snap = await getDoc(doc(db, "users", user.uid));
-    const role = snap.exists() ? (snap.data().role || "rep") : "rep";
+    const role = snap.exists() ? (snap.data().role || "rep") : "unauthorised";
     window.userRole = role;
+    console.log(`[Auth] Role loaded: ${role}`);
 
     const overlay = document.getElementById("authOverlay");
     if (overlay) {
@@ -122,16 +163,16 @@ onAuthStateChanged(auth, async (user) => {
 
     if (role === "admin") {
       showAdminMenu();
-      if (isRepPage) {
+      if (isRepPage && !isAdminDashboard) {
         console.log("[Auth] Admin user on rep route, redirecting to admin dashboard");
-        window.location.href = "/admin.html";
+        scheduleRedirect("/admin.html");
         return;
       }
     } else if (role === "rep") {
       showRepMenu();
       if (isAdminPage) {
         console.log("[Auth] Rep user on admin route, redirecting to rep home");
-        window.location.href = "/rep/rep-home.html";
+        scheduleRedirect("/rep/rep-home.html");
         return;
       }
     } else {
@@ -141,6 +182,8 @@ onAuthStateChanged(auth, async (user) => {
     }
   } catch (err) {
     console.error("Failed to load user role", err);
+    window.userRole = undefined;
+    console.log("[Auth] Role loaded: unauthorised");
     alert("Access denied: unable to verify role.");
     hideAllMenuItems();
     redirectToLogin();
