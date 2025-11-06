@@ -7,6 +7,7 @@
 import { app, auth, db } from "./firebase-init.js";
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+const EMAIL_PUBLIC_KEY = "7HZRYXz3JmMciex1L";
 
 
 
@@ -184,20 +185,6 @@ const state = {
 };
 
 
-
-if (typeof emailjs !== "undefined" && typeof emailjs.init === "function") {
-
-  try {
-
-    emailjs.init(EMAIL_PUBLIC_KEY);
-
-  } catch (error) {
-
-    console.warn("EmailJS init failed", error);
-
-  }
-
-}
 
 function showAuthOverlay(show) {
   if (!elements.authOverlay) return;
