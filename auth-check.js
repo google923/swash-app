@@ -76,8 +76,21 @@ function redirectToLogin() {
 document.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, (user) => {
     if (!user) {
-      window.location.href = "./index.html";
+      console.log("[Auth] No user -> redirecting to login");
+      setTimeout(() => { window.location.href = "./index.html"; }, 300);
       return;
+    }
+    window.userRole = user.email === "contact@swashcleaning.co.uk" ? "admin" : "rep";
+    console.log("[Auth] User role:", window.userRole);
+    const path = window.location.pathname;
+    if (window.userRole === "admin" && path.includes("rep")) {
+      console.log("[Auth] Admin logged in on rep page → redirect to admin");
+      setTimeout(() => { window.location.href = "./admin.html"; }, 300);
+    } else if (window.userRole === "rep" && path.includes("admin")) {
+      console.log("[Auth] Rep logged in on admin page → redirect to rep home");
+      setTimeout(() => { window.location.href = "./rep-home.html"; }, 300);
+    } else {
+      console.log("[Auth] Correct role/page match, continue");
     }
     // Enable menu and sign-out button if present
     const logoutBtn = document.getElementById("logoutBtn");

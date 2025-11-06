@@ -124,22 +124,21 @@ async function init() {
     });
   }
 
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      state.currentUser = user;
-      await loadRepName();
-      await checkRole();
-      if (state.isAdmin) { await loadReps(); showAdminTools(true); bindEventForm(); }
-      displayCurrentDate();
-      displayRandomQuote();
-      loadPerformancePlaceholder();
-      await loadAnnouncements();
-
-      // Calendar setup
-      initCalendarControls();
-      await loadCalendar();
-    }
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log("[Rep] DOM ready, waiting for auth...");
+    const waitForAuth = setInterval(() => {
+      if (window.userRole === "rep") {
+        clearInterval(waitForAuth);
+        console.log("[Rep] Auth OK, initializing rep UI…");
+        initRepPage();
+      }
+    }, 250);
   });
+
+function initRepPage() {
+  console.log("[Rep] initRepPage started");
+  startRepApp?.();
+}
 }
 
 // Load rep name from Firestore

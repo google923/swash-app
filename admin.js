@@ -1694,42 +1694,26 @@ async function loadQuotes() {
   if (!elements.quotesBody) return;
 
   elements.quotesBody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
-
+  console.log("[Admin] loadQuotes running");
   try {
-
-    const snapshot = await getDocs(collection(db, "quotes"));
-
-    console.log('[Admin] Firestore returned', snapshot.docs.length, 'docs');
-
+    const q = collection(db, "quotes");
+    const snapshot = await getDocs(q);
+    console.log('[Admin] Firestore docs:', snapshot.size ?? snapshot.docs.length);
     const quotes = snapshot.docs
-
       .map((docSnap) => normaliseQuote(docSnap))
-
       .filter((quote) => !quote.deleted);
-
     state.quotes = sortQuotes(quotes);
-
     state.filtered = [...state.quotes];
-
     state.currentPage = 1;
-
     pruneSelectedIds();
-
     const map = new Map(state.quotes.map((quote) => [quote.id, quote]));
-
     state.selectedForEmail = state.selectedForEmail
-
       .map((quote) => map.get(quote.id))
-
       .filter(Boolean);
-
     state.selectedForSchedule = state.selectedForSchedule
-
       .map((quote) => map.get(quote.id))
-
       .filter(Boolean);
-
-  // Auto-revert expired Gold-for-Silver offers for unbooked quotes
+    // Auto-revert expired Gold-for-Silver offers for unbooked quotes
   await autoRevertExpiredOffers(state.quotes);
 
   render();
@@ -2911,23 +2895,33 @@ async function startAdminApp() {
 }
 
 export async function initAdmin() {
-  await waitForDomReady();
-  setupAuthUi();
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("[Admin] DOM ready, waiting for auth...");
+  const waitForAuth = setInterval(() => {
+    if (window.userRole === "admin") {
+      clearInterval(waitForAuth);
+      console.log("[Admin] Auth OK, initializing admin UI…");
+      initAdminPage();
+    }
+  }, 250);
+});
 
-  document.addEventListener("DOMContentLoaded", () => {
-    console.log('[Admin] DOM loaded');
-    onAuthStateChanged(auth, (user) => {
-      console.log('[Admin] Auth state:', user);
-      if (!user) {
-        // window.location.href = './index.html'; // Disabled for debugging
-        return;
-      }
-      console.log('[Admin] loadQuotes() starting');
-      setTimeout(async () => {
-        await loadQuotes();
-      }, 300);
-    });
-  });
+async function initAdminPage() {
+  console.log("[Admin] initAdminPage started");
+  try {
+    await waitForDomReady();
+    console.log("[Admin] loadQuotes running");
+    const q = collection(db, "quotes");
+    const snapshot = await getDocs(q);
+    console.log("[Admin] Firestore docs:", snapshot.size ?? snapshot.docs.length);
+    // ...existing logic for rendering table, etc...
+    await populateAllCleanerSelects();
+    attachEvents();
+    renderSelectedRecipients();
+  } catch (error) {
+    console.error("Failed to init admin page", error);
+    throw error;
+  }
 }
 
 
