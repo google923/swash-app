@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0078d7" />
   <meta name="google-site-verification" content="Tonc5cIN27DjhCRG2R8B9FMVGnGgWn_RFuBKYM2865Q" />
   <title>Swash - Add Customer</title>
-  <link rel="manifest" href="./manifest.json" />
-  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
 </head>
 <body class="quote-page">
@@ -20,7 +20,7 @@
   </div>
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
     </div>
     <div class="header-actions">
       <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
@@ -43,10 +43,10 @@
           <div class="dropdown-divider"></div>
           <div class="dropdown-title">System</div>
           <a id="login-link" href="./login.html">Sign in</a>
-          <a id="quotes-link" class="hidden" href="./admin.html">Quotes Dashboard</a>
-          <a id="admin-dashboard-link" class="hidden" href="./admin.html">Admin Dashboard</a>
+          <a id="quotes-link" class="hidden" href="/admin.html">Quotes Dashboard</a>
+          <a id="admin-dashboard-link" class="hidden" href="/admin.html">Admin Dashboard</a>
           <a id="schedule-link" class="hidden" href="./scheduler.html">Schedule</a>
-          <a id="manage-users-link" class="hidden" href="./admin/users.html">Manage Users</a>
+          <a id="manage-users-link" class="hidden" href="/admin/users.html">Manage Users</a>
         </nav>
       </div>
     </div>
@@ -221,7 +221,7 @@
       });
     });
   </script>
-  <script type="module" src="./auth-check.js"></script>
+  <script type="module" src="../auth-check.js"></script>
   <script type="module" src="./script.js"></script>
 </body>
 </html>

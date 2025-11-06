@@ -68,73 +68,72 @@ function redirectToLogin() {
   // Redirect to dedicated login page
   const { pathname, search, hash } = window.location;
   const here = encodeURIComponent(`${pathname}${search || ""}${hash || ""}`);
-  const url = `./login.html${pathname !== "/" ? `?redirect=${here}` : ""}`;
+  const url = `/index.html${pathname !== "/" ? `?redirect=${here}` : ""}`;
   console.log("[Auth] No authOverlay found, redirecting to", url);
   window.location.href = url;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  onAuthStateChanged(auth, (user) => {
-    if (!user) {
-      console.log("[Auth] No user -> redirecting to login");
-      setTimeout(() => { window.location.href = "./index.html"; }, 300);
-      return;
-    }
-    window.userRole = user.email === "contact@swashcleaning.co.uk" ? "admin" : "rep";
-    console.log("[Auth] User role:", window.userRole);
-    const path = window.location.pathname;
-    if (window.userRole === "admin" && path.includes("rep")) {
-      console.log("[Auth] Admin logged in on rep page → redirect to admin");
-      setTimeout(() => { window.location.href = "./admin.html"; }, 300);
-      return;
-    }
-    if (window.userRole === "rep" && path.includes("admin")) {
-      console.log("[Auth] Rep logged in on admin page → redirect to rep home");
-      setTimeout(() => { window.location.href = "./rep-home.html"; }, 300);
-      return;
-    }
-    console.log("[Auth] Correct role/page match, continue");
-    // Enable menu and sign-out button if present
-    const logoutBtn = document.getElementById("logoutBtn");
-    if (logoutBtn) {
-      logoutBtn.addEventListener("click", () => {
-        signOut(auth).then(() => window.location.href = "./index.html");
+let logoutListenerAttached = false;
+
+function attachLogoutListener() {
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (!logoutBtn || logoutListenerAttached) return;
+  logoutListenerAttached = true;
+  logoutBtn.addEventListener("click", () => {
+    signOut(auth)
+      .then(() => {
+        window.location.href = "/index.html";
+      })
+      .catch((error) => {
+        console.warn("Sign out failed", error);
       });
-      logoutBtn.removeAttribute("hidden");
-    }
-    // ...menu setup logic...
   });
-});
+  logoutBtn.removeAttribute("hidden");
+}
 
 onAuthStateChanged(auth, async (user) => {
-  // Duplicate listener: REMOVE this block entirely
-    redirectToLogin();
+  console.log("[Auth] User detected:", user?.email || "none");
+  const path = (window.location && window.location.pathname) || "/";
+  const isIndex = path === "/" || /\/(index\.html)?$/.test(path);
+  const isAdminPage = /\/(admin\.html|scheduler\.html|admin\/users\.html)/.test(path);
+  const isRepPage = /\/(rep-home\.html|rep-dashboard\.html|add-log\.html|quote\.html|rep\/)/.test(path);
+
+  if (!user) {
+    window.userRole = undefined;
+    hideAllMenuItems();
+    if (!isIndex) {
+      redirectToLogin();
+    }
     return;
   }
 
   try {
-    // Hide inline auth overlay if present now that we have a user
+    const snap = await getDoc(doc(db, "users", user.uid));
+    const role = snap.exists() ? (snap.data().role || "rep") : "rep";
+    window.userRole = role;
+
     const overlay = document.getElementById("authOverlay");
     if (overlay) {
       overlay.hidden = true;
       overlay.style.display = "none";
     }
 
-    const snap = await getDoc(doc(db, "users", user.uid));
-    const role = snap.exists() ? snap.data().role : "none";
-    
-    // Role-based page routing
-    if (role === "rep") {
-      // Redirect reps away from admin-only pages to Rep Home
-      if (isAdminPage) {
-        // Use a root-relative path so this works from subdirectories like /admin/users.html
-        window.location.href = "/rep-home.html";
+    attachLogoutListener();
+
+    if (role === "admin") {
+      showAdminMenu();
+      if (isRepPage) {
+        console.log("[Auth] Admin user on rep route, redirecting to admin dashboard");
+        window.location.href = "/admin.html";
         return;
       }
+    } else if (role === "rep") {
       showRepMenu();
-    } else if (role === "admin") {
-      // Admins have full access to all pages - no redirects
-      showAdminMenu();
+      if (isAdminPage) {
+        console.log("[Auth] Rep user on admin route, redirecting to rep home");
+        window.location.href = "/rep/rep-home.html";
+        return;
+      }
     } else {
       alert("Access denied: unknown role.");
       hideAllMenuItems();

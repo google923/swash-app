@@ -184,6 +184,10 @@ const state = {
   emailCleaner: "",
 };
 
+let adminAppInitialised = false;
+let adminBootstrapRegistered = false;
+let adminRolePoller = null;
+
 
 
 function showAuthOverlay(show) {
@@ -2894,70 +2898,45 @@ async function startAdminApp() {
   }
 }
 
-export async function initAdmin() {
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("[Admin] DOM ready, waiting for auth...");
-  const waitForAuth = setInterval(() => {
-    if (window.userRole === "admin") {
-      clearInterval(waitForAuth);
-      console.log("[Admin] Auth OK, initializing admin UI…");
-      initAdminPage();
-    }
-  }, 250);
-});
+export function initAdmin() {
+  if (adminBootstrapRegistered) return;
+  adminBootstrapRegistered = true;
 
-async function initAdminPage() {
-  console.log("[Admin] initAdminPage started");
-  try {
-    await waitForDomReady();
-    console.log("[Admin] loadQuotes running");
-    const q = collection(db, "quotes");
-    const snapshot = await getDocs(q);
-    console.log("[Admin] Firestore docs:", snapshot.size ?? snapshot.docs.length);
-    if (!snapshot.size && (!snapshot.docs || snapshot.docs.length === 0)) {
-      if (elements.quotesBody) {
-        elements.quotesBody.innerHTML = '<tr><td colspan="8">No quotes yet</td></tr>';
+  const bootIfAdmin = () => {
+    console.log("[Admin] DOM ready, waiting for auth…");
+    const startAttempted = startAdminPageIfAuthorised();
+    if (startAttempted) return;
+    if (adminRolePoller) return;
+    adminRolePoller = setInterval(() => {
+      if (startAdminPageIfAuthorised()) {
+        clearInterval(adminRolePoller);
+        adminRolePoller = null;
       }
-    } else {
-      // ...existing logic for rendering table, etc...
-      // (Assume render() and related functions handle table population)
-      render();
-    }
-    await populateAllCleanerSelects();
-    attachEvents();
-    renderSelectedRecipients();
-    // Enable menu and sign-out button
-    const logoutBtn = document.getElementById("logoutBtn");
-    if (logoutBtn) {
-      logoutBtn.removeAttribute("hidden");
-    }
-  } catch (error) {
-    console.error("Failed to init admin page", error);
-    throw error;
+    }, 250);
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootIfAdmin, { once: true });
+  } else {
+    bootIfAdmin();
   }
 }
 
+function startAdminPageIfAuthorised() {
+  if (window.userRole !== "admin") return false;
+  console.log("[Admin] Auth OK, initializing admin UI…");
+  initAdminPage();
+  return true;
+}
 
+function initAdminPage() {
+  console.log("[Admin] initAdminPage start requested");
+  startAdminApp().catch((error) => {
+    console.error("Failed to init admin page", error);
+  });
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+initAdmin();
 
 
 

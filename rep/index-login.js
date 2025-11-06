@@ -27,9 +27,9 @@ onAuthStateChanged(auth, async (user) => {
         const role = snap.data().role || "rep";
         // Redirect to appropriate dashboard
         if (role === "admin") {
-          window.location.href = "./admin.html";
+          window.location.href = "/admin.html";
         } else if (role === "rep") {
-          window.location.href = "./rep-home.html";
+          window.location.href = "/rep/rep-home.html";
         }
       }
     } catch (err) {
@@ -64,9 +64,9 @@ els.form.addEventListener("submit", async (e) => {
 
     // Redirect based on role
     if (role === "admin") {
-      window.location.href = "./admin.html";
+      window.location.href = "/admin.html";
     } else if (role === "rep") {
-      window.location.href = "./rep-home.html";
+      window.location.href = "/rep/rep-home.html";
     } else {
       showError("Your account does not have a valid role. Please contact administrator.");
       els.submitBtn.disabled = false;

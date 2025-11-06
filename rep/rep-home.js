@@ -1,5 +1,6 @@
 import { auth, db } from '../firebase-init.js';
 import { getFirestore, collection, doc, getDoc, getDocs, query, orderBy, limit, where, deleteDoc, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 // State
 const state = {
@@ -116,7 +117,7 @@ async function init() {
     logoutBtn.addEventListener("click", async () => {
       try {
         await signOut(auth);
-        window.location.href = "./index.html";
+        window.location.href = "/index.html";
       } catch (err) {
         console.error("Logout error:", err);
         alert("Failed to sign out. Please try again.");
@@ -135,10 +136,10 @@ async function init() {
     }, 250);
   });
 
-  function initRepPage() {
-    console.log("[Rep] initRepPage started");
-    startRepApp?.();
-  }
+function initRepPage() {
+  console.log("[Rep] initRepPage started");
+  startRepApp?.();
+}
 }
 
 // Load rep name from Firestore

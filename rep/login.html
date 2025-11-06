@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#0078d7" />
   <title>Swash Login</title>
-  <link rel="manifest" href="./manifest.json" />
-  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
 </head>
 <body>
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
     </div>
   </header>
 
@@ -93,7 +93,7 @@
         const role = snap.exists() ? snap.data().role : "none";
         
         if (role === "rep") {
-          window.location.href = "/rep-home.html";
+          window.location.href = "/rep/rep-home.html";
         } else if (role === "admin") {
           window.location.href = "/admin.html";
         } else {

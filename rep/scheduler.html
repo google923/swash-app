@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#0078d7" />
   <title>Swash Scheduler</title>
-  <link rel="manifest" href="./manifest.json" />
-  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
 </head>
 <body>
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
     </div>
     <div class="header-actions">
       <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
@@ -24,8 +24,8 @@
           <a id="rep-home-link" class="hidden" href="./rep-home.html">Rep Home</a>
           <a id="schedule-link" class="hidden" href="./scheduler.html">Schedule</a>
           <a id="add-customer-link" class="hidden" href="./quote.html">Add Customer</a>
-          <a id="admin-dashboard-link" class="hidden" href="./admin.html">Admin Dashboard</a>
-          <a id="manage-users-link" class="hidden" href="./admin/users.html">Manage Users</a>
+          <a id="admin-dashboard-link" class="hidden" href="/admin.html">Admin Dashboard</a>
+          <a id="manage-users-link" class="hidden" href="/admin/users.html">Manage Users</a>
         </nav>
       </div>
     </div>
@@ -121,7 +121,7 @@
     </div>
   </div>
 
-  <script type="module" src="./auth-check.js"></script>
+  <script type="module" src="../auth-check.js"></script>
   <script>
     // Initialize menu dropdowns immediately
     document.addEventListener('DOMContentLoaded', () => {
