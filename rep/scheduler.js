@@ -1,5 +1,6 @@
 // scheduler.js - 4-week route planner with drag-and-drop rescheduling and 28-day recurring cadence
 import initMenuDropdown from "./assets/rep/menu.js";
+import { authStateReady } from "../auth-check.js";
 import {
   initializeApp,
   getApps,
@@ -51,6 +52,8 @@ const EMAIL_PUBLIC_KEY = "7HZRYXz3JmMciex1L";
 const CLEANER_OPTIONS = Array.from({ length: 10 }, (_, index) => `Cleaner ${index + 1}`);
 const CLEANER_ALL = "ALL";
 const CLEANER_UNASSIGNED = "UNASSIGNED";
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const elements = {
   startWeek: document.getElementById("startWeek"),
@@ -1132,7 +1135,19 @@ async function initScheduler() {
   });
 }
 
-initScheduler();
+async function bootstrapSchedulerPage() {
+  await authStateReady();
+  console.log("[Page] Auth ready, userRole:", window.userRole);
+  if (window.userRole !== "admin") {
+    console.warn("[Scheduler] Non-admin user detected. Redirecting to login.");
+    window.location.replace("/index-login.html");
+    return;
+  }
+  await delay(100);
+  await initScheduler();
+}
+
+bootstrapSchedulerPage();
 
 // Helpers
 function getCycleWeekNumber(weekStart) {

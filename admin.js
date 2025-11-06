@@ -5,6 +5,7 @@
 
 
 import { app, auth, db } from "./firebase-init.js";
+import { authStateReady } from "./auth-check.js";
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 const EMAIL_PUBLIC_KEY = "7HZRYXz3JmMciex1L";
@@ -187,7 +188,6 @@ const state = {
 
 let adminAppInitialised = false;
 let adminBootstrapRegistered = false;
-let adminRolePoller = null;
 
 function resolveCleanerLabel(data = {}, fallback = "") {
   const candidates = [
@@ -3019,38 +3019,24 @@ export function initAdmin() {
   if (adminBootstrapRegistered) return;
   adminBootstrapRegistered = true;
 
-  const bootIfAdmin = () => {
-    console.log("[Admin] DOM ready, waiting for auth…");
-    const startAttempted = startAdminPageIfAuthorised();
-    if (startAttempted) return;
-    if (adminRolePoller) return;
-    adminRolePoller = setInterval(() => {
-      if (startAdminPageIfAuthorised()) {
-        clearInterval(adminRolePoller);
-        adminRolePoller = null;
+  const bootstrap = async () => {
+    try {
+      await authStateReady();
+      console.log("[Page] Auth ready, userRole:", window.userRole);
+      if (window.userRole !== "admin") {
+        console.warn("[Admin] Access denied for non-admin user, redirecting to login");
+        window.location.replace("/index-login.html");
+        return;
       }
-    }, 250);
+      await waitForDomReady();
+      await delay(100);
+      await startAdminApp();
+    } catch (error) {
+      console.error("[Admin] Failed to initialise admin UI", error);
+    }
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bootIfAdmin, { once: true });
-  } else {
-    bootIfAdmin();
-  }
-}
-
-function startAdminPageIfAuthorised() {
-  if (window.userRole !== "admin") return false;
-  console.log("[Admin] Auth OK, initializing admin UI…");
-  initAdminPage();
-  return true;
-}
-
-function initAdminPage() {
-  console.log("[Admin] initAdminPage start requested");
-  startAdminApp().catch((error) => {
-    console.error("Failed to init admin page", error);
-  });
+  bootstrap();
 }
 
 initAdmin();

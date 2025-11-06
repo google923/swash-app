@@ -1,4 +1,5 @@
 import { auth, db } from './firebase-init.js';
+import { authStateReady } from './auth-check.js';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // Track captured location
@@ -30,6 +31,25 @@ const els = {
 let currentMonthOffset = 0;
 let currentLogId = null;
 let isAdmin = false;
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function waitForDomReady() {
+  if (document.readyState === "loading") {
+    return new Promise((resolve) => document.addEventListener("DOMContentLoaded", resolve, { once: true }));
+  }
+  return Promise.resolve();
+}
+
+await waitForDomReady();
+await authStateReady();
+console.log("[Page] Auth ready, userRole:", window.userRole);
+if (window.userRole !== "rep") {
+  console.warn("[Add Log] Non-rep user detected. Redirecting to login.");
+  window.location.replace("/index-login.html");
+  throw new Error("Access denied to add-log page");
+}
+await delay(100);
 
 // Populate filter dropdown with all reps from Firestore
 async function populateRepFilter() {

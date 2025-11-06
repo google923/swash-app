@@ -1,4 +1,5 @@
 import { auth, db } from '../firebase-init.js';
+import { authStateReady } from '../auth-check.js';
 import { getFirestore, collection, doc, getDoc, getDocs, query, orderBy, limit, where, deleteDoc, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
@@ -11,6 +12,15 @@ const state = {
   monthEvents: new Map(), // key = YYYY-MM-DD -> [events]
   currentEvent: null,
 };
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function waitForDomReady() {
+  if (document.readyState === "loading") {
+    return new Promise((resolve) => document.addEventListener("DOMContentLoaded", resolve, { once: true }));
+  }
+  return Promise.resolve();
+}
 
 // Motivational quotes
 const quotes = [
@@ -111,7 +121,8 @@ const menuDropdown = document.getElementById("menuDropdown");
 
 // Initialize
 async function init() {
-  // Setup logout button
+  await waitForDomReady();
+
   const logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
@@ -125,21 +136,21 @@ async function init() {
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    console.log("[Rep] DOM ready, waiting for auth...");
-    const waitForAuth = setInterval(() => {
-      if (window.userRole === "rep") {
-        clearInterval(waitForAuth);
-        console.log("[Rep] Auth OK, initializing rep UI…");
-        initRepPage();
-      }
-    }, 250);
-  });
+  await authStateReady();
+  console.log("[Page] Auth ready, userRole:", window.userRole);
+  if (window.userRole !== "rep") {
+    console.warn("[Rep] Non-rep user detected on rep page. Redirecting to login.");
+    window.location.replace("/index-login.html");
+    return;
+  }
+
+  await delay(100);
+  initRepPage();
+}
 
 function initRepPage() {
   console.log("[Rep] initRepPage started");
   startRepApp?.();
-}
 }
 
 // Load rep name from Firestore

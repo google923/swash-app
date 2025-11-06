@@ -4,6 +4,7 @@
 console.log("[Quote DEBUG] script.js module loading...");
 
 import initMenuDropdown from "./assets/rep/menu.js";
+import { authStateReady } from "../auth-check.js";
 console.log("[Quote DEBUG] menu.js imported successfully");
 import {
   queueOfflineSubmission,
@@ -46,6 +47,30 @@ const auth = getAuth(app);
 var params = new URLSearchParams(window.location.search);
 var isEmbedMode = params.get("embed") === "true" || window.self !== window.top;
 
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function waitForDomReady() {
+  if (document.readyState === "loading") {
+    return new Promise((resolve) => document.addEventListener("DOMContentLoaded", resolve, { once: true }));
+  }
+  return Promise.resolve();
+}
+
+await waitForDomReady();
+
+if (!isEmbedMode) {
+  await authStateReady();
+  console.log("[Page] Auth ready, userRole:", window.userRole);
+  if (window.userRole !== "admin") {
+    console.warn("[Quote] Non-admin user detected on add-customer page. Redirecting to login.");
+    window.location.replace("/index-login.html");
+    throw new Error("Access denied to add-customer page");
+  }
+} else {
+  console.log("[Page] Auth ready, userRole:", window.userRole);
+}
+
+await delay(100);
+
 // Prefill rep code for authenticated users (internal quote form)
 onAuthStateChanged(auth, async (user) => {
   if (!user) return;
@@ -59,7 +84,6 @@ onAuthStateChanged(auth, async (user) => {
       const snap = await getDoc(userRef);
       if (snap.exists()) {
         const userData = snap.data();
-        console.log("[Quote] User data loaded:", userData);
         repName = userData?.repName || userData?.name || "";
       }
     } catch (innerErr) {
@@ -72,7 +96,6 @@ onAuthStateChanged(auth, async (user) => {
 
     if (repName) {
       repInput.value = repName;
-      // lock the field
       repInput.readOnly = true;
       repInput.setAttribute("readonly", "");
       console.log("[Quote] Rep code prefilled with:", repName);
