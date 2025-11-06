@@ -2913,21 +2913,13 @@ export async function initAdmin() {
   setupAuthUi();
 
   onAuthStateChanged(auth, (user) => {
-    if (user) {
-      clearLoginError();
-      elements.logoutBtn?.removeAttribute("hidden");
-      showAuthOverlay(false);
-      startAdminApp().catch((error) => {
-        console.error("Admin initialisation failed", error);
-        setLoginError("Unable to load dashboard data. Please try again.");
-        showAuthOverlay(true);
-      });
-    } else {
-      clearLoginError();
-      elements.logoutBtn?.setAttribute("hidden", "hidden");
-      showAuthOverlay(true);
-      elements.loginEmail?.focus();
+    if (!user) {
+      window.location.href = "./index.html";
+      return;
     }
+    setTimeout(() => {
+      startAdminApp(); // This runs loadQuotes and UI setup
+    }, 300);
   });
 }
 
