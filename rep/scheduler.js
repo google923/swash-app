@@ -1138,7 +1138,7 @@ async function initScheduler() {
 async function bootstrapSchedulerPage() {
   await authStateReady();
   console.log("[Page] Auth ready, userRole:", window.userRole);
-  const routing = await handlePageRouting("admin");
+  const routing = await handlePageRouting("shared");
   if (routing.redirected) return;
   console.log("[Scheduler] Auth OK");
   await delay(100);

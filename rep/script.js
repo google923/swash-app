@@ -60,7 +60,7 @@ await authStateReady();
 console.log("[Page] Auth ready, userRole:", window.userRole);
 
 if (!isEmbedMode) {
-  const routing = await handlePageRouting("admin");
+  const routing = await handlePageRouting("shared");
   if (routing.redirected) {
     console.log("[Quote] Redirect scheduled; halting calculator bootstrap");
     return;

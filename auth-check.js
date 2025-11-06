@@ -96,8 +96,17 @@ const PAGE_TYPE = (() => {
   const path = (window.location && window.location.pathname) || "/";
   if (/\/(index|index-login)\.html?$/.test(path) || path === "/") return "login";
   if (/\/rep\/login\.html$/.test(path)) return "login";
-  if (/\/admin\.html$/.test(path) || /\/admin\//.test(path) || /\/scheduler\.html$/.test(path)) return "admin";
-  if (/\/rep\//.test(path) || /rep-home\.html$/.test(path) || /rep-dashboard\.html$/.test(path) || /add-log\.html$/.test(path) || /quote\.html$/.test(path)) return "rep";
+
+  if (/\/admin\.html$/.test(path) || /\/admin\//.test(path)) return "admin";
+  if (/\/rep\/scheduler\.html$/.test(path)) return "shared";
+
+  if (/\/rep\/quote\.html$/.test(path)) return "shared";
+  if (/\/rep\/rep-home\.html$/.test(path)) return "shared";
+
+  if (/\/add-log\.html$/.test(path)) return "rep";
+  if (/\/rep\/rep-dashboard\.html$/.test(path)) return "rep";
+  if (/\/rep\//.test(path)) return "rep";
+
   return null;
 })();
 
@@ -219,6 +228,11 @@ export async function handlePageRouting(pageType = "login") {
 
   if (!user) {
     status.redirected = scheduleRedirect(loginUrl);
+    return status;
+  }
+
+  if (pageType === "shared") {
+    console.log("[Auth] Shared page access granted");
     return status;
   }
 

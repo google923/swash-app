@@ -138,7 +138,7 @@ async function init() {
 
   await authStateReady();
   console.log("[Page] Auth ready, userRole:", window.userRole);
-  const routing = await handlePageRouting("rep");
+  const routing = await handlePageRouting("shared");
   if (routing.redirected) return;
 
   console.log("[Rep] Auth OK");
