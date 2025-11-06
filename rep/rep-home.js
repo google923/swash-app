@@ -136,19 +136,40 @@ async function init() {
     });
   }
 
-  await authStateReady();
+  const { user } = await authStateReady();
+  state.currentUser = user || auth.currentUser;
   console.log("[Page] Auth ready, userRole:", window.userRole);
   const routing = await handlePageRouting("shared");
   if (routing.redirected) return;
 
+  if (!state.currentUser) {
+    console.warn("[Rep] No authenticated user found after authStateReady");
+    return;
+  }
+
   console.log("[Rep] Auth OK");
   await delay(100);
-  initRepPage();
+  await initRepPage();
 }
 
-function initRepPage() {
+async function initRepPage() {
   console.log("[Rep] initRepPage started");
-  startRepApp?.();
+  try {
+    displayCurrentDate();
+    displayRandomQuote();
+    loadPerformancePlaceholder();
+    await Promise.all([
+      loadRepName(),
+      checkRole(),
+      loadReps(),
+      loadAnnouncements(),
+      loadCalendar(),
+      loadAgendaForCurrentUser(),
+    ]);
+    console.log("[Rep] Dashboard initialised");
+  } catch (error) {
+    console.error("[Rep] Failed to initialise dashboard", error);
+  }
 }
 
 // Load rep name from Firestore

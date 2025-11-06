@@ -246,11 +246,11 @@ export async function handlePageRouting(pageType = "login") {
   }
 
   if (pageType === "rep") {
-    if (role !== "rep") {
+    if (role !== "rep" && role !== "admin") {
       status.redirected = scheduleRedirect(loginUrl);
       return status;
     }
-    console.log("[Auth] Role matches rep, staying on page");
+    console.log("[Auth] Role matches rep-access, staying on page");
     return status;
   }
 

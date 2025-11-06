@@ -3,7 +3,7 @@
 
 console.log("[Quote DEBUG] script.js module loading...");
 
-import initMenuDropdown from "./assets/rep/menu.js";
+import initMenuDropdown from "./menu.js";
 import { authStateReady, handlePageRouting } from "../auth-check.js";
 console.log("[Quote DEBUG] menu.js imported successfully");
 import {
@@ -58,6 +58,7 @@ function waitForDomReady() {
 await waitForDomReady();
 await authStateReady();
 console.log("[Page] Auth ready, userRole:", window.userRole);
+initMenuDropdown();
 
 if (!isEmbedMode) {
   const routing = await handlePageRouting("shared");
@@ -68,6 +69,17 @@ if (!isEmbedMode) {
 }
 
 await delay(100);
+
+const maintenanceOverlay = document.getElementById("maintenanceOverlay");
+if (maintenanceOverlay) {
+  if (window.MAINTENANCE_MODE) {
+    document.body.classList.add("maintenance-active");
+    maintenanceOverlay.style.display = "flex";
+  } else {
+    document.body.classList.remove("maintenance-active");
+    maintenanceOverlay.style.display = "none";
+  }
+}
 
 // Prefill rep code for authenticated users (internal quote form)
 onAuthStateChanged(auth, async (user) => {

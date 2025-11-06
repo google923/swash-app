@@ -1,3 +1,11 @@
+/* Hide maintenance overlay by default; enable via body.maintenance-active */
+.maintenance-overlay {
+  display: none;
+}
+body.maintenance-active .maintenance-overlay {
+  display: flex;
+}
+
 /* Maintenance overlay for quote page */
 body.quote-page .maintenance-overlay {
   position: fixed;
@@ -2427,7 +2435,6 @@ body.quote-page .slider-row input[type="range"]::-webkit-slider-thumb {
 body.quote-page .slider-row input[type="range"]::-moz-range-thumb {
   box-shadow: none;
 }
-
 
 
 
