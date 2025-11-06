@@ -27,6 +27,7 @@ const adminOnly = ["admin-dashboard-link", "schedule-link", "quotes-link", "mana
 const loginLink = "login-link";
 
 console.log("[Auth] auth-check.js module loaded");
+console.log('[Auth] Module loaded');
 
 function setHidden(id, hidden) {
   const el = document.getElementById(id);
@@ -91,6 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 onAuthStateChanged(auth, async (user) => {
+  console.log('[Auth] User detected:', user?.email || 'none');
   const path = (window.location && window.location.pathname) || "/";
   const isIndex = path === "/" || /\/(index\.html)?$/.test(path);
   const isAdminPage = /\/(admin\.html|scheduler\.html|admin\/users\.html)/.test(path);

@@ -1699,6 +1699,8 @@ async function loadQuotes() {
 
     const snapshot = await getDocs(collection(db, "quotes"));
 
+    console.log('[Admin] Firestore returned', snapshot.docs.length, 'docs');
+
     const quotes = snapshot.docs
 
       .map((docSnap) => normaliseQuote(docSnap))
@@ -1738,7 +1740,7 @@ async function loadQuotes() {
 
   } catch (error) {
 
-    console.error("loadQuotes failed", error);
+    console.error('loadQuotes failed', error);
 
     elements.quotesBody.innerHTML =
 
@@ -2913,22 +2915,17 @@ export async function initAdmin() {
   setupAuthUi();
 
   document.addEventListener("DOMContentLoaded", () => {
+    console.log('[Admin] DOM loaded');
     onAuthStateChanged(auth, (user) => {
+      console.log('[Admin] Auth state:', user);
       if (!user) {
-        window.location.href = "./index.html";
+        // window.location.href = './index.html'; // Disabled for debugging
         return;
       }
-      // Enable menu and sign-out buttons
-      const logoutBtn = document.getElementById("logoutBtn");
-      if (logoutBtn) {
-        logoutBtn.addEventListener("click", () => {
-          signOut(auth).then(() => window.location.href = "./index.html");
-        });
-        logoutBtn.removeAttribute("hidden");
-      }
-      // Load quotes and initialize UI
-      loadQuotes();
-      // ...other UI setup logic (menu, tabs, etc.)...
+      console.log('[Admin] loadQuotes() starting');
+      setTimeout(async () => {
+        await loadQuotes();
+      }, 300);
     });
   });
 }
