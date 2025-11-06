@@ -14,9 +14,7 @@ const firebaseConfig = {
   appId: "1:724611205173:web:d17474ad848856d6c3497c",
 };
 
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// All duplicate Firebase config and initialization blocks removed
 
 // Menu IDs per role
 // Visible to both admins and reps
