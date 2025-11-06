@@ -2912,14 +2912,24 @@ export async function initAdmin() {
   await waitForDomReady();
   setupAuthUi();
 
-  onAuthStateChanged(auth, (user) => {
-    if (!user) {
-      window.location.href = "./index.html";
-      return;
-    }
-    setTimeout(() => {
-      startAdminApp(); // This runs loadQuotes and UI setup
-    }, 300);
+  document.addEventListener("DOMContentLoaded", () => {
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "./index.html";
+        return;
+      }
+      // Enable menu and sign-out buttons
+      const logoutBtn = document.getElementById("logoutBtn");
+      if (logoutBtn) {
+        logoutBtn.addEventListener("click", () => {
+          signOut(auth).then(() => window.location.href = "./index.html");
+        });
+        logoutBtn.removeAttribute("hidden");
+      }
+      // Load quotes and initialize UI
+      loadQuotes();
+      // ...other UI setup logic (menu, tabs, etc.)...
+    });
   });
 }
 

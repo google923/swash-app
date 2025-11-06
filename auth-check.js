@@ -72,6 +72,24 @@ function redirectToLogin() {
   window.location.href = url;
 }
 
+document.addEventListener("DOMContentLoaded", () => {
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      window.location.href = "./index.html";
+      return;
+    }
+    // Enable menu and sign-out button if present
+    const logoutBtn = document.getElementById("logoutBtn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", () => {
+        signOut(auth).then(() => window.location.href = "./index.html");
+      });
+      logoutBtn.removeAttribute("hidden");
+    }
+    // ...menu setup logic...
+  });
+});
+
 onAuthStateChanged(auth, async (user) => {
   const path = (window.location && window.location.pathname) || "/";
   const isIndex = path === "/" || /\/(index\.html)?$/.test(path);
