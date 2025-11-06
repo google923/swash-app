@@ -1,22 +1,44 @@
 // Swash Service Worker
 // Provides offline caching and forwards sync events to the app shell.
 
-const CACHE_NAME = "swash-cache-v16";
+const CACHE_NAME = "swash-cache-v17";
 const OFFLINE_URLS = [
-  "index.html",
-  "admin.html",
-  "scheduler.html",
-  "404.html",
-  "manifest.json",
-  "style.css",
-  "script.js",
-  "admin.js",
-  "scheduler.js",
-  "offline-queue.js",
-  "menu.js",
-  "assets/favicon-192.png",
-  "assets/favicon-512.png",
-  "assets/swash-logo.png"
+  "/index.html",
+  "/admin.html",
+  "/add-log.html",
+  "/rep/rep-home.html",
+  "/rep/rep-dashboard.html",
+  "/rep/quote.html",
+  "/rep/scheduler.html",
+  "/rep/chat.html",
+  "/style.css",
+  "/firebase-init.js",
+  "/auth-check.js",
+  "/admin.js",
+  "/add-log.js",
+  "/offline-queue.js",
+  "/rep/menu.js",
+  "/rep/rep-home.js",
+  "/rep/rep-dashboard.js",
+  "/rep/script.js",
+  "/rep/scheduler.js",
+  "/rep/chat.js",
+  "/rep/index-login.js",
+  "/manifest.json",
+  "/assets/favicon-192.png",
+  "/assets/favicon-512.png",
+  "/assets/swash-logo.png",
+  "/assets/Cal-icon.png",
+  "/assets/Chat-icon.png",
+  "/assets/Policy-icon.png",
+  "/assets/Commission-icon.png",
+  "/assets/Sick-icon.png",
+  "/assets/Map-icon.png",
+  "/assets/Feedback-icon.png",
+  "/assets/Targets-icon.png",
+  "/assets/competitions-icon.png",
+  "/assets/Training-icon.png",
+  "/assets/logs-icon.png"
 ];
 
 // install cache

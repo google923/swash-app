@@ -8,6 +8,8 @@ import { app, auth, db } from "./firebase-init.js";
 import { authStateReady, handlePageRouting } from "./auth-check.js";
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+const EMAIL_SERVICE = window.EMAIL_SERVICE_ID ?? "service_cdy739m";
+const EMAIL_TEMPLATE = window.EMAIL_TEMPLATE_ID ?? "template_d8tlf1p";
 const EMAIL_PUBLIC_KEY = "7HZRYXz3JmMciex1L";
 
 
@@ -3014,6 +3016,13 @@ async function startAdminApp() {
 
   try {
     await waitForDomReady();
+    if (window.emailjs && typeof emailjs.init === "function") {
+      try {
+        emailjs.init(EMAIL_PUBLIC_KEY);
+      } catch (err) {
+        console.warn("[Admin] emailjs.init failed", err);
+      }
+    }
     await loadQuotes();
     try {
       await populateAllCleanerSelects();
