@@ -86,12 +86,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.userRole === "admin" && path.includes("rep")) {
       console.log("[Auth] Admin logged in on rep page → redirect to admin");
       setTimeout(() => { window.location.href = "./admin.html"; }, 300);
-    } else if (window.userRole === "rep" && path.includes("admin")) {
+      return;
+    }
+    if (window.userRole === "rep" && path.includes("admin")) {
       console.log("[Auth] Rep logged in on admin page → redirect to rep home");
       setTimeout(() => { window.location.href = "./rep-home.html"; }, 300);
-    } else {
-      console.log("[Auth] Correct role/page match, continue");
+      return;
     }
+    console.log("[Auth] Correct role/page match, continue");
     // Enable menu and sign-out button if present
     const logoutBtn = document.getElementById("logoutBtn");
     if (logoutBtn) {
@@ -105,20 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 onAuthStateChanged(auth, async (user) => {
-  console.log('[Auth] User detected:', user?.email || 'none');
-  const path = (window.location && window.location.pathname) || "/";
-  const isIndex = path === "/" || /\/(index\.html)?$/.test(path);
-  const isAdminPage = /\/(admin\.html|scheduler\.html|admin\/users\.html)/.test(path);
-  const isRepPage = /\/(rep-home\.html|rep-dashboard\.html|add-log\.html|quote\.html|rep\/)/.test(path);
-  
-  if (!user) {
-    // Hide all authenticated menu items
-    hideAllMenuItems();
-    
-    // Allow public access only on the index page
-    if (isIndex) return;
-    
-    // Redirect all other pages to login
+  // Duplicate listener: REMOVE this block entirely
     redirectToLogin();
     return;
   }

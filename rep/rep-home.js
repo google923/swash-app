@@ -135,10 +135,10 @@ async function init() {
     }, 250);
   });
 
-function initRepPage() {
-  console.log("[Rep] initRepPage started");
-  startRepApp?.();
-}
+  function initRepPage() {
+    console.log("[Rep] initRepPage started");
+    startRepApp?.();
+  }
 }
 
 // Load rep name from Firestore

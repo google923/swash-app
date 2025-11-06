@@ -2914,10 +2914,23 @@ async function initAdminPage() {
     const q = collection(db, "quotes");
     const snapshot = await getDocs(q);
     console.log("[Admin] Firestore docs:", snapshot.size ?? snapshot.docs.length);
-    // ...existing logic for rendering table, etc...
+    if (!snapshot.size && (!snapshot.docs || snapshot.docs.length === 0)) {
+      if (elements.quotesBody) {
+        elements.quotesBody.innerHTML = '<tr><td colspan="8">No quotes yet</td></tr>';
+      }
+    } else {
+      // ...existing logic for rendering table, etc...
+      // (Assume render() and related functions handle table population)
+      render();
+    }
     await populateAllCleanerSelects();
     attachEvents();
     renderSelectedRecipients();
+    // Enable menu and sign-out button
+    const logoutBtn = document.getElementById("logoutBtn");
+    if (logoutBtn) {
+      logoutBtn.removeAttribute("hidden");
+    }
   } catch (error) {
     console.error("Failed to init admin page", error);
     throw error;
