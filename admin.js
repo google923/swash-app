@@ -4,52 +4,11 @@
 
 
 
-import {
-
-  initializeApp,
-
-  getApps,
-
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-
 import { app, auth, db } from "./firebase-init.js";
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 
-
-const firebaseConfig = {
-
-  apiKey: "AIzaSyCLmrWYAY4e7tQD9Cknxp7cKkzqJgndm0I",
-
-  authDomain: "swash-app-436a1.firebaseapp.com",
-
-  projectId: "swash-app-436a1",
-
-  storageBucket: "swash-app-436a1.firebasestorage.app",
-
-  messagingSenderId: "724611205173",
-
-  appId: "1:724611205173:web:d17474ad848856d6c3497c",
-
-};
-
-
-
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-
-const db = getFirestore(app);
-
-const auth = getAuth(app);
-let adminAppInitialised = false;
-
-
-
-const EMAIL_SERVICE = "service_cdy739m";
-
-const EMAIL_TEMPLATE = "template_d8tlf1p";
-
-const EMAIL_PUBLIC_KEY = "7HZRYXz3JmMciex1L";
 
 const CLEANER_OPTIONS = Array.from({ length: 10 }, (_, index) => `Cleaner ${index + 1}`);
 const CLEANER_ALL = "ALL";
