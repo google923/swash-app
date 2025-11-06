@@ -265,15 +265,19 @@ function getOccurrences(quote, startDate, weeks) {
 
 async function fetchBookedQuotes() {
   try {
+    console.time('[Scheduler] fetchBookedQuotes');
     const quotesRef = collection(db, "quotes");
     const q = query(quotesRef, where("bookedDate", "!=", null));
     const snapshot = await getDocs(q);
-    return snapshot.docs
+    console.log('[Scheduler] Firestore booked docs:', snapshot.size ?? snapshot.docs.length);
+    const results = snapshot.docs
       .map((docSnap) => ({
         id: docSnap.id,
         ...docSnap.data(),
       }))
       .filter((quote) => !quote.deleted && quote.bookedDate);
+    console.timeEnd('[Scheduler] fetchBookedQuotes');
+    return results;
   } catch (error) {
     console.error("Failed to fetch booked quotes", error);
     return [];
@@ -1026,6 +1030,7 @@ export async function startSchedulerApp() {
   schedulerInitialised = true;
 
   await waitForDomReady();
+  console.log('[Scheduler] DOM ready');
   initMenuDropdown();
   initEmailJsScheduler();
   loadCustomTemplates();
@@ -1037,6 +1042,7 @@ export async function startSchedulerApp() {
     elements.startWeek.value = BASELINE_START_DATE;
   }
 
+  console.time('[Scheduler] initial-data');
   state.quotes = await fetchBookedQuotes();
   state.weeksVisible = INITIAL_WEEKS;
   state.draggingIds = [];
@@ -1051,10 +1057,13 @@ export async function startSchedulerApp() {
     });
   }
 
+  console.time('[Scheduler] renderSchedule');
   renderSchedule();
+  console.timeEnd('[Scheduler] renderSchedule');
   attachEvents();
   updateSelectionUI();
   updateShowNextWeekButton();
+  console.timeEnd('[Scheduler] initial-data');
 }
 
 if (syncChannel) {

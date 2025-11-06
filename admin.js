@@ -1828,12 +1828,14 @@ async function loadQuotes() {
   elements.quotesBody.innerHTML = '<tr><td colspan="8">Loading...</td></tr>';
   console.log("[Admin] loadQuotes running");
   try {
+    console.time('[Admin] loadQuotes Firestore');
     const q = collection(db, "quotes");
     const snapshot = await getDocs(q);
     console.log('[Admin] Firestore docs:', snapshot.size ?? snapshot.docs.length);
     const quotes = snapshot.docs
       .map((docSnap) => normaliseQuote(docSnap))
       .filter((quote) => !quote.deleted);
+    console.timeEnd('[Admin] loadQuotes Firestore');
     state.quotes = sortQuotes(quotes);
     state.filtered = [...state.quotes];
     state.currentPage = 1;
