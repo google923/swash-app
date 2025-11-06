@@ -42,8 +42,8 @@ const authStateManager = (() => {
     role: "unauthorised",
     ready: false,
     isRedirecting: false,
-    hasRedirected: false,
     currentUid: null,
+    lastRedirectTarget: null,
   };
 
   const listeners = new Set();
@@ -95,14 +95,11 @@ export function onAuthStateChange(listener) {
 const PAGE_TYPE = (() => {
   const path = (window.location && window.location.pathname) || "/";
   if (/\/(index|index-login)\.html?$/.test(path) || path === "/") return "login";
+  if (/\/rep\/login\.html$/.test(path)) return "login";
   if (/\/admin\.html$/.test(path) || /\/admin\//.test(path) || /\/scheduler\.html$/.test(path)) return "admin";
   if (/\/rep\//.test(path) || /rep-home\.html$/.test(path) || /rep-dashboard\.html$/.test(path) || /add-log\.html$/.test(path) || /quote\.html$/.test(path)) return "rep";
   return null;
 })();
-
-if (typeof window !== "undefined" && typeof window.authRedirectDone === "undefined") {
-  window.authRedirectDone = false;
-}
 
 console.log("[Auth] Awaiting Firebase auth...");
 
@@ -145,7 +142,7 @@ function redirectToLogin() {
   // Redirect to dedicated login page
   const { pathname, search, hash } = window.location;
   const here = encodeURIComponent(`${pathname}${search || ""}${hash || ""}`);
-  const url = `/index-login.html${pathname !== "/" ? `?redirect=${here}` : ""}`;
+  const url = `/index.html${pathname !== "/" ? `?redirect=${here}` : ""}`;
   scheduleRedirect(url);
 }
 
@@ -162,8 +159,7 @@ function normalisePath(targetUrl) {
 
 function markRedirect(targetUrl) {
   authStateManager.state.isRedirecting = true;
-  authStateManager.state.hasRedirected = true;
-  window.authRedirectDone = targetUrl || true;
+  authStateManager.state.lastRedirectTarget = normalisePath(targetUrl);
 }
 
 function canRedirect(targetUrl) {
@@ -178,8 +174,8 @@ function canRedirect(targetUrl) {
     console.log("[Auth] Suppressed duplicate redirect (already redirecting)");
     return false;
   }
-  if (window.authRedirectDone) {
-    console.log("[Auth] Bypass redirect (authRedirectDone already true)");
+  if (authStateManager.state.lastRedirectTarget === targetPath) {
+    console.log("[Auth] Suppressed duplicate redirect (same target)");
     return false;
   }
   return true;
@@ -206,7 +202,7 @@ function scheduleRedirect(targetUrl) {
 export async function handlePageRouting(pageType = "login") {
   const { user, role } = await authStateReady();
   const status = { user, role, redirected: false };
-  const loginUrl = "/index-login.html";
+  const loginUrl = "/index.html";
 
   if (pageType === "login") {
     if (!user) return status;
@@ -254,7 +250,7 @@ function attachLogoutListener() {
   logoutBtn.addEventListener("click", () => {
     signOut(auth)
       .then(() => {
-        scheduleRedirect("/index-login.html");
+        scheduleRedirect("/index.html");
       })
       .catch((error) => {
         console.warn("Sign out failed", error);
@@ -268,8 +264,7 @@ onAuthStateChanged(auth, async (user) => {
   const nextUid = user?.uid || null;
   if (previousUid !== nextUid) {
     authStateManager.state.isRedirecting = false;
-    authStateManager.state.hasRedirected = false;
-    window.authRedirectDone = false;
+    authStateManager.state.lastRedirectTarget = null;
   }
 
   authStateManager.state.user = user || null;

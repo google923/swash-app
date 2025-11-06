@@ -272,8 +272,22 @@ export async function populateAllCleanerSelects() {
     const resolved = uniqueCleanerList(cleanersFromDb.length ? cleanersFromDb : CLEANER_OPTIONS);
     state.cleaners = resolved.length ? resolved : [...CLEANER_OPTIONS];
   } catch (error) {
-    console.error("[Admin] Failed to load cleaners list, falling back to defaults", error);
-    state.cleaners = [...CLEANER_OPTIONS];
+    const quoteCleaners = state.quotes
+      .map((quote) => resolveCleanerLabel(quote?.assignedCleaner || "", ""))
+      .filter(Boolean);
+    const fallback = uniqueCleanerList([...CLEANER_OPTIONS, ...quoteCleaners]);
+    state.cleaners = fallback.length ? fallback : [...CLEANER_OPTIONS];
+    if (error?.code === "permission-denied") {
+      console.warn(
+        "[Admin] Cleaners collection requires read access. Using inferred cleaner list from quotes instead.",
+        error,
+      );
+      console.warn(
+        "[Admin] Check Firestore security rules to ensure admins can read the `cleaners` collection or create the collection with the expected documents.",
+      );
+    } else {
+      console.error("[Admin] Failed to load cleaners list, falling back to defaults", error);
+    }
   }
 
   const targets = new Set([

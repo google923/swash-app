@@ -47,7 +47,7 @@ console.log("[Page] Auth ready, userRole:", window.userRole);
 const routing = await handlePageRouting("rep");
 if (routing.redirected) {
   console.log("[Add Log] Redirect scheduled; halting log initialisation");
-  await new Promise(() => {});
+  return;
 }
 await delay(100);
 
