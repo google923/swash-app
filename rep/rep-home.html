@@ -241,26 +241,8 @@
   </div>
 
   <script type="module" src="../auth-check.js"></script>
-  <script>
-    // Initialize menu dropdown
-    document.addEventListener('DOMContentLoaded', () => {
-      const menuBtn = document.getElementById('menuBtn');
-      const menuDropdown = document.getElementById('menuDropdown');
-      
-      if (menuBtn && menuDropdown) {
-        menuBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          menuDropdown.classList.toggle('show');
-        });
-      }
-      
-      document.addEventListener('click', (e) => {
-        if (menuBtn && !menuBtn.contains(e.target) && !menuDropdown?.contains(e.target)) {
-          menuDropdown?.classList.remove('show');
-        }
-      });
-    });
-  </script>
+  <!-- Shared navigation (dropdown, modals, rep view toggle when admin) -->
+  <script type="module" src="../nav.js"></script>
   <script type="module" src="./rep-home.js"></script>
 </body>
 </html>

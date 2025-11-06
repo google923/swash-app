@@ -122,26 +122,8 @@
   </div>
 
   <script type="module" src="../auth-check.js"></script>
-  <script>
-    // Initialize menu dropdowns immediately
-    document.addEventListener('DOMContentLoaded', () => {
-      const menuBtn = document.getElementById('menuBtn');
-      const menuDropdown = document.getElementById('menuDropdown');
-      
-      if (menuBtn && menuDropdown) {
-        menuBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          menuDropdown.classList.toggle('show');
-        });
-        
-        document.addEventListener('click', (e) => {
-          if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
-            menuDropdown.classList.remove('show');
-          }
-        });
-      }
-    });
-  </script>
+  <!-- Shared navigation (dropdown + rep view + modals) -->
+  <script type="module" src="../nav.js"></script>
   <script type="module">
     import("./scheduler.js");
   </script>

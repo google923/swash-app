@@ -289,29 +289,61 @@ function calculatePricing() {
     priceUpfront: Number((price * 3).toFixed(2)),
   };
 }
+// Debug helper: logs pricing calculation steps for sample configurations
+window.debugPricing = function debugPricing(samples = []) {
+  if (!Array.isArray(samples) || !samples.length) {
+    samples = [
+      { tier: 'silver', houseType: 'semi-detached', houseSize: '3 bed', extension: false, conservatory: false, skylights: 0, roofLanterns: 0, alternating: false, partialCleaning: 100 },
+      { tier: 'gold', houseType: 'detached', houseSize: '4 bed', extension: true, conservatory: true, skylights: 2, roofLanterns: 1, alternating: false, partialCleaning: 100 },
+      { tier: 'gold', houseType: 'terrace', houseSize: '2 bed', extension: false, conservatory: false, skylights: 0, roofLanterns: 0, alternating: true, partialCleaning: 80 },
+    ];
+  }
+  console.group('[Pricing] DebugRun');
+  samples.forEach((cfg, idx) => {
+    try {
+      selectors.serviceTier.value = cfg.tier;
+      selectors.houseType.value = cfg.houseType;
+      selectors.houseSize.value = cfg.houseSize;
+      selectors.extension.checked = !!cfg.extension;
+      selectors.conservatory.checked = !!cfg.conservatory;
+      selectors.skylights.value = cfg.skylights;
+      selectors.roofLanterns.value = cfg.roofLanterns;
+      selectors.alternating.checked = !!cfg.alternating;
+      selectors.partialCleaning.value = cfg.partialCleaning;
+      const pricing = calculatePricing();
+      console.log(`[Pricing] Sample#${idx+1}`, { cfg, pricing });
+    } catch (err) {
+      console.warn('[Pricing] Sample error', idx+1, err);
+    }
+  });
+  console.groupEnd();
+};
+function buildEmailMessage(quote) {
+  if (!quote) return "";
   const pricePer = formatCurrency(quote.pricePerClean);
-
+  const extrasLabel = buildExtrasLabel(quote);
+  const planLabel = (quote.tier || "Silver").charAt(0).toUpperCase() + (quote.tier || "Silver").slice(1);
+  const offerApplied = !!quote.offerApplied && quote.tier === "gold";
+  const offerExpiresAt = quote.offerExpiresAt;
   let offerLine = "";
-  if (offerApplied && quote.tier === "gold") {
+  if (offerApplied) {
     const expires = offerExpiresAt ? new Date(offerExpiresAt) : null;
     const expiryStr = expires ? expires.toLocaleDateString("en-GB") : "soon";
     offerLine = `\n\nGet the next bit done quickly — this offer expires on ${expiryStr}!`;
   }
-
-  return (
+  return [
     `Hi ${quote.customerName}, your ${quote.houseSize} ${quote.houseType}` +
-    `${extrasLabel && extrasLabel !== "Standard clean" ? ` with ${extrasLabel}` : ""}` +
-    ` will all be kept clean soon at ${quote.address}.` +
-    `\n\nYou are on our ${planLabel} plan${offerApplied && quote.tier === "gold" ? " (special offer applied)" : ""}, and the price per clean every 4 weeks is ${pricePer}.` +
-    offerLine +
-    `\n\nWe collect payment for regular window cleaning services 3 months in advance so we can focus on doing a great job with less time messing around with payments.` +
-    `\n\nUse the details below to make a bank transfer using this reference code: ${quote.refCode}` +
-    `\n\nBusiness Acc Name: SWASH CLEANING LTD` +
-    `\nAccount Number: 65069359` +
-    `\nSort Code: 23-01-20` +
-    `\n\nAmount: ${formatCurrency(quote.price)} ` +
-    `\n\nWhen this is done we'll book you in for when we are next in your area on our 4 weekly round.`
-  );
+      `${extrasLabel && extrasLabel !== "Standard clean" ? ` with ${extrasLabel}` : ""}` +
+      ` will all be kept clean soon at ${quote.address}.`,
+    `You are on our ${planLabel} plan${offerApplied ? " (special offer applied)" : ""}, and the price per clean every 4 weeks is ${pricePer}.` + offerLine,
+    `We collect payment for regular window cleaning services 3 months in advance so we can focus on doing a great job with less time messing around with payments.`,
+    `Use the details below to make a bank transfer using this reference code: ${quote.refCode}`,
+    `Business Acc Name: SWASH CLEANING LTD`,
+    `Account Number: 65069359`,
+    `Sort Code: 23-01-20`,
+    `Amount: ${formatCurrency(quote.price)}`,
+    `When this is done we'll book you in for when we are next in your area on our 4 weekly round.`
+  ].join("\n\n");
 }
 
 function computeOfferExpiryIso() {
@@ -364,26 +396,7 @@ function buildExtrasLabel(quote) {
   return parts.length ? parts.join(", ") : "Standard clean";
 }
 
-// ...existing code...
-  const tierValue = selectors.serviceTier?.value || "";
-  let offerHtml = "";
-  if (offerApplied && tierValue === "gold") {
-    const expires = offerExpiresAt ? new Date(offerExpiresAt) : null;
-    const expiryLabel = expires
-      ? expires.toLocaleDateString("en-GB")
-      : "tomorrow";
-    offerHtml = `<p class="status info">Special offer applied: Gold for Silver pricing until ${escapeHtml(expiryLabel)}.</p>`;
-  }
-  selectors.resultPanel.innerHTML = `
-    <p><strong>Price per clean:</strong> ${formatCurrency(pricing.pricePerClean)}</p>
-    ${offerHtml}
-  `;
-  selectors.resultPanel.hidden = false;
-  if (selectors.customerSection) {
-    selectors.customerSection.hidden = false;
-  }
-  // Do not render preview here; it will be shown after submission only
-}
+// (removed stray preview rendering block)
 
 function updateTierCopy() {
   const tierKey = selectors.serviceTier.value === "gold-for-silver" ? "gold-for-silver" : selectors.serviceTier.value;

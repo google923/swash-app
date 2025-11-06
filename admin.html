@@ -29,6 +29,10 @@
     <div class="header-left">
 
       <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <label id="repViewToggle" class="rep-view-toggle hidden" style="margin-left:12px;display:inline-flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="repViewCheckbox" />
+        <span>Rep View</span>
+      </label>
 
     </div>
 
@@ -290,27 +294,9 @@
 
 
 
+  <script type="module" src="./firebase-init.js"></script>
   <script type="module" src="./auth-check.js"></script>
-  <script>
-    // Initialize menu dropdowns immediately
-    document.addEventListener('DOMContentLoaded', () => {
-      const menuBtn = document.getElementById('menuBtn');
-      const menuDropdown = document.getElementById('menuDropdown');
-      
-      if (menuBtn && menuDropdown) {
-        menuBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          menuDropdown.classList.toggle('show');
-        });
-        
-        document.addEventListener('click', (e) => {
-          if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
-            menuDropdown.classList.remove('show');
-          }
-        });
-      }
-    });
-  </script>
+  <script type="module" src="./nav.js"></script>
   <script type="module" src="./admin.js"></script>
 
 </body>

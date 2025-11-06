@@ -201,25 +201,8 @@
       <section id="queueAlerts" class="queue-alerts" hidden aria-live="polite"></section>
     </section>
   </main>
-  <script>
-    // Fallback menu toggle to ensure dropdown works even if modules load late
-    document.addEventListener('DOMContentLoaded', () => {
-      const menuBtn = document.getElementById('menuBtn');
-      const menuDropdown = document.getElementById('menuDropdown');
-      if (!menuBtn || !menuDropdown) return;
-      menuBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const show = menuDropdown.classList.toggle('show');
-        menuBtn.setAttribute('aria-expanded', show ? 'true' : 'false');
-      });
-      document.addEventListener('click', (e) => {
-        if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
-          menuDropdown.classList.remove('show');
-          menuBtn.setAttribute('aria-expanded', 'false');
-        }
-      });
-    });
-  </script>
+  <!-- Shared navigation (dropdown + rep view + modals) -->
+  <script type="module" src="../nav.js"></script>
   <script type="module" src="../auth-check.js"></script>
   <script type="module" src="./script.js"></script>
 </body>
