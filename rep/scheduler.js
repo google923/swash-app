@@ -13,6 +13,8 @@ import {
   updateDoc,
   query,
   where,
+  getDoc,
+  setDoc,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import {
   getAuth,
@@ -92,12 +94,406 @@ const state = {
   searchTerm: "",
   draggingIds: [],
   dragOriginDate: null,
+  dragTargetJobId: null, // Track which job we're inserting before
   weeksVisible: INITIAL_WEEKS,
   selectedJobIds: new Set(),
   messageContext: null,
   cleanerFilter: "",
   customTemplates: [], // User-saved templates
+  areas: [], // User-defined service areas
+  currentUserId: null, // Will be set from auth
 };
+
+// ===== AREAS MANAGEMENT =====
+let areasMap = null;
+let areasDrawingManager = null;
+let currentDrawingPolygon = null;
+
+async function loadAreas() {
+  if (!state.currentUserId) return;
+  try {
+    const areasRef = doc(db, "users", state.currentUserId, "areas", "all");
+    const snap = await getDoc(areasRef);
+    if (snap.exists()) {
+      state.areas = snap.data().areas || [];
+    } else {
+      state.areas = [];
+    }
+  } catch (err) {
+    console.error("Error loading areas:", err);
+    state.areas = [];
+  }
+}
+
+async function saveAreas() {
+  if (!state.currentUserId) return;
+  try {
+    const areasRef = doc(db, "users", state.currentUserId, "areas", "all");
+    await setDoc(areasRef, {
+      areas: state.areas,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (err) {
+    console.error("Error saving areas:", err);
+  }
+}
+
+function pointInPolygon(point, polygon) {
+  const lat = point.lat;
+  const lng = point.lng;
+  let inside = false;
+  
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].lat, yi = polygon[i].lng;
+    const xj = polygon[j].lat, yj = polygon[j].lng;
+    
+    const intersect = ((yi > lng) !== (yj > lng)) && (lat < ((xj - xi) * (lng - yi)) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function getAreaForCustomer(quote) {
+  if (!quote.customerLatitude || !quote.customerLongitude || !state.areas.length) {
+    return null;
+  }
+  
+  const point = { lat: quote.customerLatitude, lng: quote.customerLongitude };
+  
+  for (const area of state.areas) {
+    if (area.type === 'polygon' && area.path && pointInPolygon(point, area.path)) {
+      return area;
+    }
+  }
+  return null;
+}
+
+function initAreasModal() {
+  const defineAreasBtn = document.getElementById("defineAreas");
+  const areasModal = document.getElementById("areasModal");
+  const closeAreasBtn = document.getElementById("closeAreasModal");
+  const cancelAreasBtn = document.getElementById("cancelAreasBtn");
+  const drawAreaBtn = document.getElementById("drawAreaBtn");
+  const clearAreaBtn = document.getElementById("clearAreaBtn");
+  const stopDrawingBtn = document.getElementById("stopDrawingBtn");
+  const saveAreaBtn = document.getElementById("saveAreaBtn");
+
+  if (!defineAreasBtn) return;
+
+  defineAreasBtn.addEventListener("click", () => {
+    areasModal.hidden = false;
+    setTimeout(() => initAreasMapIfNeeded(), 100);
+  });
+
+  closeAreasBtn.addEventListener("click", () => {
+    areasModal.hidden = true;
+  });
+
+  cancelAreasBtn.addEventListener("click", () => {
+    areasModal.hidden = true;
+  });
+
+  drawAreaBtn.addEventListener("click", () => {
+    if (areasDrawingManager) {
+      areasDrawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+      drawAreaBtn.hidden = true;
+      stopDrawingBtn.hidden = false;
+    }
+  });
+
+  stopDrawingBtn.addEventListener("click", () => {
+    if (areasDrawingManager) {
+      areasDrawingManager.setDrawingMode(null);
+      stopDrawingBtn.hidden = true;
+      drawAreaBtn.hidden = false;
+    }
+  });
+
+  clearAreaBtn.addEventListener("click", () => {
+    if (currentDrawingPolygon) {
+      currentDrawingPolygon.setMap(null);
+      currentDrawingPolygon = null;
+    }
+    saveAreaBtn.hidden = true;
+    drawAreaBtn.hidden = false;
+  });
+
+  saveAreaBtn.addEventListener("click", async () => {
+    const name = document.getElementById("areaNameInput")?.value?.trim() || `Area ${state.areas.length + 1}`;
+    const color = document.getElementById("areaColorInput")?.value || "#a855f7";
+
+    if (!currentDrawingPolygon) {
+      alert("Please draw an area first");
+      return;
+    }
+
+    const path = currentDrawingPolygon.getPath();
+    const polygon = [];
+    path.forEach(latLng => {
+      polygon.push({ lat: latLng.lat(), lng: latLng.lng() });
+    });
+
+    const area = {
+      id: Date.now().toString(),
+      name: name,
+      color: color,
+      type: 'polygon',
+      path: polygon,
+      createdAt: new Date().toISOString(),
+    };
+
+    state.areas.push(area);
+    await saveAreas();
+
+    currentDrawingPolygon.setMap(null);
+    currentDrawingPolygon = null;
+    document.getElementById("areaNameInput").value = "";
+    renderAreasList();
+    renderAreasOnMap();
+    saveAreaBtn.hidden = true;
+    drawAreaBtn.hidden = false;
+    alert(`✓ Area "${name}" created!`);
+  });
+}
+
+function renderAreasList() {
+  const container = document.getElementById("areasList");
+  if (!container) return;
+
+  if (!state.areas.length) {
+    container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 12px;">No areas created yet</p>';
+    return;
+  }
+
+  container.innerHTML = state.areas.map(area => `
+    <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f1f5f9; border-radius: 6px;">
+      <div style="width: 20px; height: 20px; background-color: ${area.color}; border-radius: 4px;"></div>
+      <div style="flex: 1; font-size: 14px; font-weight: 600; color: #1e293b;">${escapeHtml(area.name)}</div>
+      <button type="button" class="btn btn-danger btn-sm" onclick="deleteArea('${area.id}')" style="padding: 4px 8px; font-size: 12px;">🗑️</button>
+    </div>
+  `).join('');
+}
+
+window.deleteArea = async function(areaId) {
+  if (!confirm("Delete this area?")) return;
+  state.areas = state.areas.filter(a => a.id !== areaId);
+  await saveAreas();
+  renderAreasList();
+  renderAreasOnMap();
+};
+
+function renderAreasOnMap() {
+  if (!areasMap) return;
+  
+  // Clear existing overlays (except current drawing)
+  areasMap.data.forEach((feature) => {
+    areasMap.data.remove(feature);
+  });
+
+  // Render areas
+  state.areas.forEach(area => {
+    if (area.type === 'polygon' && area.path) {
+      const polygon = new google.maps.Polygon({
+        path: area.path.map(p => ({ lat: p.lat, lng: p.lng })),
+        geodesic: true,
+        fillColor: area.color,
+        fillOpacity: 0.3,
+        strokeColor: area.color,
+        strokeWeight: 2,
+        map: areasMap,
+        title: area.name,
+      });
+    }
+  });
+}
+
+function getJobMarkerColor(quote) {
+  // Green = Paid, Red = Not paid, Orange = Not scheduled yet
+  if (!quote.bookedDate) return '#ff9800'; // Orange - not scheduled
+  const status = (quote.status || "").toString().toLowerCase();
+  const isPaid = quote.paid === true || /paid/.test(status);
+  return isPaid ? '#4caf50' : '#f44336'; // Green or Red
+}
+
+function renderJobMarkersOnMap() {
+  if (!areasMap || !state.quotes.length) return;
+
+  // Clear existing job markers
+  if (window.jobMarkers) {
+    window.jobMarkers.forEach(marker => marker.setMap(null));
+  }
+  window.jobMarkers = [];
+
+  // Add markers for each booked quote with coordinates
+  state.quotes.forEach(quote => {
+    if (!quote.bookedDate) {
+      return; // Skip if not booked
+    }
+
+    // If has exact coordinates, use them
+    if (quote.customerLatitude && quote.customerLongitude) {
+      const markerColor = getJobMarkerColor(quote);
+      const marker = new google.maps.Marker({
+        position: { lat: quote.customerLatitude, lng: quote.customerLongitude },
+        map: areasMap,
+        title: `${quote.customerName} - ${quote.address}`,
+        icon: createMarkerIcon(markerColor, false),
+      });
+
+      marker.addListener('click', () => {
+        showJobInfoWindow(quote, marker, false);
+      });
+
+      window.jobMarkers.push(marker);
+    } 
+    // If no exact coordinates but has address, geocode it and show as two-tone (approximate + payment status)
+    else if (quote.address && window.google && google.maps.Geocoder) {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ address: quote.address }, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+          const location = results[0].geometry.location;
+          const markerColor = getJobMarkerColor(quote); // Get payment status color
+          const marker = new google.maps.Marker({
+            position: { lat: location.lat(), lng: location.lng() },
+            map: areasMap,
+            title: `${quote.customerName} - ${quote.address} (Approximate)`,
+            icon: createMarkerIcon(markerColor, true), // Two-tone icon
+          });
+
+          marker.addListener('click', () => {
+            showJobInfoWindow(quote, marker, true);
+          });
+
+          window.jobMarkers.push(marker);
+        }
+      });
+    }
+  });
+}
+
+
+function createMarkerIcon(color, isApproximate = false) {
+  if (!isApproximate) {
+    return {
+      path: google.maps.SymbolPath.CIRCLE,
+      fillColor: color,
+      fillOpacity: 0.9,
+      strokeColor: '#fff',
+      strokeWeight: 2,
+      scale: 8,
+    };
+  } else {
+    // Two-tone icon: outer ring in purple (approximate), inner circle in color (payment status)
+    return {
+      path: google.maps.SymbolPath.CIRCLE,
+      fillColor: '#9c27b0',
+      fillOpacity: 0.5,
+      strokeColor: color,
+      strokeWeight: 4,
+      scale: 10,
+    };
+  }
+}
+
+function showJobInfoWindow(quote, marker, isApproximate = false) {
+  // Close any existing info window
+  if (window.currentJobInfoWindow) {
+    window.currentJobInfoWindow.close();
+  }
+
+  const status = getPaymentStatusClass(quote);
+  const statusText = status === 'schedule-job--paid' ? '✓ Paid' : '⏳ Unpaid';
+  const locationNote = isApproximate ? '<div style="font-size: 11px; color: #9c27b0; font-weight: 600; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e0e0e0;">📍 Approximate location (geocoded from address)</div>' : '';
+  
+  const infoContent = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 12px; max-width: 280px;">
+      <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${escapeHtml(quote.customerName)}</div>
+      <div style="font-size: 13px; color: #666; margin-bottom: 8px;">${escapeHtml(quote.address)}</div>
+      <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
+        <span><strong>Price:</strong> £${quote.pricePerClean?.toFixed(2) || '0.00'}</span>
+        <span style="color: ${status === 'schedule-job--paid' ? '#4caf50' : '#f44336'}; font-weight: 600;">${statusText}</span>
+      </div>
+      <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+        <div><strong>Ref:</strong> ${escapeHtml(quote.refCode || 'N/A')}</div>
+        <div><strong>Cleaner:</strong> ${escapeHtml(getCleanerDisplay(quote.assignedCleaner))}</div>
+      </div>
+      ${locationNote}
+    </div>
+  `;
+
+  window.currentJobInfoWindow = new google.maps.InfoWindow({
+    content: infoContent,
+    maxWidth: 300,
+  });
+
+  window.currentJobInfoWindow.open(areasMap, marker);
+}
+
+
+function waitForGoogleMaps() {
+  return new Promise((resolve) => {
+    if (window.google && window.google.maps && window.google.maps.drawing) {
+      resolve();
+    } else {
+      const checkInterval = setInterval(() => {
+        if (window.google && window.google.maps && window.google.maps.drawing) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 100);
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        resolve();
+      }, 5000);
+    }
+  });
+}
+
+function initAreasMapIfNeeded() {
+  if (areasMap) return;
+
+  const mapElement = document.getElementById("areasMap");
+  if (!mapElement) return;
+
+  // Ensure Google Maps is loaded before initializing
+  if (!window.google || !window.google.maps || !window.google.maps.drawing) {
+    console.warn("[Scheduler] Google Maps API not ready, waiting...");
+    waitForGoogleMaps().then(() => initAreasMapIfNeeded());
+    return;
+  }
+
+  areasMap = new google.maps.Map(mapElement, {
+    zoom: 12,
+    center: { lat: 51.7356, lng: 0.6756 },
+    mapTypeId: "roadmap",
+  });
+
+  areasDrawingManager = new google.maps.drawing.DrawingManager({
+    drawingMode: null,
+    drawingControl: false,
+    polygonOptions: {
+      fillColor: "#a855f7",
+      fillOpacity: 0.4,
+      strokeColor: "#a855f7",
+      strokeWeight: 2,
+      editable: true,
+      draggable: true,
+    },
+  });
+  areasDrawingManager.setMap(areasMap);
+
+  google.maps.event.addListener(areasDrawingManager, "polygoncomplete", (poly) => {
+    currentDrawingPolygon = poly;
+    areasDrawingManager.setDrawingMode(null);
+    document.getElementById("stopDrawingBtn").hidden = true;
+    document.getElementById("drawAreaBtn").hidden = false;
+    document.getElementById("saveAreaBtn").hidden = false;
+  });
+
+  renderAreasOnMap();
+  renderJobMarkersOnMap();
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -345,12 +741,14 @@ function renderSchedule() {
       const dayDate = addDays(weekStart, dayOffset);
       const isoKey = toIsoDate(dayDate);
       let entries = scheduleMap.get(isoKey) || [];
-      // Stable order: use saved dayOrders if present; otherwise keep current order
-      const entriesWithIndex = entries.map((e, i) => ({ ...e, _i: i }));
+      // Stable order: use saved dayOrders if present; otherwise keep current order with index as tiebreaker
+      const entriesWithIndex = entries.map((e, i) => ({ ...e, _originalIndex: i }));
       entriesWithIndex.sort((a, b) => {
-        const ao = (a.quote.dayOrders && a.quote.dayOrders[isoKey] != null) ? a.quote.dayOrders[isoKey] : a._i;
-        const bo = (b.quote.dayOrders && b.quote.dayOrders[isoKey] != null) ? b.quote.dayOrders[isoKey] : b._i;
-        return ao - bo;
+        const ao = (a.quote.dayOrders && a.quote.dayOrders[isoKey] != null) ? a.quote.dayOrders[isoKey] : (a._originalIndex * 1000);
+        const bo = (b.quote.dayOrders && b.quote.dayOrders[isoKey] != null) ? b.quote.dayOrders[isoKey] : (b._originalIndex * 1000);
+        if (ao !== bo) return ao - bo;
+        // Tiebreaker: use quote ID for stability (ensures deterministic ordering)
+        return a.quote.id.localeCompare(b.quote.id);
       });
       entries = entriesWithIndex;
       
@@ -412,6 +810,15 @@ function renderSchedule() {
               ${details}
             </div>
           `;
+          
+          // Apply area color if customer is in an area
+          const area = getAreaForCustomer(quote);
+          if (area) {
+            card.style.backgroundColor = area.color;
+            card.style.borderColor = area.color;
+            card.style.opacity = "0.8";
+          }
+          
           jobsCell.appendChild(card);
         });
       }
@@ -423,7 +830,12 @@ function renderSchedule() {
 
       const totalDiv = document.createElement("div");
       totalDiv.className = "day-total";
-      totalDiv.textContent = `Total: ${formatCurrency(dayTotal)}`;
+      const jobCount = entries.length;
+      const jobText = jobCount === 1 ? "Job" : "Jobs";
+      totalDiv.innerHTML = `
+        <div>Total: ${formatCurrency(dayTotal)}</div>
+        <div style="font-size: 14px; color: #5a6c7d; margin-top: 4px;">${jobCount} ${jobText}</div>
+      `;
       dayFooter.appendChild(totalDiv);
 
       const actionsSelect = document.createElement("select");
@@ -532,6 +944,8 @@ async function refreshData() {
 // Compute and persist a new order index for a quote within a day
 async function reorderWithinDay(dateKey, draggedId, beforeId) {
   try {
+    console.log("=== reorderWithinDay START ===", { dateKey, draggedId, beforeId });
+    
     const scheduleMap = buildScheduleMap(state.startDate, state.weeksVisible);
     const entries = (scheduleMap.get(dateKey) || []).map((e, i) => ({
       id: e.quote.id,
@@ -539,22 +953,52 @@ async function reorderWithinDay(dateKey, draggedId, beforeId) {
       key: (e.quote.dayOrders && e.quote.dayOrders[dateKey] != null) ? e.quote.dayOrders[dateKey] : i * 1000,
     })).sort((a, b) => a.key - b.key);
 
+    const draggedIdx = entries.findIndex((x) => x.id === draggedId);
     const targetIdx = entries.findIndex((x) => x.id === beforeId);
-    if (targetIdx === -1) return false;
-    const prevKey = targetIdx > 0 ? entries[targetIdx - 1].key : entries[targetIdx].key - 1000;
-    const nextKey = entries[targetIdx].key;
-    const newKey = (prevKey + nextKey) / 2;
+    
+    if (draggedIdx === -1 || targetIdx === -1) {
+      console.error("Could not find dragged or target job", { draggedId, beforeId, draggedIdx, targetIdx });
+      return false;
+    }
+    
+    // Skip if no actual movement
+    if (draggedIdx === targetIdx) {
+      console.log("No movement - dragged index equals target index");
+      return true;
+    }
 
-    // Persist to Firestore
-    const fieldPath = `dayOrders.${dateKey}`;
-    await updateDoc(doc(db, "quotes", draggedId), { [fieldPath]: newKey });
+    let newKey;
+    if (draggedIdx < targetIdx) {
+      // Moving down - need to insert AFTER the target (because we filtered out the dragged item)
+      // So the new position should be between target and the next item
+      const targetKey = entries[targetIdx].key;
+      const nextKeyIdx = targetIdx + 1;
+      const nextKey = nextKeyIdx < entries.length ? entries[nextKeyIdx].key : targetKey + 1000;
+      newKey = (targetKey + nextKey) / 2;
+      console.log("Moving DOWN", { draggedId, beforeId, draggedIdx, targetIdx, targetKey, nextKey, newKey });
+    } else {
+      // Moving up - insert BEFORE the target
+      const beforeKey = entries[targetIdx].key;
+      const prevKeyIdx = targetIdx - 1;
+      const prevKey = prevKeyIdx >= 0 ? entries[prevKeyIdx].key : beforeKey - 1000;
+      newKey = (prevKey + beforeKey) / 2;
+      console.log("Moving UP", { draggedId, beforeId, draggedIdx, targetIdx, prevKey, beforeKey, newKey });
+    }
 
-    // Update local state
+    // Update local state FIRST before persisting (so render uses updated value)
     const draggedQuote = state.quotes.find((q) => q.id === draggedId);
     if (draggedQuote) {
       if (!draggedQuote.dayOrders) draggedQuote.dayOrders = {};
       draggedQuote.dayOrders[dateKey] = newKey;
+      console.log("Local state updated for quote", draggedId, "newKey:", newKey);
     }
+
+    // Persist to Firestore
+    const fieldPath = `dayOrders.${dateKey}`;
+    await updateDoc(doc(db, "quotes", draggedId), { [fieldPath]: newKey });
+    console.log("Firestore persisted", { fieldPath, newKey });
+    console.log("=== reorderWithinDay END ===");
+
     return true;
   } catch (error) {
     console.error("Failed to reorder within day", { dateKey, draggedId, beforeId }, error);
@@ -881,6 +1325,9 @@ function attachEvents() {
       }
       state.draggingIds = [];
       state.dragOriginDate = null;
+      state.dragTargetJobId = null;
+      // Clean up any remaining insertion lines
+      document.querySelectorAll(".insertion-line").forEach(line => line.remove());
     });
 
     // Prevent drag when interacting with checkboxes or day header controls
@@ -901,34 +1348,109 @@ function attachEvents() {
 
     elements.schedule.addEventListener("dragover", (event) => {
       const row = event.target.closest(".schedule-row");
-      if (!row) return;
+      if (!row || !state.draggingIds.length) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
+      
+      // Get mouse position relative to the row
+      const rowRect = row.getBoundingClientRect();
+      const mouseY = event.clientY - rowRect.top;
+      
+      // Find jobs in this row, excluding the dragged one
+      const jobs = Array.from(row.querySelectorAll(".schedule-job")).filter(
+        (job) => job.dataset.id !== state.draggingIds[0]
+      );
+      
+      if (jobs.length === 0) return;
+      
+      // Remove all existing insertion lines
+      row.querySelectorAll(".insertion-line").forEach(line => line.remove());
+      
+      // Find where to show insertion line based on mouse Y position
+      let insertBeforeJob = null;
+      let targetJobId = null;
+      for (const job of jobs) {
+        const jobRect = job.getBoundingClientRect();
+        const jobTop = jobRect.top - rowRect.top;
+        
+        // If mouse is in upper half of job, insert before it
+        if (mouseY < jobTop + jobRect.height / 2) {
+          insertBeforeJob = job;
+          targetJobId = job.dataset.id;
+          break;
+        }
+      }
+      
+      // Store the target so drop handler uses the same one
+      state.dragTargetJobId = targetJobId;
+      
+      // Create and show insertion line
+      const insertLine = document.createElement("div");
+      insertLine.className = "insertion-line";
+      
+      if (insertBeforeJob) {
+        // Insert line before target job
+        insertBeforeJob.parentNode.insertBefore(insertLine, insertBeforeJob);
+      } else if (jobs.length > 0) {
+        // Insert line at end (after last job)
+        jobs[jobs.length - 1].parentNode.insertBefore(insertLine, jobs[jobs.length - 1].nextSibling);
+      }
+    });
+
+    elements.schedule.addEventListener("dragleave", (event) => {
+      // Only remove lines if leaving the entire row
+      const row = event.target.closest(".schedule-row");
+      if (row && !row.contains(event.relatedTarget)) {
+        row.querySelectorAll(".insertion-line").forEach(line => line.remove());
+      }
     });
 
     elements.schedule.addEventListener("drop", async (event) => {
       event.preventDefault();
+      event.stopPropagation();
+      
+      // Clean up insertion lines
+      document.querySelectorAll(".insertion-line").forEach(line => line.remove());
+      
       const row = event.target.closest(".schedule-row");
       if (!row || !state.draggingIds.length) return;
+      
       const dateKey = row.dataset.date;
       const quoteId = state.draggingIds[0];
+      const targetJobId = state.dragTargetJobId; // Use the target from dragover
+      state.dragTargetJobId = null; // Clear it
       
-      // If dropped within the same day onto a job, treat as re-order
-      const targetJob = event.target.closest('.schedule-job');
-      if (state.dragOriginDate && state.dragOriginDate === dateKey && targetJob && targetJob.dataset.id && targetJob.dataset.id !== quoteId) {
-        const ok = await reorderWithinDay(dateKey, quoteId, targetJob.dataset.id);
-        if (!ok) alert("Failed to reorder. Check console for details.");
+      console.log("DROP EVENT - dateKey:", dateKey, "quoteId:", quoteId, "dragOriginDate:", state.dragOriginDate, "targetJobId:", targetJobId);
+      
+      // If dropping within the same day
+      if (state.dragOriginDate && state.dragOriginDate === dateKey) {
+        // Only reorder if we found a valid target during dragover
+        if (targetJobId && targetJobId !== quoteId) {
+          console.log("Calling reorderWithinDay with stored target:", dateKey, quoteId, targetJobId);
+          const ok = await reorderWithinDay(dateKey, quoteId, targetJobId);
+          if (!ok) {
+            console.error("Failed to reorder within day");
+          } else {
+            console.log("Reorder successful, waiting before re-render...");
+            // Give Firestore listener time to update
+            await delay(150);
+            console.log("Re-rendering after reorder");
+          }
+        } else {
+          console.log("No stored target or dropping at end");
+        }
+        
         renderSchedule();
         return;
       }
       
-      // Otherwise, treat as reschedule to another day
+      // Dropping to a different day - reschedule
       const targetDate = new Date(`${dateKey}T00:00:00`);
       const success = await rescheduleQuote(quoteId, targetDate);
       if (success) {
         renderSchedule();
       } else {
-        alert("Failed to reschedule. Check console for details.");
+        console.error("Failed to reschedule quote");
       }
     });
 
@@ -1034,6 +1556,14 @@ export async function startSchedulerApp() {
   initMenuDropdown();
   initEmailJsScheduler();
   loadCustomTemplates();
+
+  // Set up area management
+  const user = auth.currentUser;
+  if (user) {
+    state.currentUserId = user.uid;
+    await loadAreas();
+    initAreasModal();
+  }
 
   const baseline = new Date(`${BASELINE_START_DATE}T00:00:00`);
   state.startDate = normalizeStartDate(baseline);

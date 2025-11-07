@@ -165,6 +165,9 @@ const elements = {
 
   logoutBtn: document.getElementById("logoutBtn"),
 
+  selectedCustomersBox: document.getElementById("selectedCustomersBox"),
+  selectedCustomersList: document.getElementById("selectedCustomersList"),
+
 };
 
 
@@ -1480,6 +1483,7 @@ function render() {
 
   syncSelectionCheckboxes();
   syncSelectAllState();
+  renderSelectedCustomersBox();
 
 }
 
@@ -1718,6 +1722,34 @@ function getSelectedQuotes() {
   return state.quotes.filter((quote) => selectedSet.has(quote.id));
 }
 
+function renderSelectedCustomersBox() {
+  if (!elements.selectedCustomersBox || !elements.selectedCustomersList) return;
+
+  const selected = getSelectedQuotes();
+
+  if (selected.length === 0) {
+    elements.selectedCustomersBox.classList.add("hidden");
+    return;
+  }
+
+  elements.selectedCustomersBox.classList.remove("hidden");
+
+  const html = selected
+    .map((quote) => {
+      const name = quote.customerName || "Unknown";
+      const address = quote.address || "No address";
+      return `
+        <div class="selected-customer-item">
+          <div class="selected-customer-item__name">${escapeHtml(name)}</div>
+          <div class="selected-customer-item__address">${escapeHtml(address)}</div>
+        </div>
+      `;
+    })
+    .join("");
+
+  elements.selectedCustomersList.innerHTML = html;
+}
+
 function syncSelectAllState() {
   if (!elements.selectAll) return;
   const visibleIds = Array.from(state.visibleIds || []);
@@ -1777,6 +1809,7 @@ function applySelectionChange(id, checked, origin) {
   }
 
   syncMirroredCheckboxes(id, checked, origin);
+  renderSelectedCustomersBox();
 
   if (!state.selectedIds.size && state.showSelectedOnly) {
     state.showSelectedOnly = false;
@@ -2093,6 +2126,7 @@ function buildDetailsRow(quote, columnCount) {
         </div>
         <div class="details-actions">
           <span class="details-status" aria-live="polite"></span>
+          <button type="button" class="btn btn-secondary" data-id="${quote.id}" onclick="openCustomerLocationModal('${quote.id}')">📍 Set Location</button>
           <button type="submit" class="btn btn-primary details-save" data-id="${quote.id}">Save changes</button>
         </div>
       </form>
@@ -2943,6 +2977,7 @@ function attachEvents(){
     }
     syncSelectionCheckboxes();
     syncSelectAllState();
+    renderSelectedCustomersBox();
   });
 
   elements.quotesBody?.addEventListener("click", handleTableClick);
@@ -3012,6 +3047,173 @@ function attachEvents(){
   document.getElementById("closeModalSecondary")?.addEventListener("click", closeModal);
 }
 
+// ===== CUSTOMER LOCATION MODAL =====
+let customerLocationMap = null;
+let customerLocationMarker = null;
+let currentEditingQuoteId = null;
+
+function initCustomerLocationModal() {
+  const closeBtn = document.getElementById("closeCustomerLocationModal");
+  const cancelBtn = document.getElementById("cancelCustomerLocationBtn");
+  const saveBtn = document.getElementById("saveCustomerLocationBtn");
+  const modal = document.getElementById("setCustomerLocationModal");
+
+  if (!closeBtn) return; // Modal not on page
+
+  closeBtn.addEventListener("click", () => {
+    modal.hidden = true;
+    customerLocationMap = null;
+    customerLocationMarker = null;
+  });
+
+  cancelBtn.addEventListener("click", () => {
+    modal.hidden = true;
+    customerLocationMap = null;
+    customerLocationMarker = null;
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    const lat = parseFloat(document.getElementById("customerLocationLatInput")?.value);
+    const lng = parseFloat(document.getElementById("customerLocationLngInput")?.value);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      alert("Please set a valid location on the map");
+      return;
+    }
+
+    if (!currentEditingQuoteId) {
+      alert("Error: No quote selected");
+      return;
+    }
+
+    try {
+      const quoteRef = doc(db, "quotes", currentEditingQuoteId);
+      await updateDoc(quoteRef, {
+        customerLatitude: lat,
+        customerLongitude: lng,
+      });
+
+      // Update local state
+      const quote = state.quotes.find(q => q.id === currentEditingQuoteId);
+      if (quote) {
+        quote.customerLatitude = lat;
+        quote.customerLongitude = lng;
+      }
+
+      modal.hidden = true;
+      customerLocationMap = null;
+      customerLocationMarker = null;
+      currentEditingQuoteId = null;
+      alert("✓ Customer location saved!");
+      render();
+    } catch (err) {
+      console.error("Error saving customer location:", err);
+      alert("Failed to save location. Please try again.");
+    }
+  });
+}
+
+function openCustomerLocationModal(quoteId) {
+  const quote = state.quotes.find(q => q.id === quoteId);
+  if (!quote) {
+    alert("Quote not found");
+    return;
+  }
+
+  currentEditingQuoteId = quoteId;
+  const modal = document.getElementById("setCustomerLocationModal");
+  const addressDisplay = document.getElementById("customerLocationAddressDisplay");
+  const latInput = document.getElementById("customerLocationLatInput");
+  const lngInput = document.getElementById("customerLocationLngInput");
+
+  addressDisplay.textContent = quote.address || "Unknown";
+
+  // Set initial coordinates - use existing or Maldon default
+  let initialLat = quote.customerLatitude || 51.7356;
+  let initialLng = quote.customerLongitude || 0.6756;
+
+  latInput.value = initialLat.toFixed(6);
+  lngInput.value = initialLng.toFixed(6);
+
+  modal.hidden = false;
+
+  // If customer doesn't have coordinates but has an address, geocode it first
+  if (!quote.customerLatitude && quote.address && window.google && google.maps.Geocoder) {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: quote.address }, (results, status) => {
+      if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+        const location = results[0].geometry.location;
+        initialLat = location.lat();
+        initialLng = location.lng();
+        latInput.value = initialLat.toFixed(6);
+        lngInput.value = initialLng.toFixed(6);
+        
+        // Update map if already created
+        if (customerLocationMap && customerLocationMarker) {
+          customerLocationMarker.setPosition({ lat: initialLat, lng: initialLng });
+          customerLocationMap.panTo({ lat: initialLat, lng: initialLng });
+          customerLocationMap.setZoom(16);
+        } else {
+          // Initialize map with geocoded coordinates
+          initCustomerLocationMap(initialLat, initialLng);
+        }
+      }
+    });
+    
+    // Still initialize map, will be updated once geocoding completes
+    setTimeout(() => initCustomerLocationMap(initialLat, initialLng), 100);
+  } else {
+    // Use existing coordinates or default
+    setTimeout(() => initCustomerLocationMap(initialLat, initialLng), 100);
+  }
+}
+
+function initCustomerLocationMap(lat, lng) {
+  if (customerLocationMap) {
+    // Map already exists, just update it
+    customerLocationMarker.setPosition({ lat, lng });
+    customerLocationMap.panTo({ lat, lng });
+    return;
+  }
+
+  const mapElement = document.getElementById("customerLocationMap");
+  if (!mapElement) return;
+
+  customerLocationMap = new google.maps.Map(mapElement, {
+    zoom: 15,
+    center: { lat, lng },
+    mapTypeId: "roadmap",
+  });
+
+  customerLocationMarker = new google.maps.Marker({
+    position: { lat, lng },
+    map: customerLocationMap,
+    draggable: true,
+    title: "Customer location",
+  });
+
+  customerLocationMarker.addListener("drag", () => {
+    const pos = customerLocationMarker.getPosition();
+    const latInput = document.getElementById("customerLocationLatInput");
+    const lngInput = document.getElementById("customerLocationLngInput");
+    if (latInput) latInput.value = pos.lat().toFixed(6);
+    if (lngInput) lngInput.value = pos.lng().toFixed(6);
+  });
+
+  customerLocationMap.addListener("click", (e) => {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    customerLocationMarker.setPosition({ lat, lng });
+    const latInput = document.getElementById("customerLocationLatInput");
+    const lngInput = document.getElementById("customerLocationLngInput");
+    if (latInput) latInput.value = lat.toFixed(6);
+    if (lngInput) lngInput.value = lng.toFixed(6);
+  });
+}
+
+// Expose to global scope for onclick handlers
+window.openCustomerLocationModal = openCustomerLocationModal;
+
 async function startAdminApp() {
   if (adminAppInitialised) return;
   adminAppInitialised = true;
@@ -3032,6 +3234,7 @@ async function startAdminApp() {
       console.error("[Admin] Cleaner select population failed", error);
     }
     attachEvents();
+    initCustomerLocationModal();
     renderSelectedRecipients();
     console.log("[Admin] Navigation unlocked");
   } catch (error) {

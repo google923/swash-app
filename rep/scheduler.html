@@ -14,6 +14,7 @@
   <header class="header">
     <div class="header-left">
       <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+      <a href="./quote.html" class="btn btn-primary" style="margin-left:12px;font-size:14px;padding:8px 14px;">➕ Add Customer</a>
     </div>
     <div class="header-actions">
       <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
@@ -56,7 +57,7 @@
           <label for="startWeek" class="control-label text-muted">Start week</label>
           <input id="startWeek" type="date" />
           <button id="generate" class="btn btn-primary" type="button">Generate schedule</button>
-
+          <button id="defineAreas" class="btn btn-secondary" type="button">🗺️ Define Areas</button>
           <button id="refresh" class="btn btn-secondary" type="button">Refresh data</button>
         </div>
         <div class="controls-right">
@@ -79,6 +80,37 @@
       </div>
     </section>
   </main>
+
+  <div id="areasModal" class="modal" hidden>
+    <div class="modal__dialog modal__dialog--large">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0;">Define Service Areas</h3>
+        <button type="button" class="modal__close" id="closeAreasModal" aria-label="Close">×</button>
+      </div>
+      <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 12px;">Draw areas on the map to organize jobs by location. Customers within each area will be highlighted with the area's color.</p>
+      <div class="areas-controls" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px;">
+        <button type="button" id="drawAreaBtn" class="btn btn-secondary">✏️ Draw Area</button>
+        <button type="button" id="clearAreaBtn" class="btn btn-secondary">🗑️ Clear</button>
+        <button type="button" id="stopDrawingBtn" class="btn btn-secondary" hidden>⏹️ Stop Drawing</button>
+      </div>
+      <div id="areasMap" style="width: 100%; height: 500px; border-radius: 8px; border: 2px solid #e5e7eb; margin-bottom: 16px;"></div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+        <label class="modal__field">
+          <span>Area Name (optional)</span>
+          <input id="areaNameInput" type="text" placeholder="e.g., Town Centre, East Side" />
+        </label>
+        <label class="modal__field">
+          <span>Area Color</span>
+          <input id="areaColorInput" type="color" value="#a855f7" />
+        </label>
+      </div>
+      <div id="areasList" style="display: grid; gap: 8px; margin-bottom: 16px; max-height: 200px; overflow-y: auto;"></div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn-secondary" id="cancelAreasBtn">Close</button>
+        <button type="button" class="btn btn-primary" id="saveAreaBtn" hidden>💾 Save Area</button>
+      </div>
+    </div>
+  </div>
 
   <div id="dayMessageModal" class="modal" hidden>
     <div class="modal__dialog">
@@ -124,6 +156,8 @@
   <script type="module" src="../auth-check.js"></script>
   <!-- Shared navigation (dropdown + rep view + modals) -->
   <script type="module" src="../nav.js"></script>
+  <script>window.initMapsCallback = () => console.log('[Maps] API loaded');</script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=geometry,drawing,places&callback=initMapsCallback"></script>
   <script type="module">
     import("./scheduler.js");
   </script>

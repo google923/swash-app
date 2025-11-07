@@ -23,7 +23,7 @@ const bothRoles = ["add-customer-link"];
 // Visible to reps only
 const repOnly = ["rep-home-link"];
 // Visible to admins only
-const adminOnly = ["admin-dashboard-link", "schedule-link", "quotes-link", "manage-users-link"];
+const adminOnly = ["admin-dashboard-link", "stats-link", "schedule-link", "quotes-link", "manage-users-link"];
 const loginLink = "login-link";
 
 console.log("[Auth] auth-check.js module loaded");

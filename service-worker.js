@@ -1,10 +1,11 @@
 // Swash Service Worker
 // Provides offline caching and forwards sync events to the app shell.
 
-const CACHE_NAME = "swash-cache-v17";
+const CACHE_NAME = "swash-cache-v18";
 const OFFLINE_URLS = [
   "/index.html",
   "/admin.html",
+  "/admin/stats.html",
   "/add-log.html",
   "/rep/rep-home.html",
   "/rep/rep-dashboard.html",
@@ -15,6 +16,7 @@ const OFFLINE_URLS = [
   "/firebase-init.js",
   "/auth-check.js",
   "/admin.js",
+  "/admin/stats.js",
   "/add-log.js",
   "/offline-queue.js",
   "/rep/menu.js",
@@ -44,7 +46,23 @@ const OFFLINE_URLS = [
 // install cache
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_URLS))
+    caches.open(CACHE_NAME).then((cache) => {
+      // Cache each URL individually and silently skip failures
+      return Promise.all(
+        OFFLINE_URLS.map((url) =>
+          fetch(url)
+            .then((response) => {
+              if (response.ok) {
+                return cache.put(url, response);
+              }
+            })
+            .catch(() => {
+              // Silently skip URLs that fail to fetch
+              console.debug(`[SW] Skipped caching ${url}`);
+            })
+        )
+      );
+    })
   );
   self.skipWaiting();
 });

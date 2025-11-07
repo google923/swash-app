@@ -11,7 +11,7 @@ import {
   syncQueue,
   getQueue,
   removeFromQueue,
-} from "./offline-queue.js";
+} from "../offline-queue.js";
 console.log("[Quote DEBUG] offline-queue.js imported successfully");
 import {
   initializeApp,
@@ -43,6 +43,12 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+const selectors = {};
+let latestPricing = null;
+let offerApplied = false;
+let offerExpiresAt = null;
+let messageTouched = false;
+
 // ✅ DETECT EMBED MODE FIRST (before using it)
 var params = new URLSearchParams(window.location.search);
 var isEmbedMode = params.get("embed") === "true" || window.self !== window.top;
@@ -55,127 +61,147 @@ function waitForDomReady() {
   return Promise.resolve();
 }
 
-await waitForDomReady();
-await authStateReady();
-console.log("[Page] Auth ready, userRole:", window.userRole);
-initMenuDropdown();
+async function bootstrap() {
+  await waitForDomReady();
+  await authStateReady();
+  console.log("[Page] Auth ready, userRole:", window.userRole);
 
-if (!isEmbedMode) {
-  const routing = await handlePageRouting("shared");
-  if (routing.redirected) {
-    console.log("[Quote] Redirect scheduled; halting calculator bootstrap");
-    return;
+  if (!isEmbedMode) {
+    const routing = await handlePageRouting("shared");
+    if (routing.redirected) {
+      console.log("[Quote] Redirect scheduled; halting calculator bootstrap");
+      return;
+    }
   }
-}
 
-await delay(100);
+  await delay(100);
 
-const maintenanceOverlay = document.getElementById("maintenanceOverlay");
-if (maintenanceOverlay) {
-  if (window.MAINTENANCE_MODE) {
-    document.body.classList.add("maintenance-active");
-    maintenanceOverlay.style.display = "flex";
-  } else {
-    document.body.classList.remove("maintenance-active");
-    maintenanceOverlay.style.display = "none";
+  const maintenanceOverlay = document.getElementById("maintenanceOverlay");
+  if (maintenanceOverlay) {
+    if (window.MAINTENANCE_MODE) {
+      document.body.classList.add("maintenance-active");
+      maintenanceOverlay.style.display = "flex";
+    } else {
+      document.body.classList.remove("maintenance-active");
+      maintenanceOverlay.style.display = "none";
+    }
   }
-}
 
-// Prefill rep code for authenticated users (internal quote form)
-onAuthStateChanged(auth, async (user) => {
-  if (!user) return;
-  try {
-    const repInput = document.getElementById("repCode");
-    if (!repInput) return;
+  Object.assign(selectors, {
+    repCode: document.getElementById("repCode"),
+    quoteDate: document.getElementById("quoteDate"),
+    serviceTier: document.getElementById("serviceTier"),
+    tierDescription: document.getElementById("tierDescription"),
+    houseType: document.getElementById("houseType"),
+    houseSize: document.getElementById("houseSize"),
+    conservatory: document.getElementById("conservatory"),
+    extension: document.getElementById("extension"),
+    roofLanterns: document.getElementById("roofLanterns"),
+    roofLanternsValue: document.getElementById("roofLanternsValue"),
+    skylights: document.getElementById("skylights"),
+    skylightsValue: document.getElementById("skylightsValue"),
+    partialCleaning: document.getElementById("partialCleaning"),
+    alternating: document.getElementById("alternating"),
+    addVAT: document.getElementById("addVAT"),
+    notes: document.getElementById("notes"),
+    calculateBtn: document.getElementById("calculateBtn"),
+    submitBtn: document.getElementById("submitBtn"),
+    resultPanel: document.getElementById("result"),
+    customerSection: document.getElementById("customerFields"),
+    customerName: document.getElementById("customerName"),
+    address: document.getElementById("address"),
+    mobile: document.getElementById("mobile"),
+    email: document.getElementById("email"),
+    paymentRefBox: document.getElementById("paymentRefBox"),
+    paymentRefValue: document.getElementById("paymentRefValue"),
+    emailPreviewCard: document.getElementById("emailPreviewCard"),
+    emailPreviewSubject: document.getElementById("emailPreviewSubject"),
+    emailPreviewBody: document.getElementById("emailPreviewBody"),
+    queueAlerts: document.getElementById("queueAlerts"),
+    applyOfferBtn: document.getElementById("applyOfferBtn"),
+    emailMessage: document.getElementById("emailMessage"),
+  });
 
-    let repName = "";
+  console.log("[Quote DEBUG] Selectors initialized. Checking key elements:", {
+    repCode: !!selectors.repCode,
+    quoteDate: !!selectors.quoteDate,
+    calculateBtn: !!selectors.calculateBtn,
+    submitBtn: !!selectors.submitBtn,
+  });
+
+  if (selectors.repCode) {
+    selectors.repCode.setAttribute("autocomplete", "off");
+    selectors.repCode.setAttribute("autocorrect", "off");
+    selectors.repCode.setAttribute("autocapitalize", "off");
+    selectors.repCode.setAttribute("spellcheck", "false");
+    selectors.repCode.setAttribute("inputmode", "text");
+    selectors.repCode.dataset.lpignore = "true";
+  }
+
+  if (selectors.email) {
+    selectors.email.setAttribute("autocomplete", "email");
+    selectors.email.setAttribute("inputmode", "email");
+    selectors.email.setAttribute("spellcheck", "false");
+  }
+
+  const updateDateField = () => {
+    if (selectors.quoteDate) {
+      const today = new Date();
+      selectors.quoteDate.value = today.toLocaleDateString("en-GB");
+    }
+  };
+  updateDateField();
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
     try {
-      const userRef = doc(db, "users", user.uid);
-      const snap = await getDoc(userRef);
-      if (snap.exists()) {
-        const userData = snap.data();
-        repName = userData?.repName || userData?.name || "";
+      const repInput = selectors.repCode;
+      if (!repInput) return;
+
+      let repName = "";
+      try {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const userData = snap.data();
+          repName = userData?.repName || userData?.name || "";
+        }
+      } catch (innerErr) {
+        console.warn("[Quote] Could not load users doc for repName:", innerErr);
       }
-    } catch (innerErr) {
-      console.warn("[Quote] Could not load users doc for repName:", innerErr);
+
+      if (!repName) {
+        repName = (user.displayName || (user.email?.split("@")[0] || "")).toString().trim().toUpperCase();
+      }
+
+      if (repName) {
+        repInput.value = repName;
+        repInput.readOnly = true;
+        repInput.setAttribute("readonly", "");
+        console.log("[Quote] Rep code prefilled with:", repName);
+      }
+    } catch (err) {
+      console.warn("[Quote] Failed to prefill rep code:", err);
     }
+  });
 
-    if (!repName) {
-      repName = (user.displayName || (user.email?.split("@")[0] || "")).toString().trim().toUpperCase();
-    }
+  // Update date field every minute to ensure it stays current if page is left open
+  setInterval(updateDateField, 60000);
 
-    if (repName) {
-      repInput.value = repName;
-      repInput.readOnly = true;
-      repInput.setAttribute("readonly", "");
-      console.log("[Quote] Rep code prefilled with:", repName);
-    }
-  } catch (err) {
-    console.warn("[Quote] Failed to prefill rep code:", err);
-  }
-});
-
-const selectors = {
-  repCode: document.getElementById("repCode"),
-  quoteDate: document.getElementById("quoteDate"),
-  serviceTier: document.getElementById("serviceTier"),
-  tierDescription: document.getElementById("tierDescription"),
-  houseType: document.getElementById("houseType"),
-  houseSize: document.getElementById("houseSize"),
-  conservatory: document.getElementById("conservatory"),
-  extension: document.getElementById("extension"),
-  roofLanterns: document.getElementById("roofLanterns"),
-  roofLanternsValue: document.getElementById("roofLanternsValue"),
-  skylights: document.getElementById("skylights"),
-  skylightsValue: document.getElementById("skylightsValue"),
-  partialCleaning: document.getElementById("partialCleaning"),
-  alternating: document.getElementById("alternating"),
-  addVAT: document.getElementById("addVAT"),
-  notes: document.getElementById("notes"),
-  calculateBtn: document.getElementById("calculateBtn"),
-  submitBtn: document.getElementById("submitBtn"),
-  resultPanel: document.getElementById("result"),
-  customerSection: document.getElementById("customerFields"),
-  customerName: document.getElementById("customerName"),
-  address: document.getElementById("address"),
-  mobile: document.getElementById("mobile"),
-  email: document.getElementById("email"),
-  paymentRefBox: document.getElementById("paymentRefBox"),
-  paymentRefValue: document.getElementById("paymentRefValue"),
-  emailPreviewCard: document.getElementById("emailPreviewCard"),
-  emailPreviewSubject: document.getElementById("emailPreviewSubject"),
-  emailPreviewBody: document.getElementById("emailPreviewBody"),
-  queueAlerts: document.getElementById("queueAlerts"),
-  applyOfferBtn: document.getElementById("applyOfferBtn"),
-  emailMessage: document.getElementById("emailMessage"),
-};
-
-console.log("[Quote DEBUG] Selectors initialized. Checking key elements:", {
-  repCode: !!selectors.repCode,
-  quoteDate: !!selectors.quoteDate,
-  calculateBtn: !!selectors.calculateBtn,
-  submitBtn: !!selectors.submitBtn,
-});
-
-if (selectors.repCode) {
-  selectors.repCode.setAttribute("autocomplete", "off");
-  selectors.repCode.setAttribute("autocorrect", "off");
-  selectors.repCode.setAttribute("autocapitalize", "off");
-  selectors.repCode.setAttribute("spellcheck", "false");
-  selectors.repCode.setAttribute("inputmode", "text");
-  selectors.repCode.dataset.lpignore = "true";
+  await initApp();
 }
 
-if (selectors.email) {
-  selectors.email.setAttribute("autocomplete", "email");
-  selectors.email.setAttribute("inputmode", "email");
-  selectors.email.setAttribute("spellcheck", "false");
-}
-
-// Set quote date to today immediately
-if (selectors.quoteDate) {
-  const today = new Date();
-  selectors.quoteDate.value = today.toLocaleDateString("en-GB");
+// --- UTILITY FUNCTIONS ---
+function normaliseEmail(value) {
+  if (value == null) return "";
+  const cleaned = String(value)
+    .replace(/\s+/g, "")
+    .replace(/[<>(),;:"[\]]/g, "")
+    .trim()
+    .toLowerCase();
+  if (!cleaned) return "";
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailPattern.test(cleaned) ? cleaned : "";
 }
 
 // --- PRICING CONSTANTS & TABLES (Wix logic) ---
@@ -183,6 +209,12 @@ const MIN_NET_PRICE = 16.0;
 const GOLD_FACTOR = 1.35;
 const ROOF_LANTERN_ADDON = 10.0;
 const VELUX_ADDON_EACH = 1.5;
+
+const tierDetails = {
+  silver: "Window panes only, every 4 weeks, notifications not included.",
+  gold: "Windows, frames, sills and doors, every 4 weeks, notifications included.",
+  "gold-for-silver": "Windows, frames, sills and doors, every 4 weeks, notifications included - FREE Upgrade.",
+};
 
 const priceTableBase = {
   "2 bed": { "semi": { silver:{ base:16, ext:20, cons:23, both:26 } }, "detached": { silver:{ base:19, ext:23, cons:26, both:29 } } },
@@ -238,8 +270,18 @@ function getBandAndMult(houseType) {
 
 function calculatePricing() {
   // --- Wix logic pricing (with partial cleaning retained, no VAT multiplier) ---
+  if (!selectors.serviceTier) {
+    console.warn("[Quote] Service tier selector missing; returning minimum pricing fallback");
+    const fallback = Number(MIN_NET_PRICE.toFixed(2));
+    return {
+      pricePerClean: fallback,
+      priceUpfront: Number((fallback * 3).toFixed(2)),
+    };
+  }
   const tierValue = selectors.serviceTier.value;
-  const isGold = tierValue === "gold";
+  // Special offer: Gold tier becomes Silver pricing
+  const effectiveTier = offerApplied && tierValue === "gold" ? "silver" : tierValue;
+  const isGold = effectiveTier === "gold";
   const houseTypeRaw = selectors.houseType.value || "semi";
   const houseSizeRaw = selectors.houseSize.value || "2 bed";
   const sizeKey = normalizeSize(houseSizeRaw);
@@ -271,7 +313,7 @@ function calculatePricing() {
     if (price < MIN_NET_PRICE) price = MIN_NET_PRICE;
   }
 
-  // Gold tier logic
+  // Gold tier logic (skipped if offer applied)
   if (isGold) price *= GOLD_FACTOR;
 
   // Minimum price enforcement
@@ -288,6 +330,44 @@ function calculatePricing() {
     pricePerClean: Number(price.toFixed(2)),
     priceUpfront: Number((price * 3).toFixed(2)),
   };
+}
+
+function renderPricing(pricing) {
+  const computed = pricing || calculatePricing();
+  latestPricing = computed;
+
+  if (!selectors.resultPanel) {
+    console.warn("[Quote] Missing result panel element; cannot render pricing");
+    return;
+  }
+
+  const offerActive = offerApplied && selectors.serviceTier?.value === "gold";
+  const expiresCopy = offerActive && offerExpiresAt
+    ? new Date(offerExpiresAt).toLocaleDateString("en-GB")
+    : null;
+
+  const offerHtml = offerActive
+    ? `<p class="result-offer">Special offer applied${expiresCopy ? ` – expires ${escapeHtml(expiresCopy)}` : ""}</p>`
+    : "";
+
+  selectors.resultPanel.innerHTML = `
+    <div class="result-box">
+      <p class="result-price"><strong>Price per clean:</strong> ${formatCurrency(computed.pricePerClean)}</p>
+      <p class="result-upfront">Advance payment (3 cleans): ${formatCurrency(computed.priceUpfront)}</p>
+      ${offerHtml}
+    </div>
+  `;
+
+  selectors.resultPanel.hidden = false;
+  if (selectors.customerSection) {
+    selectors.customerSection.hidden = false;
+  }
+
+  console.log("[Quote] Pricing updated", {
+    pricePerClean: computed.pricePerClean,
+    priceUpfront: computed.priceUpfront,
+    offerApplied: offerActive,
+  });
 }
 // Debug helper: logs pricing calculation steps for sample configurations
 window.debugPricing = function debugPricing(samples = []) {
@@ -656,6 +736,8 @@ async function handleSubmit() {
     refCode: generateReference(),
     status: "Pending Payment",
     notes: selectors.notes.value.trim(),
+    customerLatitude: document.getElementById("customerLatitude")?.value ? parseFloat(document.getElementById("customerLatitude").value) : null,
+    customerLongitude: document.getElementById("customerLongitude")?.value ? parseFloat(document.getElementById("customerLongitude").value) : null,
     // Offer metadata (for admin auto-revert)
     offerApplied: !!offerApplied,
     offerType: offerApplied ? "gold-for-silver" : null,
@@ -752,7 +834,157 @@ async function handleSubmit() {
   }
 }
 
+// ===== LOCATION MODAL =====
+let locationMap = null;
+let locationMarker = null;
+
+function initLocationModal() {
+  const setLocationBtn = document.getElementById("setLocationBtn");
+  const closeLocationModal = document.getElementById("closeLocationModal");
+  const cancelLocationBtn = document.getElementById("cancelLocationBtn");
+  const saveLocationBtn = document.getElementById("saveLocationBtn");
+  const setCustomerLocationModal = document.getElementById("setCustomerLocationModal");
+  const locationLatInput = document.getElementById("locationLatInput");
+  const locationLngInput = document.getElementById("locationLngInput");
+  const customerLatitude = document.getElementById("customerLatitude");
+  const customerLongitude = document.getElementById("customerLongitude");
+
+  if (!setLocationBtn) return;
+
+  setLocationBtn.addEventListener("click", async () => {
+    const address = selectors.address?.value?.trim();
+    if (!address) {
+      alert("Please enter a customer address first");
+      return;
+    }
+    setCustomerLocationModal.hidden = false;
+    await delay(100);
+    initLocationMapIfNeeded(address);
+  });
+
+  closeLocationModal?.addEventListener("click", () => {
+    setCustomerLocationModal.hidden = true;
+  });
+
+  cancelLocationBtn?.addEventListener("click", () => {
+    setCustomerLocationModal.hidden = true;
+  });
+
+  saveLocationBtn?.addEventListener("click", () => {
+    const lat = parseFloat(locationLatInput?.value);
+    const lng = parseFloat(locationLngInput?.value);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      alert("Please set a valid location on the map");
+      return;
+    }
+
+    customerLatitude.value = lat;
+    customerLongitude.value = lng;
+    setCustomerLocationModal.hidden = true;
+    alert(`✓ Location saved: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+  });
+
+  // Input listeners for manual coordinate entry
+  locationLatInput?.addEventListener("change", () => {
+    const lat = parseFloat(locationLatInput.value);
+    const lng = parseFloat(locationLngInput?.value);
+    if (!isNaN(lat) && !isNaN(lng) && locationMap && locationMarker) {
+      locationMarker.setPosition({ lat, lng });
+      locationMap.panTo({ lat, lng });
+    }
+  });
+
+  locationLngInput?.addEventListener("change", () => {
+    const lat = parseFloat(locationLatInput?.value);
+    const lng = parseFloat(locationLngInput.value);
+    if (!isNaN(lat) && !isNaN(lng) && locationMap && locationMarker) {
+      locationMarker.setPosition({ lat, lng });
+      locationMap.panTo({ lat, lng });
+    }
+  });
+}
+
+function initLocationMapIfNeeded(address) {
+  if (locationMap) return; // Already initialized
+
+  const mapElement = document.getElementById("locationMap");
+  const locationAddressDisplay = document.getElementById("locationAddressDisplay");
+  const locationLatInput = document.getElementById("locationLatInput");
+  const locationLngInput = document.getElementById("locationLngInput");
+
+  if (!mapElement) return;
+
+  locationAddressDisplay.textContent = address;
+
+  // Try to get existing coordinates or use defaults
+  const customerLatitude = document.getElementById("customerLatitude");
+  const customerLongitude = document.getElementById("customerLongitude");
+  let initialLat = customerLatitude?.value ? parseFloat(customerLatitude.value) : 51.7356;
+  let initialLng = customerLongitude?.value ? parseFloat(customerLongitude.value) : 0.6756;
+
+  // Create map with initial position
+  locationMap = new google.maps.Map(mapElement, {
+    zoom: 15,
+    center: { lat: initialLat, lng: initialLng },
+    mapTypeId: "roadmap",
+  });
+
+  locationMarker = new google.maps.Marker({
+    position: { lat: initialLat, lng: initialLng },
+    map: locationMap,
+    draggable: true,
+    title: "Customer location",
+  });
+
+  locationLatInput.value = initialLat.toFixed(6);
+  locationLngInput.value = initialLng.toFixed(6);
+
+  // Geocode the address to center map on it
+  if (!customerLatitude?.value && address && window.google && google.maps.Geocoder) {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address }, (results, status) => {
+      if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+        const location = results[0].geometry.location;
+        const geocodedLat = location.lat();
+        const geocodedLng = location.lng();
+        locationLatInput.value = geocodedLat.toFixed(6);
+        locationLngInput.value = geocodedLng.toFixed(6);
+        
+        // Update marker and map to geocoded location
+        locationMarker.setPosition({ lat: geocodedLat, lng: geocodedLng });
+        locationMap.panTo({ lat: geocodedLat, lng: geocodedLng });
+        locationMap.setZoom(16);
+      }
+    });
+  }
+
+  // Update inputs when marker is dragged
+  locationMarker.addListener("drag", () => {
+    const pos = locationMarker.getPosition();
+    const lat = pos.lat();
+    const lng = pos.lng();
+    locationLatInput.value = lat.toFixed(6);
+    locationLngInput.value = lng.toFixed(6);
+  });
+
+  // Update marker position when map is clicked
+  locationMap.addListener("click", (e) => {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    locationMarker.setPosition({ lat, lng });
+    locationLatInput.value = lat.toFixed(6);
+    locationLngInput.value = lng.toFixed(6);
+  });
+}
+
 function registerEvents() {
+  console.log("[Quote] registerEvents called, selectors check:", {
+    serviceTier: !!selectors.serviceTier,
+    submitBtn: !!selectors.submitBtn,
+    roofLanterns: !!selectors.roofLanterns,
+  });
+  
   // Rep code is controlled by authenticated user; keep it read-only
   if (selectors.repCode) {
     selectors.repCode.readOnly = true;
@@ -773,11 +1005,13 @@ function registerEvents() {
   syncSlider(selectors.skylights, selectors.skylightsValue);
 
   // Auto-update on changes
-  selectors.serviceTier.addEventListener("change", () => {
-    console.log("[DEBUG] Service tier changed");
-    updateTierCopy();
-    renderPricing(calculatePricing());
-  });
+  if (selectors.serviceTier) {
+    selectors.serviceTier.addEventListener("change", () => {
+      console.log("[DEBUG] Service tier changed");
+      updateTierCopy();
+      renderPricing(calculatePricing());
+    });
+  }
   if (selectors.houseType) {
     selectors.houseType.addEventListener("change", () => {
       console.log("[DEBUG] House type changed", selectors.houseType.value);
@@ -786,28 +1020,40 @@ function registerEvents() {
   } else {
     console.warn("[Quote] House type selector not found");
   }
-  selectors.houseSize?.addEventListener("change", () => {
-    console.log("[DEBUG] House size changed");
-    renderPricing(calculatePricing());
-  });
-  selectors.conservatory?.addEventListener("change", () => {
-    console.log("[DEBUG] Conservatory changed");
-    renderPricing(calculatePricing());
-  });
-  selectors.extension?.addEventListener("change", () => {
-    console.log("[DEBUG] Extension changed");
-    renderPricing(calculatePricing());
-  });
-  selectors.alternating?.addEventListener("change", () => {
-    console.log("[DEBUG] Alternating changed");
-    renderPricing(calculatePricing());
-  });
-  selectors.partialCleaning?.addEventListener("input", () => {
-    console.log("[DEBUG] Partial cleaning changed");
-    renderPricing(calculatePricing());
-  });
+  if (selectors.houseSize) {
+    selectors.houseSize.addEventListener("change", () => {
+      console.log("[DEBUG] House size changed");
+      renderPricing(calculatePricing());
+    });
+  }
+  if (selectors.conservatory) {
+    selectors.conservatory.addEventListener("change", () => {
+      console.log("[DEBUG] Conservatory changed");
+      renderPricing(calculatePricing());
+    });
+  }
+  if (selectors.extension) {
+    selectors.extension.addEventListener("change", () => {
+      console.log("[DEBUG] Extension changed");
+      renderPricing(calculatePricing());
+    });
+  }
+  if (selectors.alternating) {
+    selectors.alternating.addEventListener("change", () => {
+      console.log("[DEBUG] Alternating changed");
+      renderPricing(calculatePricing());
+    });
+  }
+  if (selectors.partialCleaning) {
+    selectors.partialCleaning.addEventListener("input", () => {
+      console.log("[DEBUG] Partial cleaning changed");
+      renderPricing(calculatePricing());
+    });
+  }
 
-  selectors.submitBtn.addEventListener("click", handleSubmit);
+  if (selectors.submitBtn) {
+    selectors.submitBtn.addEventListener("click", handleSubmit);
+  }
 
   // Track manual edits to the email message
   if (selectors.emailMessage) {
@@ -876,7 +1122,7 @@ function registerEvents() {
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   try {
-    await navigator.serviceWorker.register("./service-worker.js");
+    await navigator.serviceWorker.register("../service-worker.js");
   } catch (error) {
     console.warn("Service worker registration failed", error);
   }
@@ -889,24 +1135,26 @@ function initEmailJs() {
 }
 
 async function initApp() {
+  console.log("[Quote] initApp started, selectors available:", !!selectors.serviceTier);
   initMenuDropdown();
   initEmailJs();
+  initLocationModal();
   registerEvents();
   renderOfflineQueue();
   updateTierCopy();
   // Initial pricing render and ensure result panel is visible
-  if (selectors.resultPanel) {
-    renderPricing(calculatePricing());
+  if (selectors.resultPanel && selectors.serviceTier) {
+    const pricing = calculatePricing();
+    console.log("[Quote] Initial pricing calc:", pricing);
+    renderPricing(pricing);
     selectors.resultPanel.hidden = false;
-  }
-  
-  // Set quote date to today
-  if (selectors.quoteDate) {
-    const today = new Date();
-    selectors.quoteDate.value = today.toLocaleDateString("en-GB");
   } else {
-    console.warn("Quote date selector not found");
+    console.warn("[Quote] Missing resultPanel or serviceTier:", {
+      resultPanel: !!selectors.resultPanel,
+      serviceTier: !!selectors.serviceTier,
+    });
   }
+
   
   if (selectors.addVAT) {
     selectors.addVAT.value = "true";
@@ -933,49 +1181,8 @@ async function initApp() {
       }
     });
   }
-
-  // Setup menu dropdown
-  const menuBtn = document.getElementById("menuBtn");
-  const menuDropdown = document.getElementById("menuDropdown");
-  if (menuBtn && menuDropdown) {
-    menuBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      menuDropdown.classList.toggle("show");
-      menuBtn.setAttribute("aria-expanded", menuDropdown.classList.contains("show"));
-    });
-    
-    // Close menu when clicking on a link
-    const menuLinks = menuDropdown.querySelectorAll("a");
-    menuLinks.forEach(link => {
-        link.addEventListener("click", () => {
-          menuDropdown.classList.remove("show");
-          menuBtn.setAttribute("aria-expanded", "false");
-        });
-      });
-      
-    // Close menu when clicking outside
-    document.addEventListener("click", (e) => {
-      if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
-        menuDropdown.classList.remove("show");
-        menuBtn.setAttribute("aria-expanded", "false");
-      }
-    });
-  }
 }
 
-function startCalculator() {
-  console.log("[Quote DEBUG] startCalculator called, readyState:", document.readyState);
-  initApp().catch((error) => console.error("Init failed", error));
-}
-
-console.log("[Quote DEBUG] Setting up DOMContentLoaded listener. Current readyState:", document.readyState);
-
-if (document.readyState === "loading") {
-  console.log("[Quote DEBUG] Document still loading, waiting for DOMContentLoaded");
-  document.addEventListener("DOMContentLoaded", startCalculator);
-} else {
-  console.log("[Quote DEBUG] Document already ready, calling startCalculator immediately");
-  startCalculator();
-}
+bootstrap().catch((error) => console.error("Bootstrap failed", error));
 
 

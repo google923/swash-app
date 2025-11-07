@@ -4,6 +4,8 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, de
 
 // Track captured location
 let capturedLocation = null;
+let locationMap = null;
+let locationMarker = null;
 
 // Elements
 const els = {
@@ -25,6 +27,13 @@ const els = {
   captureLocation: document.getElementById("captureLocation"),
   locationStatus: document.getElementById("locationStatus"),
   locationCoords: document.getElementById("locationCoords"),
+  setLocationBtn: document.getElementById("setLocationBtn"),
+  closeLocationModal: document.getElementById("closeLocationModal"),
+  cancelLocationBtn: document.getElementById("cancelLocationBtn"),
+  saveLocationBtn: document.getElementById("saveLocationBtn"),
+  locationModal: document.getElementById("locationModal"),
+  locationLatInput: document.getElementById("locationLatInput"),
+  locationLngInput: document.getElementById("locationLngInput"),
 };
 
 // State for current month offset
@@ -132,6 +141,128 @@ function captureCurrentLocation() {
       capturedLocation = null;
     }
   );
+}
+
+function initLocationModal() {
+  if (!els.setLocationBtn) return;
+
+  els.setLocationBtn.addEventListener("click", async () => {
+    els.locationModal.removeAttribute('hidden');
+    await delay(100);
+    initLocationMapIfNeeded();
+  });
+
+  els.closeLocationModal?.addEventListener("click", () => {
+    els.locationModal.setAttribute('hidden', '');
+  });
+
+  els.cancelLocationBtn?.addEventListener("click", () => {
+    els.locationModal.setAttribute('hidden', '');
+  });
+
+  els.saveLocationBtn?.addEventListener("click", () => {
+    const lat = parseFloat(els.locationLatInput?.value);
+    const lng = parseFloat(els.locationLngInput?.value);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      alert("Please set a valid location on the map");
+      return;
+    }
+
+    capturedLocation = { lat, lng };
+    els.locationCoords.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    els.locationStatus.style.display = "block";
+    els.captureLocation.checked = true;
+    els.locationModal.setAttribute('hidden', '');
+    console.log("Location saved from map:", capturedLocation);
+  });
+
+  // Input listeners for manual coordinate entry
+  els.locationLatInput?.addEventListener("change", () => {
+    const lat = parseFloat(els.locationLatInput.value);
+    const lng = parseFloat(els.locationLngInput?.value);
+    if (!isNaN(lat) && !isNaN(lng) && locationMap && locationMarker) {
+      locationMarker.setPosition({ lat, lng });
+      locationMap.panTo({ lat, lng });
+    }
+  });
+
+  els.locationLngInput?.addEventListener("change", () => {
+    const lat = parseFloat(els.locationLatInput?.value);
+    const lng = parseFloat(els.locationLngInput.value);
+    if (!isNaN(lat) && !isNaN(lng) && locationMap && locationMarker) {
+      locationMarker.setPosition({ lat, lng });
+      locationMap.panTo({ lat, lng });
+    }
+  });
+}
+
+function initLocationMapIfNeeded() {
+  if (locationMap) return; // Already initialized
+
+  const mapElement = document.getElementById("locationMap");
+
+  if (!mapElement) return;
+
+  // Use captured location or default to UK center
+  let initialLat = capturedLocation?.lat || 51.7356;
+  let initialLng = capturedLocation?.lng || 0.6756;
+
+  // Try to get user's current location
+  if (!capturedLocation && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        initialLat = position.coords.latitude;
+        initialLng = position.coords.longitude;
+        els.locationLatInput.value = initialLat.toFixed(6);
+        els.locationLngInput.value = initialLng.toFixed(6);
+        
+        // Update map if already created
+        if (locationMap && locationMarker) {
+          locationMarker.setPosition({ lat: initialLat, lng: initialLng });
+          locationMap.panTo({ lat: initialLat, lng: initialLng });
+          locationMap.setZoom(15);
+        }
+      },
+      () => {
+        // Silently fail if geolocation not available, use defaults
+      }
+    );
+  }
+
+  locationMap = new google.maps.Map(mapElement, {
+    zoom: 15,
+    center: { lat: initialLat, lng: initialLng },
+    mapTypeId: "roadmap",
+  });
+
+  locationMarker = new google.maps.Marker({
+    position: { lat: initialLat, lng: initialLng },
+    map: locationMap,
+    draggable: true,
+    title: "Your location",
+  });
+
+  els.locationLatInput.value = initialLat.toFixed(6);
+  els.locationLngInput.value = initialLng.toFixed(6);
+
+  // Update inputs when marker is dragged
+  locationMarker.addListener("drag", () => {
+    const pos = locationMarker.getPosition();
+    const lat = pos.lat();
+    const lng = pos.lng();
+    els.locationLatInput.value = lat.toFixed(6);
+    els.locationLngInput.value = lng.toFixed(6);
+  });
+
+  // Update marker position when map is clicked
+  locationMap.addListener("click", (e) => {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    locationMarker.setPosition({ lat, lng });
+    els.locationLatInput.value = lat.toFixed(6);
+    els.locationLngInput.value = lng.toFixed(6);
+  });
 }
 
 async function submitLog() {
@@ -303,15 +434,8 @@ function init() {
   els.deleteLogBtn?.addEventListener('click', handleDeleteLog);
   els.filterRep?.addEventListener('change', loadCalendar);
 
-  // Location capture handler
-  els.captureLocation?.addEventListener('change', (e) => {
-    if (e.target.checked) {
-      captureCurrentLocation();
-    } else {
-      capturedLocation = null;
-      els.locationStatus.style.display = "none";
-    }
-  });
+  // Location modal initialization
+  initLocationModal();
   
   // Month tab navigation
   document.querySelectorAll('.month-tab').forEach(tab => {

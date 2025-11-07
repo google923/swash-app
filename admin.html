@@ -29,6 +29,7 @@
     <div class="header-left">
 
       <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <a href="/rep/quote.html" class="btn btn-primary" style="margin-left:12px;font-size:14px;padding:8px 14px;">➕ Add Customer</a>
       <label id="repViewToggle" class="rep-view-toggle hidden" style="margin-left:12px;display:inline-flex;align-items:center;gap:6px;">
         <input type="checkbox" id="repViewCheckbox" />
         <span>Rep View</span>
@@ -44,6 +45,7 @@
           <div class="dropdown-title">Navigation</div>
           <a id="rep-home-link" class="hidden" href="/rep/rep-home.html">Rep Home</a>
           <a id="admin-dashboard-link" class="hidden" href="/admin.html">Admin Dashboard</a>
+          <a id="stats-link" class="hidden" href="./admin/stats.html">📊 Stats</a>
           <a id="add-customer-link" class="hidden" href="/rep/quote.html">Add Customer</a>
           <a id="schedule-link" class="hidden" href="/rep/scheduler.html">Schedule</a>
           <a id="manage-users-link" class="hidden" href="./admin/users.html">Manage Users</a>
@@ -146,23 +148,28 @@
             <button id="assignCleanerApply" class="btn btn-secondary" type="button">Assign</button>
           </div>
         </div>
+      </section>
 
-        <div class="actions-group">
-          <div class="actions-dropdown">
-            <button id="actionsToggle" class="btn btn-success actions-toggle" type="button" aria-haspopup="true" aria-expanded="false">
-              Actions
-              <span class="actions-toggle__icon" aria-hidden="true">&#9662;</span>
-            </button>
-            <ul id="actionsMenu" class="actions-menu" role="menu" aria-hidden="true">
-              <li role="menuitem"><button type="button" id="sendEmailMenu" data-action="sendEmails">Send booking emails</button></li>
-              <li role="menuitem"><button type="button" id="addToScheduleMenu" data-action="schedule">Add to schedule</button></li>
-              <li role="menuitem"><button type="button" id="archiveMenu" data-action="archive">Archive selected</button></li>
-              <li role="menuitem"><button type="button" id="exportMenu" data-action="export">Export CSV</button></li>
-              <li role="menuitem"><button type="button" id="importMenu" data-action="import">Import customers</button></li>
-            </ul>
+      <div id="selectedCustomersBox" class="selected-customers-box hidden">
+        <div class="selected-customers-content">
+          <div id="selectedCustomersList" class="selected-customers-list"></div>
+          <div class="actions-group">
+            <div class="actions-dropdown">
+              <button id="actionsToggle" class="btn btn-success actions-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+                Actions
+                <span class="actions-toggle__icon" aria-hidden="true">&#9662;</span>
+              </button>
+              <ul id="actionsMenu" class="actions-menu" role="menu" aria-hidden="true">
+                <li role="menuitem"><button type="button" id="sendEmailMenu" data-action="sendEmails">Send booking emails</button></li>
+                <li role="menuitem"><button type="button" id="addToScheduleMenu" data-action="schedule">Add to schedule</button></li>
+                <li role="menuitem"><button type="button" id="archiveMenu" data-action="archive">Archive selected</button></li>
+                <li role="menuitem"><button type="button" id="exportMenu" data-action="export">Export CSV</button></li>
+                <li role="menuitem"><button type="button" id="importMenu" data-action="import">Import customers</button></li>
+              </ul>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
 
 
 
@@ -201,6 +208,31 @@
     </section>
 
   </main>
+
+  <div id="setCustomerLocationModal" class="modal" hidden>
+    <div class="modal__dialog modal__dialog--large">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0;">Set Customer Location</h3>
+        <button type="button" class="modal__close" id="closeCustomerLocationModal" aria-label="Close">×</button>
+      </div>
+      <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 12px;">Drag the pin to the exact customer location. Address: <strong id="customerLocationAddressDisplay"></strong></p>
+      <div id="customerLocationMap" style="width: 100%; height: 400px; border-radius: 8px; border: 2px solid #e5e7eb; margin-bottom: 16px;"></div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+        <label class="modal__field">
+          <span>Latitude</span>
+          <input id="customerLocationLatInput" type="number" placeholder="Latitude" step="0.0001" />
+        </label>
+        <label class="modal__field">
+          <span>Longitude</span>
+          <input id="customerLocationLngInput" type="number" placeholder="Longitude" step="0.0001" />
+        </label>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn-secondary" id="cancelCustomerLocationBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveCustomerLocationBtn">Save Location</button>
+      </div>
+    </div>
+  </div>
 
   <div id="importModal" class="modal" hidden>
     <div class="modal__dialog">
@@ -298,6 +330,9 @@
   <script type="module" src="./auth-check.js"></script>
   <script type="module" src="./nav.js"></script>
   <script type="module" src="./admin.js"></script>
+
+  <!-- Google Maps API -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=geometry,drawing,places"></script>
 
 </body>
 

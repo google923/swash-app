@@ -99,6 +99,15 @@ service cloud.firestore {
       
       // Admins can read/write ALL user documents (for user management)
       allow read, write: if isAdmin();
+      
+      // --- USER AREAS SUBCOLLECTION ---
+      match /areas/{areaId} {
+        // Users can read/write their own areas
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        
+        // Admins can read/write ALL user areas
+        allow read, write: if isAdmin();
+      }
     }
 
 

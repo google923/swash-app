@@ -285,6 +285,18 @@ a {
   padding: 0 16px;
 }
 
+#schedulerContent {
+  max-width: 100%;
+  margin: 24px 0 60px;
+  padding: 0 16px;
+}
+
+#schedulerContent .card {
+  max-width: 100%;
+  margin: 0;
+  padding: 28px 16px;
+}
+
 /* Narrow layout for embedded quote form */
 #quoteEmbedCard {
   max-width: 400px;
@@ -480,6 +492,24 @@ textarea:focus {
 .result-panel p {
   margin: 0 0 6px;
   font-size: 1rem;
+}
+
+.result-panel .result-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.result-panel .result-price {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--swash-blue);
+}
+
+.result-panel .result-offer {
+  margin-top: 4px;
+  font-style: italic;
+  color: #005999;
 }
 
 /* Price display enhancements */
@@ -769,6 +799,50 @@ textarea:focus {
   outline: none;
 }
 
+.selected-customers-box {
+  background-color: #e6f0ff;
+  border: 2px solid #b3d9ff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.selected-customers-box.hidden {
+  display: none;
+}
+
+.selected-customers-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.selected-customers-list {
+  flex: 1;
+  display: grid;
+  gap: 8px;
+}
+
+.selected-customer-item {
+  background: #fff;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.selected-customer-item__name {
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.selected-customer-item__address {
+  color: #5a6c7d;
+  font-size: 13px;
+}
+
 
 .scheduler-controls {
   justify-content: space-between;
@@ -978,6 +1052,62 @@ tbody tr:hover {
 
 #scheduleModal:not([hidden]) {
   display: flex;
+}
+
+#setCustomerLocationModal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 60;
+  padding: 20px;
+}
+
+#setCustomerLocationModal:not([hidden]) {
+  display: flex;
+}
+
+#setCustomerLocationModal .modal__dialog {
+  background: #fff;
+  padding: 24px;
+  border-radius: 16px;
+  width: min(600px, 95vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#areasModal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 60;
+  padding: 20px;
+}
+
+#areasModal:not([hidden]) {
+  display: flex;
+}
+
+#areasModal .modal__dialog {
+  background: #fff;
+  padding: 24px;
+  border-radius: 16px;
+  width: min(800px, 95vw);
+  max-height: 95vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 #dayMessageModal .modal__dialog {
@@ -1804,6 +1934,27 @@ body.embed-mode .banner {
 .schedule-job.dragging {
   opacity: 0.5;
   cursor: grabbing;
+}
+
+.insertion-line {
+  height: 3px;
+  background: linear-gradient(90deg, var(--swash-blue), transparent);
+  border-top: 2px solid var(--swash-blue);
+  margin: 6px 0;
+  animation: pulse-insertion 0.6s ease-in-out infinite;
+  pointer-events: none;
+  transition: margin 0.05s ease-out, transform 0.05s ease-out;
+}
+
+@keyframes pulse-insertion {
+  0%, 100% {
+    opacity: 0.7;
+    box-shadow: 0 0 4px rgba(0, 120, 215, 0.5);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(0, 120, 215, 0.8);
+  }
 }
 
 .schedule-job.selected {

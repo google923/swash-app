@@ -14,6 +14,7 @@
   <header class="header">
     <div class="header-left">
       <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <a href="./rep/quote.html" class="btn btn-primary" style="margin-left:12px;font-size:14px;padding:8px 14px;">➕ Add Customer</a>
     </div>
     <div class="header-actions">
       <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
@@ -21,7 +22,7 @@
         <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Rep Resources</div>
-          <a href="/rep/rep-home.html">🏠 Home</a>
+          <a href="./rep/rep-home.html">🏠 Home</a>
           <a href="./add-log.html">📝 Log</a>
           <a href="./rep/chat.html">💬 Rep Chat</a>
           <a href="./rep/policy.html">📘 Policy Handbook</a>
@@ -35,9 +36,9 @@
           <a href="./rep/contract.html">📄 Employment Contract</a>
           <div class="dropdown-divider"></div>
           <div class="dropdown-title">System</div>
-          <a id="add-customer-link" class="hidden" href="/rep/quote.html">Add Customer</a>
+          <a id="add-customer-link" class="hidden" href="./rep/quote.html">Add Customer</a>
           <a id="admin-dashboard-link" class="hidden" href="/admin.html">Admin Dashboard</a>
-          <a id="schedule-link" class="hidden" href="/rep/scheduler.html">Schedule</a>
+          <a id="schedule-link" class="hidden" href="./rep/scheduler.html">Schedule</a>
           <a id="manage-users-link" class="hidden" href="/admin/users.html">Manage Users</a>
         </nav>
       </div>
@@ -76,12 +77,16 @@
       <div style="margin-bottom: 24px; padding: 12px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px;">
         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; color: #1e293b;">
           <input type="checkbox" id="captureLocation" style="cursor: pointer; width: 18px; height: 18px;">
-          📍 Capture location when submitting (optional)
+          📍 Capture location (optional)
         </label>
-        <p style="margin: 8px 0 0 26px; color: #64748b; font-size: 0.85rem;">Your current GPS coordinates will be saved with this log.</p>
-        <div id="locationStatus" style="margin: 8px 0 0 26px; font-size: 0.85rem; color: #94a3b8; display: none;">
-          📍 <span id="locationCoords">--</span>
-        </div>
+        <p style="margin: 8px 0 0 26px; color: #64748b; font-size: 0.85rem;">Click the button below to set your location on a map or capture GPS coordinates.</p>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <button type="button" id="setLocationBtn" class="btn btn-secondary" style="width: 100%;">📍 Set Location on Map</button>
+      </div>
+      <div id="locationStatus" style="margin-bottom: 16px; padding: 12px; background: #f0f9f0; border-left: 4px solid #1c9c5d; border-radius: 4px; display: none;">
+        <p style="margin: 0; font-size: 0.9rem; color: #1c9c5d; font-weight: 600;">✓ Location captured</p>
+        <p style="margin: 6px 0 0 0; font-size: 0.85rem; color: #64748b;">📍 <span id="locationCoords">--</span></p>
       </div>
 
       <div class="form-actions">
@@ -116,9 +121,36 @@
     </div>
   </div>
 
+  <div id="locationModal" class="modal" hidden>
+    <div class="modal__dialog modal__dialog--large">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0;">Set Log Location</h3>
+        <button type="button" class="modal__close" id="closeLocationModal" aria-label="Close">×</button>
+      </div>
+      <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 12px;">Drag the pin to set your location. This will be saved with your log.</p>
+      <div id="locationMap" style="width: 100%; height: 400px; border-radius: 8px; border: 2px solid #e5e7eb; margin-bottom: 16px;"></div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+        <label class="modal__field">
+          <span>Latitude</span>
+          <input id="locationLatInput" type="number" placeholder="Latitude" step="0.0001" />
+        </label>
+        <label class="modal__field">
+          <span>Longitude</span>
+          <input id="locationLngInput" type="number" placeholder="Longitude" step="0.0001" />
+        </label>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn-secondary" id="cancelLocationBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveLocationBtn">Save Location</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="./auth-check.js"></script>
   <!-- Shared navigation (dropdown + rep view + modals) -->
   <script type="module" src="./nav.js"></script>
+  <!-- Google Maps API -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=geometry,drawing"></script>
   <script type="module">
     import("./add-log.js");
   </script>
