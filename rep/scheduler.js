@@ -811,6 +811,8 @@ function renderSchedule() {
           const name = escapeHtml(quote.customerName || "Unknown");
           const address = escapeHtml(quote.address || "No address");
           const price = formatCurrency(resolvePricePerClean(quote));
+          const pricePerClean = resolvePricePerClean(quote);
+          const durationMins = Math.round(pricePerClean);
           const cleaner = escapeHtml(getCleanerDisplay(quote.assignedCleaner));
           const details = buildJobDetailsHtml(quote);
           card.innerHTML = `
@@ -822,6 +824,7 @@ function renderSchedule() {
               <div class="job-header__text">
                 <div class="job-name">${name}</div>
                 <div class="job-address">${address}</div>
+                <div class="job-duration">${durationMins}m</div>
               </div>
               <div class="job-meta">
                 <span class="job-price">${price}</span>
@@ -855,7 +858,24 @@ function renderSchedule() {
       totalDiv.className = "day-total";
       const jobCount = entries.length;
       const jobText = jobCount === 1 ? "Job" : "Jobs";
+      
+      // Calculate selected jobs for this day
+      const selectedQuoteIds = entries
+        .filter(e => state.selectedJobIds.has(e.quote.id))
+        .map(e => e.quote.id);
+      const selectedPrice = entries
+        .filter(e => state.selectedJobIds.has(e.quote.id))
+        .reduce((sum, e) => sum + resolvePricePerClean(e.quote), 0);
+      const selectedDuration = Math.round(selectedPrice);
+      
+      let selectedText = '';
+      if (selectedQuoteIds.length > 0) {
+        const selectedCount = selectedQuoteIds.length;
+        selectedText = `<div style="font-size: 13px; color: var(--swash-blue); margin-bottom: 6px; font-weight: 500;">Selected: ${formatCurrency(selectedPrice)} of (${selectedDuration}m)</div>`;
+      }
+      
       totalDiv.innerHTML = `
+        ${selectedText}
         <div>Total: ${formatCurrency(dayTotal)}</div>
         <div style="font-size: 14px; color: #5a6c7d; margin-top: 4px;">${jobCount} ${jobText}</div>
       `;
@@ -904,8 +924,47 @@ function updateSelectionUI() {
     if (selectAll) selectAll.checked = allSelected;
   });
 
+  // Update day-total displays with selected prices
+  updateDayTotals();
+  
   // Update selection info display
   updateSelectionInfo();
+}
+
+function updateDayTotals() {
+  if (!elements.schedule) return;
+  
+  elements.schedule.querySelectorAll('.day-total').forEach((dayTotal) => {
+    const dayRow = dayTotal.closest('.schedule-row');
+    if (!dayRow) return;
+    
+    const entries = Array.from(dayRow.querySelectorAll('.schedule-job')).map(card => ({
+      id: card.dataset.id,
+      quote: state.quotes.find(q => q.id === card.dataset.id)
+    }));
+    
+    const selectedEntries = entries.filter(e => e.quote && state.selectedJobIds.has(e.id));
+    const selectedPrice = selectedEntries.reduce((sum, e) => sum + resolvePricePerClean(e.quote), 0);
+    const selectedDuration = Math.round(selectedPrice);
+    
+    // Find the selected text div and update it
+    let selectedDiv = dayTotal.querySelector('[class*="selected"]');
+    let selectedText = '';
+    
+    if (selectedEntries.length > 0) {
+      selectedText = `<div style="font-size: 13px; color: var(--swash-blue); margin-bottom: 6px; font-weight: 500;">Selected: ${formatCurrency(selectedPrice)} of (${selectedDuration}m)</div>`;
+    }
+    
+    // Update the HTML while preserving the total line
+    const totalLineMatch = dayTotal.innerHTML.match(/<div>Total:.*?<\/div>/);
+    const jobLineMatch = dayTotal.innerHTML.match(/<div style="font-size: 14px.*?<\/div>/);
+    
+    dayTotal.innerHTML = `
+      ${selectedText}
+      ${totalLineMatch ? totalLineMatch[0] : '<div>Total: £0.00</div>'}
+      ${jobLineMatch ? jobLineMatch[0] : '<div style="font-size: 14px; color: #5a6c7d; margin-top: 4px;">0 Jobs</div>'}
+    `;
+  });
 }
 
 function updateSelectionInfo() {

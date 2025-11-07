@@ -1097,6 +1097,34 @@ tbody tr:hover {
   display: flex;
 }
 
+#orderJobsModal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.4);
+  z-index: 60;
+  padding: 20px;
+}
+
+#orderJobsModal:not([hidden]) {
+  display: flex;
+}
+
+#orderJobsModal .modal__dialog {
+  background: #fff;
+  padding: 24px;
+  border-radius: 16px;
+  width: min(500px, 95vw);
+  max-height: 95vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 #areasModal .modal__dialog {
   background: #fff;
   padding: 24px;
@@ -1607,6 +1635,13 @@ tbody tr:hover {
   font-size: 0.85rem;
   flex: 1 1 1px;
   margin: 0;
+}
+
+.job-duration {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 2px;
+  font-weight: 500;
 }
 
 .job-price {
@@ -2451,10 +2486,15 @@ body.embed-mode .banner {
   color: #b00020;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .schedule-week {
     padding: 16px 12px;
     gap: 16px;
+    overflow-x: hidden !important;
+  }
+
+  .week-table {
+    overflow-x: hidden !important;
   }
 
   .week-table tr {
@@ -2471,6 +2511,7 @@ body.embed-mode .banner {
     border: none;
     background: transparent;
     padding: 0;
+    overflow-x: hidden;
   }
 
   .day-column {
@@ -2480,6 +2521,7 @@ body.embed-mode .banner {
     border-radius: 12px;
     border: 1px solid rgba(15, 23, 42, 0.08);
     background: #fff;
+    overflow-x: hidden;
   }
 
   .day-column::before {
@@ -2758,7 +2800,7 @@ body.quote-page .slider-row input[type="range"]::-moz-range-thumb {
 
 /* Selection info bar */
 .schedule-selection-info {
-  display: flex;
+  display: none !important;
   align-items: center;
   gap: 16px;
   padding: 8px 16px;
