@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Message Log - Swash Admin</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+      <h1 style="margin: 0; margin-left: 12px; font-size: 1.2rem;">Message Log</h1>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a id="admin-dashboard-link" href="/admin.html">Admin Dashboard</a>
+          <a id="message-log-link" class="active" href="/admin/message-log.html">Message Log</a>
+          <a id="stats-link" href="/admin/stats.html">Statistics</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite" hidden>
+    <form id="loginForm" class="auth-card" novalidate>
+      <h2>Sign in</h2>
+      <p class="text-muted">Use your Swash admin credentials to continue.</p>
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email" autocomplete="email" required />
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required />
+      <p id="loginError" class="status warning" hidden></p>
+      <button type="submit" class="btn btn-primary">Sign in</button>
+    </form>
+  </section>
+
+  <main id="logContent" class="page">
+    <section class="card">
+      <header class="card-header">
+        <h2>Message & Email Log</h2>
+        <p class="text-muted">View all emails and messages sent to customers. Filter by date, type, or status.</p>
+      </header>
+
+      <div class="controls" aria-label="Filter controls">
+        <div class="controls-left">
+          <label for="logStartDate" class="control-label text-muted">From</label>
+          <input id="logStartDate" type="date" />
+          <label for="logEndDate" class="control-label text-muted">To</label>
+          <input id="logEndDate" type="date" />
+          <button id="filterBtn" class="btn btn-primary" type="button">Filter</button>
+          <button id="clearFilterBtn" class="btn btn-secondary" type="button">Clear</button>
+        </div>
+        <div class="controls-right">
+          <label for="messageTypeFilter" class="text-muted">Type</label>
+          <select id="messageTypeFilter">
+            <option value="">All types</option>
+            <option value="booking">Booking Confirmation</option>
+            <option value="message">Message</option>
+            <option value="reminder">Reminder</option>
+            <option value="receipt">Receipt</option>
+          </select>
+          <label class="sr-only" for="messageSearch">Search customer or email</label>
+          <input id="messageSearch" type="search" placeholder="Search customer or email" />
+        </div>
+      </div>
+
+      <div class="message-log-table" id="messageLogTable">
+        <div class="table-loading">Loading messages...</div>
+      </div>
+
+      <div class="table-info" id="tableInfo" hidden>
+        <span id="resultCount"></span>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="../auth-check.js"></script>
+  <script type="module" src="../nav.js"></script>
+  <script type="module">
+    import("./message-log.js");
+  </script>
+</body>
+</html>

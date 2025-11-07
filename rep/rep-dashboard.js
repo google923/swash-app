@@ -18,7 +18,7 @@ const els = {
   filterRep: document.getElementById("filterRep"),
   logModal: document.getElementById("logModal"),
   logModalContent: document.getElementById("logModalContent"),
-  closeLogModal: document.getElementById("closeLogModal"),
+  logModalClose: document.getElementById("logModalClose"),
   closeLogModalBtn: document.getElementById("closeLogModalBtn"),
   logModalTitle: document.getElementById("logModalTitle"),
   deleteLogBtn: document.getElementById("deleteLogBtn"),
@@ -279,7 +279,7 @@ function init() {
   if (els.logDate) els.logDate.value = todayISO;
   els.btnCopyTemplate?.addEventListener('click', copyTemplate);
   els.btnSubmitLog?.addEventListener('click', submitLog);
-  els.closeLogModal?.addEventListener('click', closeLogModal);
+  els.logModalClose?.addEventListener('click', closeLogModal);
   els.closeLogModalBtn?.addEventListener('click', closeLogModal);
   els.deleteLogBtn?.addEventListener('click', handleDeleteLog);
   els.filterRep?.addEventListener('change', loadCalendar);

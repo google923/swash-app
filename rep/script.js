@@ -857,6 +857,11 @@ function initLocationModal() {
       alert("Please enter a customer address first");
       return;
     }
+    
+    // Reset map and marker before opening modal
+    locationMap = null;
+    locationMarker = null;
+    
     setCustomerLocationModal.hidden = false;
     await delay(100);
     initLocationMapIfNeeded(address);
@@ -940,21 +945,27 @@ function initLocationMapIfNeeded(address) {
   locationLatInput.value = initialLat.toFixed(6);
   locationLngInput.value = initialLng.toFixed(6);
 
-  // Geocode the address to center map on it
-  if (!customerLatitude?.value && address && window.google && google.maps.Geocoder) {
+  // Geocode the address to center map on it - always geocode fresh address
+  if (address && window.google && google.maps.Geocoder) {
     const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ address }, (results, status) => {
+    geocoder.geocode({ address: address }, (results, status) => {
       if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
         const location = results[0].geometry.location;
         const geocodedLat = location.lat();
         const geocodedLng = location.lng();
+        
+        // Always update to geocoded location
         locationLatInput.value = geocodedLat.toFixed(6);
         locationLngInput.value = geocodedLng.toFixed(6);
         
         // Update marker and map to geocoded location
-        locationMarker.setPosition({ lat: geocodedLat, lng: geocodedLng });
-        locationMap.panTo({ lat: geocodedLat, lng: geocodedLng });
-        locationMap.setZoom(16);
+        if (locationMarker) {
+          locationMarker.setPosition({ lat: geocodedLat, lng: geocodedLng });
+        }
+        if (locationMap) {
+          locationMap.panTo({ lat: geocodedLat, lng: geocodedLng });
+          locationMap.setZoom(17);
+        }
       }
     });
   }

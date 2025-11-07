@@ -79,6 +79,18 @@ const elements = {
   deleteTemplateSection: document.getElementById("deleteTemplateSection"),
   deleteTemplate: document.getElementById("deleteTemplate"),
   closeDayMessageModal: document.getElementById("closeDayMessageModal"),
+  orderJobsModal: document.getElementById("orderJobsModal"),
+  orderJobsTitle: document.getElementById("orderJobsTitle"),
+  orderJobsList: document.getElementById("orderJobsList"),
+  optimizeRouteBtn: document.getElementById("optimizeRouteBtn"),
+  clearOrderBtn: document.getElementById("clearOrderBtn"),
+  saveJobOrder: document.getElementById("saveJobOrder"),
+  cancelOrderJobs: document.getElementById("cancelOrderJobs"),
+  closeOrderJobsModal: document.getElementById("closeOrderJobsModal"),
+  selectionInfo: document.getElementById("selectionInfo"),
+  selectionCount: document.getElementById("selectionCount"),
+  selectionTotal: document.getElementById("selectionTotal"),
+  clearSelectionBtn: document.getElementById("clearSelectionBtn"),
   logoutBtn: document.getElementById("logoutBtn"),
   cleanerFilter: document.getElementById("cleanerFilter"),
   authOverlay: document.getElementById("authOverlay"),
@@ -102,6 +114,7 @@ const state = {
   customTemplates: [], // User-saved templates
   areas: [], // User-defined service areas
   currentUserId: null, // Will be set from auth
+  orderJobsContext: null, // { dateKey, entries: [{ quote, originalIndex }], optimizedOrder: [] }
 };
 
 // ===== AREAS MANAGEMENT =====
@@ -151,6 +164,15 @@ function pointInPolygon(point, polygon) {
     if (intersect) inside = !inside;
   }
   return inside;
+}
+
+// Convert hex color to tinted (lighter) version with 20% opacity
+function tintColor(hexColor) {
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, 0.15)`;
 }
 
 function getAreaForCustomer(quote) {
@@ -804,6 +826,7 @@ function renderSchedule() {
               <div class="job-meta">
                 <span class="job-price">${price}</span>
                 <span class="job-cleaner">${cleaner}</span>
+                <button class="job-mark-done" data-quote-id="${quote.id}" title="Send customer receipt and mark complete" aria-label="Mark job as done">✓ Done</button>
               </div>
             </div>
             <div class="schedule-job__details" hidden>
@@ -814,9 +837,9 @@ function renderSchedule() {
           // Apply area color if customer is in an area
           const area = getAreaForCustomer(quote);
           if (area) {
-            card.style.backgroundColor = area.color;
+            card.style.backgroundColor = tintColor(area.color);
             card.style.borderColor = area.color;
-            card.style.opacity = "0.8";
+            card.style.borderWidth = "2px";
           }
           
           jobsCell.appendChild(card);
@@ -843,6 +866,7 @@ function renderSchedule() {
       actionsSelect.dataset.date = isoKey;
       actionsSelect.innerHTML = `
         <option value="">Day actions...</option>
+        <option value="order">Order jobs 🚗</option>
         <option value="send">Send messages</option>
       `;
       dayFooter.appendChild(actionsSelect);
@@ -879,6 +903,54 @@ function updateSelectionUI() {
     const selectAll = row.querySelector('.day-select-all');
     if (selectAll) selectAll.checked = allSelected;
   });
+
+  // Update selection info display
+  updateSelectionInfo();
+}
+
+function updateSelectionInfo() {
+  const selectedCount = state.selectedJobIds.size;
+  
+  if (selectedCount === 0) {
+    // Hide selection info if nothing selected
+    if (elements.selectionInfo) {
+      elements.selectionInfo.hidden = true;
+    }
+    return;
+  }
+
+  // Calculate total price and duration
+  let totalPrice = 0;
+  let totalDuration = 0; // in minutes
+
+  state.selectedJobIds.forEach((jobId) => {
+    const quote = state.quotes.find((q) => q.id === jobId);
+    if (quote) {
+      const pricePerClean = resolvePricePerClean(quote);
+      totalPrice += pricePerClean;
+      // Duration is calculated at £1 per minute
+      totalDuration += pricePerClean;
+    }
+  });
+
+  // Format the display
+  const countText = selectedCount === 1 ? "1 job" : `${selectedCount} jobs`;
+  const priceText = formatCurrency(totalPrice);
+  const durationText = totalDuration === 1 ? "1 min" : `${totalDuration} mins`;
+
+  // Update display elements
+  if (elements.selectionCount) {
+    elements.selectionCount.textContent = countText;
+  }
+
+  if (elements.selectionTotal) {
+    elements.selectionTotal.innerHTML = `<strong>${priceText}</strong> <span style="color: #64748b; font-size: 0.9rem;">(${durationText})</span>`;
+  }
+
+  // Show selection info
+  if (elements.selectionInfo) {
+    elements.selectionInfo.hidden = false;
+  }
 }
 
 function clearSelectedJobs() {
@@ -1019,6 +1091,11 @@ function closeDayMessageModal() {
   }
   if (elements.newTemplateSection) elements.newTemplateSection.hidden = true;
   if (elements.newTemplateName) elements.newTemplateName.value = "";
+  
+  // Return focus to schedule and enable interactions
+  if (elements.schedule) {
+    elements.schedule.focus();
+  }
 }
 
 function openDayMessageModal(dateKey) {
@@ -1176,6 +1253,451 @@ function loadCustomTemplates() {
   } catch (error) {
     console.error("Failed to load templates", error);
   }
+}
+
+async function handleMarkJobDone(quoteId) {
+  // Find the quote in our data
+  const quote = state.quotes.find(q => q.id === quoteId);
+  if (!quote) {
+    alert("Quote not found");
+    return;
+  }
+  
+  // Get email
+  const recipientEmail = quote.email || quote.customerEmail;
+  if (!recipientEmail) {
+    alert(`No email address for ${quote.customerName || "customer"}`);
+    return;
+  }
+  
+  // Check EmailJS is loaded
+  if (!window.emailjs || typeof emailjs.send !== "function") {
+    alert("EmailJS not loaded. Cannot send receipt.");
+    return;
+  }
+  
+  // Show confirmation
+  if (!confirm(`Send completion receipt to ${quote.customerName}?`)) {
+    return;
+  }
+  
+  try {
+    // Send receipt email
+    const receiptMessage = `
+Your cleaning has been completed. Thank you for choosing Swash!
+
+Customer: ${quote.customerName || "N/A"}
+Address: ${quote.address || "N/A"}
+Reference: ${quote.refCode || "N/A"}
+Price: £${quote.pricePerClean || "0"}
+
+If you have any questions, please don't hesitate to contact us.
+
+Best regards,
+Swash Team
+    `.trim();
+    
+    await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE, {
+      title: "Cleaning Completed - Receipt",
+      name: quote.customerName || "Customer",
+      message: receiptMessage,
+      email: recipientEmail,
+    });
+    
+    // Update Firestore to mark as completed
+    await updateDoc(doc(db, "quotes", quoteId), {
+      status: "Completed - " + new Date().toLocaleDateString("en-GB"),
+      completedDate: new Date().toISOString(),
+    });
+    
+    // Show success notification
+    const notification = document.createElement("div");
+    notification.className = "notification notification--success";
+    notification.textContent = `Receipt sent to ${recipientEmail}`;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4caf50;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 4px;
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(notification);
+    
+    // Auto-remove notification after 3 seconds
+    setTimeout(() => {
+      notification.style.animation = "slideOut 0.3s ease";
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+    
+    // Refresh schedule to show updated status
+    refreshData();
+    
+  } catch (error) {
+    console.error("Failed to mark job as done", error);
+    alert(`Failed to send receipt: ${error.message || "Unknown error"}`);
+  }
+}
+
+function openOrderJobsModal(dateKey) {
+  // Get jobs for this date
+  const isoKey = dateKey;
+  const entries = (state.quotes || [])
+    .filter((quote) => !quote.deleted && quote.bookedDate)
+    .flatMap((quote) => {
+      const cleans = getOccurrences(quote);
+      return cleans
+        .filter((clean) => clean.dateKey === isoKey)
+        .map((clean, idx) => ({
+          quote,
+          cleanIndex: idx,
+          _originalIndex: state.quotes.indexOf(quote),
+        }));
+    });
+
+  if (entries.length === 0) {
+    alert("No jobs scheduled for this day");
+    return;
+  }
+
+  // Store in state
+  state.orderJobsContext = {
+    dateKey: isoKey,
+    entries: entries,
+    optimizedOrder: entries.map((e) => e.quote.id), // Default to current order
+  };
+
+  // Update modal title
+  const dateObj = new Date(isoKey + "T00:00:00Z");
+  const dateStr = dateObj.toLocaleDateString("en-GB", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  if (elements.orderJobsTitle) {
+    elements.orderJobsTitle.textContent = `Order Jobs for ${dateStr}`;
+  }
+
+  // Render jobs list
+  renderOrderJobsList();
+
+  // Show modal
+  if (elements.orderJobsModal) {
+    elements.orderJobsModal.hidden = false;
+  }
+}
+
+function renderOrderJobsList() {
+  if (!elements.orderJobsList || !state.orderJobsContext) return;
+
+  const { entries } = state.orderJobsContext;
+  elements.orderJobsList.innerHTML = entries
+    .map((entry, idx) => {
+      const { quote } = entry;
+      const address = escapeHtml(quote.address || "Unknown address");
+      const customerName = escapeHtml(quote.customerName || "Unknown");
+      const pricePerClean = resolvePricePerClean(quote);
+      const price = formatCurrency(pricePerClean);
+      const durationMins = Math.round(pricePerClean);
+      const durationDisplay = durationMins === 1 ? "1 min" : `${durationMins} mins`;
+
+      return `
+        <div class="order-job-item" draggable="true" data-quote-id="${quote.id}" data-index="${idx}">
+          <div class="order-job-drag-handle">⋮⋮</div>
+          <div class="order-job-info">
+            <div class="order-job-number">${idx + 1}</div>
+            <div class="order-job-details">
+              <div class="order-job-name">${customerName}</div>
+              <div class="order-job-address">${address}</div>
+            </div>
+            <div class="order-job-meta">
+              <span class="order-job-price">${price}</span>
+              <span class="order-job-duration">${durationDisplay}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  // Add drag event listeners
+  const jobItems = elements.orderJobsList.querySelectorAll(".order-job-item");
+  jobItems.forEach((item) => {
+    item.addEventListener("dragstart", handleOrderJobDragStart);
+    item.addEventListener("dragover", handleOrderJobDragOver);
+    item.addEventListener("drop", handleOrderJobDrop);
+    item.addEventListener("dragend", handleOrderJobDragEnd);
+  });
+}
+
+let orderJobsDraggedItem = null;
+
+function handleOrderJobDragStart(e) {
+  orderJobsDraggedItem = this;
+  this.style.opacity = "0.5";
+  e.dataTransfer.effectAllowed = "move";
+}
+
+function handleOrderJobDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+
+  if (orderJobsDraggedItem !== this) {
+    const allItems = Array.from(elements.orderJobsList.querySelectorAll(".order-job-item"));
+    const draggedIdx = allItems.indexOf(orderJobsDraggedItem);
+    const thisIdx = allItems.indexOf(this);
+
+    if (draggedIdx < thisIdx) {
+      this.parentNode.insertBefore(orderJobsDraggedItem, this.nextSibling);
+    } else {
+      this.parentNode.insertBefore(orderJobsDraggedItem, this);
+    }
+  }
+}
+
+function handleOrderJobDrop(e) {
+  e.preventDefault();
+}
+
+function handleOrderJobDragEnd(e) {
+  this.style.opacity = "1";
+  orderJobsDraggedItem = null;
+
+  // Update the optimized order based on new DOM order
+  if (state.orderJobsContext && elements.orderJobsList) {
+    const newOrder = Array.from(elements.orderJobsList.querySelectorAll(".order-job-item")).map(
+      (item) => item.dataset.quoteId
+    );
+    state.orderJobsContext.optimizedOrder = newOrder;
+
+    // Re-render to update numbers
+    renderOrderJobsList();
+  }
+}
+
+async function handleOptimizeRoute() {
+  if (!state.orderJobsContext || state.orderJobsContext.entries.length === 0) {
+    alert("No jobs to optimize");
+    return;
+  }
+
+  const { entries } = state.orderJobsContext;
+  const btn = elements.optimizeRouteBtn;
+  const originalText = btn ? btn.textContent : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "🔄 Optimizing...";
+  }
+
+  try {
+    // Build waypoints for route optimization
+    const waypoints = entries
+      .map((entry) => {
+        const { quote } = entry;
+        // Use latitude/longitude if available, otherwise geocode address
+        if (quote.customerLatitude && quote.customerLongitude) {
+          return {
+            location: new google.maps.LatLng(quote.customerLatitude, quote.customerLongitude),
+            quoteId: quote.id,
+          };
+        } else if (quote.address) {
+          // Geocode the address
+          return {
+            location: quote.address,
+            quoteId: quote.id,
+          };
+        }
+        return null;
+      })
+      .filter((w) => w !== null);
+
+    if (waypoints.length < 2) {
+      alert("Need at least 2 valid addresses to optimize");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+      return;
+    }
+
+    // Use Google Routes API for optimization
+    const directionsService = new google.maps.DirectionsService();
+    const start = waypoints[0];
+    const end = waypoints[waypoints.length - 1];
+    const middle = waypoints.slice(1, -1);
+
+    const request = {
+      origin: start.location,
+      destination: end.location,
+      waypoints: middle.map((w) => ({ location: w.location, stopover: true })),
+      optimizeWaypoints: true,
+      travelMode: google.maps.TravelMode.DRIVING,
+    };
+
+    directionsService.route(request, (result, status) => {
+      if (status === google.maps.DirectionsStatus.OK) {
+        // Extract optimized order from result
+        const optimizedOrder = [start.quoteId];
+
+        // Map waypoint indices back to quote IDs
+        const waypointOrder = result.routes[0].waypoint_order;
+        waypointOrder.forEach((idx) => {
+          optimizedOrder.push(middle[idx].quoteId);
+        });
+
+        optimizedOrder.push(end.quoteId);
+
+        // Update state
+        state.orderJobsContext.optimizedOrder = optimizedOrder;
+
+        // Re-sort entries based on optimized order
+        const oldEntries = state.orderJobsContext.entries;
+        state.orderJobsContext.entries = optimizedOrder.map((qId) =>
+          oldEntries.find((e) => e.quote.id === qId)
+        );
+
+        // Re-render
+        renderOrderJobsList();
+
+        // Show success
+        const notification = document.createElement("div");
+        notification.textContent = "✓ Route optimized using Google Maps";
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #4caf50;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 4px;
+          z-index: 10000;
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+      } else {
+        alert(`Route optimization failed: ${status}`);
+      }
+
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+  } catch (error) {
+    console.error("Route optimization error:", error);
+    alert(`Error: ${error.message || "Route optimization failed"}`);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+}
+
+function handleClearOrder() {
+  if (!state.orderJobsContext) return;
+
+  // Reset to original order
+  state.orderJobsContext.entries.sort((a, b) => a._originalIndex - b._originalIndex);
+  state.orderJobsContext.optimizedOrder = state.orderJobsContext.entries.map((e) => e.quote.id);
+
+  renderOrderJobsList();
+
+  const notification = document.createElement("div");
+  notification.textContent = "↻ Order reset to original";
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #2196f3;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    z-index: 10000;
+  `;
+  document.body.appendChild(notification);
+  setTimeout(() => notification.remove(), 2000);
+}
+
+async function handleSaveJobOrder() {
+  if (!state.orderJobsContext) return;
+
+  const { dateKey, entries } = state.orderJobsContext;
+  const btn = elements.saveJobOrder;
+  const originalText = btn ? btn.textContent : "";
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "💾 Saving...";
+  }
+
+  try {
+    // Build dayOrders object for all entries
+    const dayOrders = {};
+    entries.forEach((entry, index) => {
+      dayOrders[entry.quote.id] = index;
+    });
+
+    // Update each quote's dayOrders field in Firestore
+    const updates = entries.map((entry) => {
+      const newDayOrders = entry.quote.dayOrders || {};
+      newDayOrders[dateKey] = dayOrders[entry.quote.id];
+      return updateDoc(doc(db, "quotes", entry.quote.id), {
+        dayOrders: newDayOrders,
+      });
+    });
+
+    await Promise.all(updates);
+
+    // Update local state
+    entries.forEach((entry, index) => {
+      const quote = state.quotes.find((q) => q.id === entry.quote.id);
+      if (quote) {
+        if (!quote.dayOrders) quote.dayOrders = {};
+        quote.dayOrders[dateKey] = index;
+      }
+    });
+
+    // Show success
+    const notification = document.createElement("div");
+    notification.textContent = "✓ Job order saved";
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4caf50;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 4px;
+      z-index: 10000;
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 3000);
+
+    // Close modal
+    closeOrderJobsModal();
+
+    // Refresh schedule
+    refreshData();
+  } catch (error) {
+    console.error("Failed to save job order", error);
+    alert(`Failed to save: ${error.message || "Unknown error"}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+}
+
+function closeOrderJobsModal() {
+  if (elements.orderJobsModal) {
+    elements.orderJobsModal.hidden = true;
+  }
+  state.orderJobsContext = null;
 }
 
 function updateDayMessageSendState() {
@@ -1455,6 +1977,17 @@ function attachEvents() {
     });
 
     elements.schedule.addEventListener("click", (event) => {
+      // Check if clicking the "Mark as done" button
+      const markDoneBtn = event.target.closest(".job-mark-done");
+      if (markDoneBtn) {
+        event.stopPropagation();
+        const quoteId = markDoneBtn.dataset.quoteId;
+        if (quoteId) {
+          handleMarkJobDone(quoteId);
+        }
+        return;
+      }
+      
       // Check if clicking the label or custom box (including checkbox area)
       const selectLabel = event.target.closest(".job-select");
       if (selectLabel) {
@@ -1504,7 +2037,11 @@ function attachEvents() {
         const action = event.target.value;
         const dateKey = event.target.dataset.date;
         
-        if (action === "send" && dateKey) {
+        if (action === "order" && dateKey) {
+          openOrderJobsModal(dateKey);
+          // Reset dropdown after modal opens
+          setTimeout(() => { event.target.value = ""; }, 100);
+        } else if (action === "send" && dateKey) {
           openDayMessageModal(dateKey);
           // Reset dropdown after modal opens
           setTimeout(() => { event.target.value = ""; }, 100);
@@ -1534,6 +2071,16 @@ function attachEvents() {
   elements.dayMessageBody?.addEventListener("input", updateDayMessageSendState);
   elements.saveTemplate?.addEventListener("click", saveNewTemplate);
   elements.deleteTemplate?.addEventListener("click", deleteTemplate);
+
+  // Order jobs modal listeners
+  elements.closeOrderJobsModal?.addEventListener("click", closeOrderJobsModal);
+  elements.cancelOrderJobs?.addEventListener("click", closeOrderJobsModal);
+  elements.optimizeRouteBtn?.addEventListener("click", handleOptimizeRoute);
+  elements.clearOrderBtn?.addEventListener("click", handleClearOrder);
+  elements.saveJobOrder?.addEventListener("click", handleSaveJobOrder);
+
+  // Selection info listeners
+  elements.clearSelectionBtn?.addEventListener("click", clearSelectedJobs);
 
   elements.cleanerFilter?.addEventListener("change", (event) => {
     state.cleanerFilter = event.target.value;
@@ -1714,10 +2261,17 @@ function buildJobDetailsHtml(quote) {
   const emailDisplay = emailRaw ? safe(emailRaw) : "—";
   const emailHref = emailRaw ? `mailto:${encodeURIComponent(String(emailRaw))}` : null;
 
+  // Calculate duration from price (£1 per minute)
+  const pricePerClean = resolvePricePerClean(quote);
+  const durationMins = Math.round(pricePerClean);
+  const durationDisplay = durationMins === 1 ? "1 min" : `${durationMins} mins`;
+
   const rows = [
     ["Address", safe(quote.address)],
     ["Contact", telHref ? `<a href="${telHref}">${telDisplay}</a>` : telDisplay],
     ["Email", emailHref ? `<a href="${emailHref}">${emailDisplay}</a>` : emailDisplay],
+    ["Price", formatCurrency(pricePerClean)],
+    ["Est. Duration", `<strong style="color: #0078d7;">${durationDisplay}</strong>`],
     ["House type", safe(quote.houseType || quote.propertyType)],
     ["House size", safe(quote.houseSize || quote.size)],
     ["Extension", safe(quote.extension ? "Yes" : quote.extension === false ? "No" : quote.extension)],

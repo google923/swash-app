@@ -44,7 +44,7 @@ function applyRepViewFlag(enabled) {
   else body.removeAttribute("data-rep-view");
 
   // Hide/show common admin menu items when in rep view
-  const adminLinkIds = ["admin-dashboard-link", "schedule-link", "manage-users-link"];
+  const adminLinkIds = ["admin-dashboard-link", "schedule-link", "manage-users-link", "message-log-link"];
   adminLinkIds.forEach((id) => {
     const a = qs(id);
     if (!a) return;

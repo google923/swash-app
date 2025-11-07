@@ -106,9 +106,12 @@
 
   <div id="logModal" class="modal" hidden>
     <div class="modal__dialog modal__dialog--large">
-      <h3 id="logModalTitle">Log</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 id="logModalTitle" style="margin: 0;">Log</h3>
+        <button type="button" class="modal__close" id="logModalClose" aria-label="Close">×</button>
+      </div>
       <div id="logModalContent" class="log-content"></div>
-      <div class="modal__footer" style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:16px">
+      <div class="modal__actions" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
         <button type="button" class="btn btn-danger hidden" id="deleteLogBtn" title="Delete this log">Delete</button>
         <button type="button" class="btn btn-primary" id="closeLogModalBtn">Close</button>
       </div>
