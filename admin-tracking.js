@@ -817,34 +817,72 @@ function exportCsv() {
 // Init
 initMap();
 loadTerritories();
-subscribeRepLocations();
-populateRepFilter();
-loadRepShiftHistory();
+// FIX: remove stray subscribeRepLocations(); and duplicate snapshot logic from erroneous merge
+// subscribeRepLocations(); // original call; replaced by enhanced snapshot below
+onSnapshot(collection(db, 'repLocations'), snap => {
+    const updatedMarkers = [];
+    // Rebuild markers from snapshot to avoid missing initial changes
+    const seen = new Set();
+    const addOrUpdate = async (docSnap) => {
+      const data = docSnap.data();
+      if (!data) return;
+      const repId = data.repId || docSnap.id;
+      seen.add(repId);
+      const existing = state.repMarkers.get(repId);
+      const color = getRepColor(repId);
+      const repName = await getRepName(repId);
 
-window._adminTrackingState = state;
+      const icon = L.divIcon({
+        className: 'rep-live-marker',
+        html: `<div style='display:flex;flex-direction:column;align-items:center;'>
+          <div style='background:#fff;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;color:#333;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,0.3);margin-bottom:4px;border:2px solid ${color};'>${repName} • <span style='color:#10b981;font-weight:600;'>Online</span></div>
+          <div style='width:20px;height:20px;background:${color};color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);'>📍</div>
+        </div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 30]
+      });
 
-// Auto-fill pay period dates (20th cycle) if empty
-(function autofillPayPeriod(){
-  if (dateStartInput.value || dateEndInput.value) return;
-  const today = new Date();
-  let periodStart, periodEnd;
-  if (today.getDate() >= 20) {
-    periodStart = new Date(today.getFullYear(), today.getMonth(), 20);
-    periodEnd = new Date(today.getFullYear(), today.getMonth()+1, 19);
-  } else {
-    periodStart = new Date(today.getFullYear(), today.getMonth()-1, 20);
-    periodEnd = new Date(today.getFullYear(), today.getMonth(), 19);
-  }
-  dateStartInput.value = periodStart.toISOString().substring(0,10);
-  dateEndInput.value = periodEnd.toISOString().substring(0,10);
-  // If Rep=(All) is currently selected (default) trigger an initial aggregation
-  // so the Stats section isn't left at 0s on first load.
-  try {
-    if (!repSel.value && dateStartInput.value && dateEndInput.value) {
-      refreshStatsRangeAll();
-    }
-  } catch(_) {}
-})();
+      if (existing) {
+        existing.setLatLng([data.gpsLat, data.gpsLng]);
+        existing.setIcon(icon);
+      } else {
+        const marker = L.marker([data.gpsLat, data.gpsLng], { icon }).addTo(state.map);
+        marker.bindPopup(`<strong>${repName}</strong><br>ID: ${repId}<br>Last Update: ${new Date(data.timestamp).toLocaleString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}<br><button onclick="window._adminTrackingState.filters.rep='${repId}';document.getElementById('filterRep').value='${repId}';document.getElementById('applyFilters').click();">View Logs</button>`);
+        marker.on('click', () => marker.openPopup());
+        state.repMarkers.set(repId, marker);
+      }
+      updatedMarkers.push(repId);
+    };
 
-// Expose helper for debugging
-window._renderShiftHistory = renderShiftHistory;
+    // Build from full snapshot
+    const docs = snap.docs || [];
+    const promises = docs.map(addOrUpdate);
+    Promise.all(promises).then(() => {
+      // Remove markers for reps no longer present
+      Array.from(state.repMarkers.keys()).forEach(repId => {
+        if (!seen.has(repId)) {
+          const m = state.repMarkers.get(repId);
+          try { state.map.removeLayer(m); } catch(_) {}
+          state.repMarkers.delete(repId);
+        }
+      });
+      // Fit if we have live reps
+      if (state.repMarkers.size) {
+        const group = L.featureGroup(Array.from(state.repMarkers.values()));
+        const bounds = group.getBounds();
+        try {
+          const padLat = 0.0145;
+          const padLng = 0.025;
+          const sw = bounds.getSouthWest();
+          const ne = bounds.getNorthEast();
+          const padded = L.latLngBounds(
+            L.latLng(sw.lat - padLat, sw.lng - padLng),
+            L.latLng(ne.lat + padLat, ne.lng + padLng)
+          );
+          state.map.fitBounds(padded, { animate:true, padding:[20,20], maxZoom: 15 });
+        } catch(_) {}
+      }
+      // Toggle overlay depending on whether any reps are present
+      updateMapOverlay();
+  });
+}); // close onSnapshot listener
