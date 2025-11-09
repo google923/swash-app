@@ -209,9 +209,13 @@ async function loadTerritories() {
       const opt = document.createElement("option");
       opt.value = d.id; opt.textContent = data.name || d.id;
       terrSel.appendChild(opt);
-      if (Array.isArray(data.geoBoundary)) {
+      const color = data.color || '#0078d7';
+      if (Array.isArray(data.geoBoundary) && data.geoBoundary.length >= 3) {
         const latlngs = data.geoBoundary.map(p => [p[0], p[1]]);
-        L.polygon(latlngs, { color: '#0078d7', weight:1, fillOpacity:0.05 }).addTo(state.map);
+        L.polygon(latlngs, { color, weight:1, fillOpacity:0.08 }).addTo(state.map);
+      } else if (data.center && typeof data.radius === 'number') {
+        // Handle circle territories stored in collection
+        L.circle([data.center.lat, data.center.lng], { radius: data.radius, color, weight:1, fillOpacity:0.08 }).addTo(state.map);
       }
       loaded = true;
     });
@@ -226,11 +230,12 @@ async function loadTerritories() {
           const opt = document.createElement("option");
           opt.value = t.id; opt.textContent = t.name || t.id;
           terrSel.appendChild(opt);
-          if (t.type === 'polygon' && Array.isArray(t.path)) {
+          const color = t.color || '#0078d7';
+          if (t.type === 'polygon' && Array.isArray(t.path) && t.path.length >= 3) {
             const latlngs = t.path.map(p => [p.lat, p.lng]);
-            L.polygon(latlngs, { color: t.color || '#0078d7', weight:1, fillOpacity:0.05 }).addTo(state.map);
-          } else if (t.type === 'circle' && t.center) {
-            L.circle([t.center.lat, t.center.lng], { radius: t.radius || 1000, color: t.color || '#0078d7', weight:1, fillOpacity:0.05 }).addTo(state.map);
+            L.polygon(latlngs, { color, weight:1, fillOpacity:0.08 }).addTo(state.map);
+          } else if (t.type === 'circle' && t.center && typeof t.radius === 'number') {
+            L.circle([t.center.lat, t.center.lng], { radius: t.radius || 1000, color, weight:1, fillOpacity:0.08 }).addTo(state.map);
           }
         });
       }
