@@ -846,6 +846,8 @@ function exportCsv() {
 // Init
 initMap();
 loadTerritories();
+populateRepFilter();
+loadRepShiftHistory();
 // FIX: remove stray subscribeRepLocations(); and duplicate snapshot logic from erroneous merge
 // subscribeRepLocations(); // original call; replaced by enhanced snapshot below
 onSnapshot(collection(db, 'repLocations'), snap => {
@@ -934,9 +936,13 @@ onSnapshot(collection(db, 'repLocations'), snap => {
 
 async function ensureLiveShift(repId, dateStr) {
   // Check if already exists in shifts list
-  const existing = state.shifts.find(s => s.repId === repId && s.date === dateStr);
-  // For live shifts (endTime === null), force-refresh the entry each snapshot to ensure sidebar stays current
-  if (existing && existing.endTime !== null) return; // only skip if shift is completed
+  let existing = state.shifts.find(s => s.repId === repId && s.date === dateStr);
+  // If the existing shift is completed (has endTime), allow creating a new entry for a new shift same day
+  if (existing && existing.endTime !== null) {
+    // Rep may have started a new shift - remove the old completed one and fetch fresh
+    state.shifts = state.shifts.filter(s => !(s.repId === repId && s.date === dateStr && s.endTime !== null));
+    existing = null;
+  }
   
   try {
     // First, check if there's a repShifts summary doc (live or completed)
