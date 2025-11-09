@@ -411,18 +411,48 @@ function scheduleAutoPauseCheck() {
 }
 
 // ---------- Paid Time Timer ----------
+function computePausedByInactivity(shift, endMs) {
+  // Pay grace = autoPauseMs; beyond that, time is unpaid unless a manual pause covers it
+  const logsSorted = [...(shift.logs || [])]
+    .map(l => new Date(l.timestamp).getTime())
+    .filter(t => !isNaN(t))
+    .sort((a,b) => a-b);
+  let lastActive = new Date(shift.startTime).getTime();
+  let inactive = 0;
+
+  const considerGap = (fromMs, toMs) => {
+    const gap = Math.max(0, toMs - fromMs);
+    if (gap > state.autoPauseMs) inactive += (gap - state.autoPauseMs);
+  };
+
+  for (const ts of logsSorted) {
+    considerGap(lastActive, ts);
+    lastActive = ts;
+  }
+  considerGap(lastActive, endMs);
+  return inactive;
+}
+
+function sumManualPausesMs(shift, endMs) {
+  let paused = 0;
+  (shift.pauses || []).forEach(p => {
+    if (!p.start) return;
+    const ps = new Date(p.start).getTime();
+    const pe = p.end ? new Date(p.end).getTime() : endMs;
+    if (!isNaN(ps) && !isNaN(pe)) paused += Math.max(0, pe - ps);
+  });
+  return paused;
+}
+
 function computeActiveMsSoFar() {
   if (!state.shift) return 0;
   const startMs = new Date(state.shift.startTime).getTime();
   const nowMs = Date.now();
-  let pausedMs = 0;
-  state.shift.pauses.forEach(p => {
-    if (!p.start) return;
-    const ps = new Date(p.start).getTime();
-    const pe = p.end ? new Date(p.end).getTime() : nowMs; // ongoing pause counts up to now
-    pausedMs += Math.max(0, pe - ps);
-  });
-  return Math.max(0, (nowMs - startMs) - pausedMs);
+  const total = Math.max(0, nowMs - startMs);
+  const manualPaused = sumManualPausesMs(state.shift, nowMs);
+  const inactivityPaused = computePausedByInactivity(state.shift, nowMs);
+  const active = Math.max(0, total - manualPaused - inactivityPaused);
+  return active;
 }
 
 function formatHHMM(ms) {
@@ -584,15 +614,10 @@ function computeActiveMinutes() {
   if (!state.shift) return 0;
   const start = new Date(state.shift.startTime).getTime();
   const end = new Date(state.shift.endTime || nowIso()).getTime();
-  let pausedMs = 0;
-  state.shift.pauses.forEach(p => {
-    if (p.start) {
-      const ps = new Date(p.start).getTime();
-      const pe = new Date(p.end || nowIso()).getTime();
-      pausedMs += Math.max(0, pe - ps);
-    }
-  });
-  const activeMs = (end - start) - pausedMs;
+  const total = Math.max(0, end - start);
+  const manualPaused = sumManualPausesMs(state.shift, end);
+  const inactivityPaused = computePausedByInactivity(state.shift, end);
+  const activeMs = Math.max(0, total - manualPaused - inactivityPaused);
   return Math.max(0, Math.round(activeMs / 60000));
 }
 
@@ -603,6 +628,11 @@ function renderSummary(extra) {
   const oCount = logs.filter(l => l.status === "O").length;
   const salesCount = logs.filter(l => l.status === "SignUp").length;
   const conv = total ? ((salesCount/total)*100).toFixed(1) : 0;
+  // Transparency on deductions
+  const endMs = new Date(state.shift.endTime || nowIso()).getTime();
+  const manualPausedMs = sumManualPausesMs(state.shift, endMs);
+  const inactivityPausedMs = computePausedByInactivity(state.shift, endMs);
+  const toMin = (ms) => Math.max(0, Math.round(ms/60000));
   summaryContent.innerHTML = `
     <table style='width:100%;border-collapse:collapse;'>
     <tr><td>Total doors</td><td>${total}</td></tr>
@@ -612,6 +642,8 @@ function renderSummary(extra) {
     <tr><td>Conversion</td><td>${conv}%</td></tr>
     <tr><td>Start</td><td>${formatTime(state.shift.startTime)}</td></tr>
     <tr><td>Finish</td><td>${formatTime(state.shift.endTime)}</td></tr>
+    <tr><td>Inactivity deducted (>=2m gaps)</td><td>${toMin(inactivityPausedMs)} min</td></tr>
+    <tr><td>Manual pauses deducted</td><td>${toMin(manualPausedMs)} min</td></tr>
     <tr><td>Paid minutes</td><td>${extra.activeMinutes}</td></tr>
     <tr><td>Pay (£12.21/hr)</td><td>£${extra.pay.toFixed(2)}</td></tr>
     <tr><td>Mileage</td><td>${state.shift.mileageMiles.toFixed(2)} mi</td></tr>
