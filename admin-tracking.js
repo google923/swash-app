@@ -196,6 +196,13 @@ async function loadTerritories() {
       allOpt.textContent = '(All Territories)';
       terrSel.appendChild(allOpt);
     }
+    // Insert a (No territory assigned) option
+    if (!terrSel.querySelector('option[value="__NONE__"]')) {
+      const noneOpt = document.createElement('option');
+      noneOpt.value = '__NONE__';
+      noneOpt.textContent = '(No territory assigned)';
+      terrSel.appendChild(noneOpt);
+    }
     snap.forEach(d => {
       const data = d.data();
       state.territories.push({ id: d.id, ...data });
@@ -255,7 +262,14 @@ function renderShiftHistory() {
   const terrFilter = state.filters.territory || '';
   state.shifts.forEach(s => {
     if (repFilter && s.repId !== repFilter) return;
-    if (terrFilter && terrFilter !== '__ALL__' && terrFilter !== '' && s.territoryId && s.territoryId !== terrFilter) return;
+    // Territory filtering logic including explicit NONE option
+    if (terrFilter && terrFilter !== '__ALL__') {
+      if (terrFilter === '__NONE__') {
+        if (s.territoryId) return; // only include those without a territory
+      } else {
+        if ((s.territoryId || null) !== terrFilter) return;
+      }
+    }
     const div = document.createElement('div');
     div.className = 'recent-item';
     div.innerHTML = `<div>${s.date}</div><div>${s.repId}<br>${s.totals?.doors||0} doors / ${s.miles?.toFixed(1)||0} mi</div>`;
@@ -515,7 +529,15 @@ function refreshStatsRangeAll() {
     snap.forEach(ds => {
       const d = ds.data();
       if (!d) return;
-      if (terrFilter && terrFilter !== '' && terrFilter !== '__ALL__' && d.territoryId && d.territoryId !== terrFilter) return;
+      if (terrFilter && terrFilter !== '') {
+        if (terrFilter === '__ALL__') {
+          // no-op
+        } else if (terrFilter === '__NONE__') {
+          if (d.territoryId) return; // include only missing territory
+        } else {
+          if ((d.territoryId || null) !== terrFilter) return;
+        }
+      }
       totalDoors += d.totals?.doors || 0;
       totalX += d.totals?.x || 0;
       totalO += d.totals?.o || 0;
@@ -527,7 +549,15 @@ function refreshStatsRangeAll() {
     if (totalDoors === 0 && state.shifts.length) {
       state.shifts.forEach(s => {
         if (!s.date || s.date < startStr || s.date > endStr) return;
-        if (terrFilter && terrFilter !== '' && terrFilter !== '__ALL__' && s.territoryId && s.territoryId !== terrFilter) return;
+        if (terrFilter && terrFilter !== '') {
+          if (terrFilter === '__ALL__') {
+            // no-op
+          } else if (terrFilter === '__NONE__') {
+            if (s.territoryId) return;
+          } else {
+            if ((s.territoryId || null) !== terrFilter) return;
+          }
+        }
         totalDoors += s.totals?.doors || 0;
         totalX += s.totals?.x || 0;
         totalO += s.totals?.o || 0;
@@ -551,7 +581,15 @@ function refreshStatsRangeAll() {
     let totalDoors = 0, totalX = 0, totalO = 0, totalSales = 0, totalMiles = 0, totalActiveMin = 0;
     state.shifts.forEach(s => {
       if (!s.date || s.date < startStr || s.date > endStr) return;
-      if (terrFilter && terrFilter !== '' && terrFilter !== '__ALL__' && s.territoryId && s.territoryId !== terrFilter) return;
+      if (terrFilter && terrFilter !== '') {
+        if (terrFilter === '__ALL__') {
+          // no-op
+        } else if (terrFilter === '__NONE__') {
+          if (s.territoryId) return;
+        } else {
+          if ((s.territoryId || null) !== terrFilter) return;
+        }
+      }
       totalDoors += s.totals?.doors || 0;
       totalX += s.totals?.x || 0;
       totalO += s.totals?.o || 0;
