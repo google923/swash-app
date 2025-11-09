@@ -148,35 +148,83 @@ async function handleStartDay() {
   const user = auth.currentUser;
   if (!user) { alert("Not authenticated"); return; }
 
-  // Fetch assigned territory from users profile when available, else fallback to first territory
+  // Fetch assigned territory from users profile and pre-load all territories
   let assignedTerritoryId = null;
+  let repDisplayName = null;
   try {
     const userDoc = await getDoc(doc(db, "users", user.uid));
     const udata = userDoc.exists() ? userDoc.data() : {};
     assignedTerritoryId = udata.assignedTerritoryId || udata.territoryId || null;
+    repDisplayName = udata.repName || udata.displayName || udata.name || null;
   } catch(_) {}
 
+  // Load territories from collection, with fallback to system/territories document
+  const loadedTerritories = [];
+  try {
+    const terrSnap = await getDocs(collection(db, "territories"));
+    terrSnap.forEach(docu => {
+      const data = docu.data();
+      loadedTerritories.push({ id: docu.id, ...data });
+    });
+  } catch(_) {}
+  if (!loadedTerritories.length) {
+    try {
+      const sysDoc = await getDoc(doc(db, "system", "territories"));
+      if (sysDoc.exists() && Array.isArray(sysDoc.data().data)) {
+        sysDoc.data().data.forEach(t => loadedTerritories.push(t));
+      }
+    } catch(_) {}
+  }
+
+  // Helper to test if a lat/lng is inside a territory shape
+  function territoryContains(t, lat, lng) {
+    if (!t) return false;
+    if (Array.isArray(t.geoBoundary) && t.geoBoundary.length >= 3) {
+      return isPointInPolygon(lat, lng, t.geoBoundary);
+    }
+    if (t.type === 'polygon' && Array.isArray(t.path) && t.path.length >= 3) {
+      const poly = t.path.map(p => [p.lat, p.lng]);
+      return isPointInPolygon(lat, lng, poly);
+    }
+    if (t.type === 'circle' && t.center && typeof t.radius === 'number') {
+      const R = 6371000; // meters
+      const toRad = d => d * Math.PI / 180;
+      const dLat = toRad(lat - t.center.lat);
+      const dLng = toRad(lng - t.center.lng);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(t.center.lat)) * Math.cos(toRad(lat)) * Math.sin(dLng/2)**2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const dist = R * c;
+      return dist <= (t.radius || 0);
+    }
+    return false;
+  }
+
+  // Preselect from assigned id if present; refined after we have GPS
   let territory = null;
   if (assignedTerritoryId) {
-    const tdoc = await getDoc(doc(db, "territories", assignedTerritoryId));
-    if (tdoc.exists()) territory = { id: tdoc.id, ...tdoc.data() };
+    territory = loadedTerritories.find(t => t.id === assignedTerritoryId) || null;
   }
-  if (!territory) {
-    const terrSnap = await getDocs(collection(db, "territories"));
-    terrSnap.forEach(docu => { if (!territory) territory = { id: docu.id, ...docu.data() }; });
+  // If nothing selected yet, default to first available so we always have a value if GPS fails
+  if (!territory && loadedTerritories.length) {
+    territory = loadedTerritories[0];
   }
-  // Fallback: allow logging even if no territory exists or assigned
-  if (!territory) { territory = { id: null }; }
 
   // Acquire current position
   navigator.geolocation.getCurrentPosition(async (pos) => {
     const { latitude, longitude } = pos.coords;
-    if (territory.geoBoundary && Array.isArray(territory.geoBoundary)) {
-      const inside = isPointInPolygon(latitude, longitude, territory.geoBoundary);
-      if (!inside) {
-        // Warn but do not block logging
-        console.warn("Outside territory boundary; continuing");
+    // If multiple territories are available, pick the one containing the current position; else fallback to one assigned to rep name.
+    if (loadedTerritories.length) {
+      const insideMatches = loadedTerritories.filter(t => territoryContains(t, latitude, longitude));
+      if (insideMatches.length) {
+        territory = insideMatches[0];
+      } else if (repDisplayName) {
+        const assignedMatches = loadedTerritories.filter(t => Array.isArray(t.reps) && t.reps.includes(repDisplayName));
+        if (assignedMatches.length) territory = assignedMatches[0];
       }
+    }
+    if (territory && Array.isArray(territory.geoBoundary)) {
+      const inside = isPointInPolygon(latitude, longitude, territory.geoBoundary);
+      if (!inside) console.warn("Outside territory boundary; continuing");
     }
     const today = new Date();
     // Focus period validation (supports focusPeriod.start/end or focusPeriodStart/End)
@@ -189,8 +237,8 @@ async function handleStartDay() {
     }
     const dateStr = today.toISOString().substring(0,10);
     state.shift = {
-      repId: user.uid,
-      territoryId: territory.id,
+  repId: user.uid,
+  territoryId: territory ? (territory.id || territory.territoryId || null) : null,
       date: dateStr,
       startTime: nowIso(),
       logs: [],
@@ -208,7 +256,8 @@ async function handleStartDay() {
         gpsLng: longitude,
       }, { merge: true });
     } catch(e) { console.warn("Initial live location write failed", e); }
-  shiftStatusEl.textContent = (territory.id ? "Shift started at " : "Shift started (no territory) at ") + formatTime(state.shift.startTime);
+  const territoryName = territory && (territory.name || territory.id);
+  shiftStatusEl.textContent = (state.shift.territoryId ? `Shift started (${territoryName}) at ` : "Shift started (no territory) at ") + formatTime(state.shift.startTime);
     enableLoggingButtons();
     initMap();
     // Center map on current starting position for clarity
