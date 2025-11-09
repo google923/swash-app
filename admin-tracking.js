@@ -926,18 +926,25 @@ onSnapshot(collection(db, 'repLocations'), snap => {
 }); // close onSnapshot listener
 
 async function ensureLiveShift(repId, dateStr) {
-  // If a shift summary for today already exists, skip
-  if (state.shifts.some(s => s.repId === repId && s.date === dateStr)) return;
+  // Check if already exists in shifts list
+  const existing = state.shifts.find(s => s.repId === repId && s.date === dateStr);
+  // For live shifts (endTime === null), force-refresh the entry each snapshot to ensure sidebar stays current
+  if (existing && existing.endTime !== null) return; // only skip if shift is completed
+  
   try {
     const snap = await getDocs(query(collection(db, 'repLogs', repId, 'dates', dateStr, 'doorLogs')));
     const logs = []; snap.forEach(d => logs.push(d.data()));
     logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
+    
     if (!logs.length) {
-      // No doors yet; synthesize placeholder live shift with unknown start
-      state.shifts.unshift({ repId, date: dateStr, startTime: null, endTime: null, pauses: [] });
-      renderShiftHistory();
+      // No doors yet; synthesize placeholder if not already present
+      if (!existing) {
+        state.shifts.unshift({ repId, date: dateStr, startTime: null, endTime: null, pauses: [] });
+        renderShiftHistory();
+      }
       return;
     }
+    
     const first = logs[0];
     // Create a minimal live shift object; openShiftSummary will recalculate everything from logs
     const shift = {
@@ -947,8 +954,15 @@ async function ensureLiveShift(repId, dateStr) {
       endTime: null,
       pauses: [], // No pause data until shift is submitted
     };
-    state.shifts.unshift(shift);
-    renderShiftHistory();
+    
+    if (existing) {
+      // Update existing entry in place
+      Object.assign(existing, shift);
+      renderShiftHistory();
+    } else {
+      state.shifts.unshift(shift);
+      renderShiftHistory();
+    }
   } catch (err) {
     // Ignore failures; sidebar can remain empty until logs sync
     console.warn('ensureLiveShift failed', err);
