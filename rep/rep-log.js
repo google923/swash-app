@@ -275,6 +275,43 @@ function enableLoggingButtons() {
 
 async function persistShift() { await localforage.setItem(OFFLINE_SHIFT_KEY, state.shift); }
 
+// Write live shift summary to repShifts for admin tracking dashboard (non-blocking, merge mode)
+async function writeLiveShiftSummary() {
+  if (!state.shift || !state.shift.startTime) return;
+  const activeMinutes = computeActiveMinutesSoFar();
+  try {
+    await setDoc(doc(db, "repShifts", `${state.shift.repId}_${state.shift.date}`), {
+      repId: state.shift.repId,
+      date: state.shift.date,
+      territoryId: state.shift.territoryId,
+      startTime: state.shift.startTime,
+      endTime: null, // still in progress
+      pauses: state.shift.pauses,
+      totals: {
+        doors: state.shift.logs.length,
+        x: state.shift.logs.filter(l => l.status === 'X').length,
+        o: state.shift.logs.filter(l => l.status === 'O').length,
+        sales: state.shift.logs.filter(l => l.status === 'SignUp').length,
+      },
+      miles: state.shift.mileageMiles,
+      activeMinutes,
+    }, { merge: true });
+  } catch (e) {
+    console.warn("Live shift summary write failed", e);
+  }
+}
+
+function computeActiveMinutesSoFar() {
+  if (!state.shift) return 0;
+  const startMs = new Date(state.shift.startTime).getTime();
+  const nowMs = Date.now();
+  const total = Math.max(0, nowMs - startMs);
+  const manualPaused = sumManualPausesMs(state.shift, nowMs);
+  const inactivityPaused = computePausedByInactivity(state.shift, nowMs);
+  const activeMs = Math.max(0, total - manualPaused - inactivityPaused);
+  return Math.max(0, Math.round(activeMs / 60000));
+}
+
 // ---------- Logging ----------
 function createLog(status, note, address) {
   if (!state.shift) return;
@@ -344,6 +381,8 @@ function createLog(status, note, address) {
         gpsLng: longitude,
       }, { merge: true });
     } catch(e) { console.warn("Live location update failed", e); }
+    // Write live shift summary so admin can see real-time progress
+    writeLiveShiftSummary();
     autoSyncLogs();
     // Attempt background sync via service worker
     try {
@@ -538,6 +577,7 @@ pauseBtn.addEventListener("click", () => {
   shiftStatusEl.textContent = "Paused manually.";
   pauseBtn.disabled = true; resumeBtn.disabled = false;
   persistShift();
+  writeLiveShiftSummary();
   updatePaidTimerDisplay();
 });
 
@@ -550,6 +590,7 @@ resumeBtn.addEventListener("click", () => {
   pauseBtn.disabled = false; resumeBtn.disabled = true;
   state.shift.lastActivityTs = Date.now();
   persistShift();
+  writeLiveShiftSummary();
   updatePaidTimerDisplay();
 });
 

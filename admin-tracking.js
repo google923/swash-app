@@ -939,6 +939,22 @@ async function ensureLiveShift(repId, dateStr) {
   if (existing && existing.endTime !== null) return; // only skip if shift is completed
   
   try {
+    // First, check if there's a repShifts summary doc (live or completed)
+    const shiftDoc = await getDoc(doc(db, 'repShifts', `${repId}_${dateStr}`));
+    if (shiftDoc.exists()) {
+      const shiftData = shiftDoc.data();
+      // Use the repShifts summary directly (has pauses, totals, miles, activeMinutes)
+      if (existing) {
+        Object.assign(existing, shiftData);
+        renderShiftHistory();
+      } else {
+        state.shifts.unshift(shiftData);
+        renderShiftHistory();
+      }
+      return;
+    }
+    
+    // Fallback: synthesize from doorLogs if no repShifts doc exists
     const snap = await getDocs(query(collection(db, 'repLogs', repId, 'dates', dateStr, 'doorLogs')));
     const logs = []; snap.forEach(d => logs.push(d.data()));
     logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
@@ -959,7 +975,7 @@ async function ensureLiveShift(repId, dateStr) {
       date: dateStr,
       startTime: first.timestamp,
       endTime: null,
-      pauses: [], // No pause data until shift is submitted
+      pauses: [], // No pause data until rep writes it
     };
     
     if (existing) {
