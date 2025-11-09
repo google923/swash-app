@@ -388,20 +388,30 @@ function openShiftSummary(shift) {
   getDocs(query(collection(db, 'repLogs', shift.repId, 'dates', shift.date, 'doorLogs'))).then(snap => {
     const logs = []; snap.forEach(d => logs.push(d.data()));
     logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
-    const totalDoors = shift.totals?.doors || logs.length;
-    const x = shift.totals?.x ?? logs.filter(l=>l.status==='X').length;
-    const o = shift.totals?.o ?? logs.filter(l=>l.status==='O').length;
-    const sales = shift.totals?.sales ?? logs.filter(l=>l.status==='SignUp').length;
+    // Always recalculate from today's logs to ensure accuracy for live shifts
+    const totalDoors = logs.length;
+    const x = logs.filter(l=>l.status==='X').length;
+    const o = logs.filter(l=>l.status==='O').length;
+    const sales = logs.filter(l=>l.status==='SignUp').length;
     const conv = totalDoors ? ((sales/totalDoors)*100).toFixed(1) : '0.0';
-    const miles = shift.miles || 0;
+    // Recalculate miles from logs for live accuracy
+    let miles = 0;
+    if (logs.length > 1) {
+      let prev = { lat: logs[0].gpsLat, lng: logs[0].gpsLng };
+      for (let i = 1; i < logs.length; i++) {
+        const cur = { lat: logs[i].gpsLat, lng: logs[i].gpsLng };
+        miles += haversineMiles(prev, cur);
+        prev = cur;
+      }
+    }
     const startMs = shift.startTime ? new Date(shift.startTime).getTime() : (logs[0]? new Date(logs[0].timestamp).getTime() : 0);
-    const endMs = shift.endTime ? new Date(shift.endTime).getTime() : (logs[logs.length-1]? new Date(logs[logs.length-1].timestamp).getTime() : startMs);
+    const endMs = shift.endTime ? new Date(shift.endTime).getTime() : Date.now();
     const totalSpanMs = Math.max(0, endMs - startMs);
     const activeMinutes = shift.activeMinutes ?? 0;
     const activeMs = activeMinutes * 60000;
-  const manualPausedMs = (shift.pauses||[]).reduce((acc,p)=>{ if(!p || p.reason !== 'manual' || !p.start) return acc; const ps=new Date(p.start).getTime(); const pe=p.end?new Date(p.end).getTime():endMs; if(!isNaN(ps)&&!isNaN(pe)) acc+=Math.max(0,pe-ps); return acc; },0);
-  // Since activeMinutes already excludes inactivity, compute inactivity as remainder of total span
-  const inactivityDedMs = Math.max(0, totalSpanMs - manualPausedMs - activeMs);
+    const manualPausedMs = (shift.pauses||[]).reduce((acc,p)=>{ if(!p || p.reason !== 'manual' || !p.start) return acc; const ps=new Date(p.start).getTime(); const pe=p.end?new Date(p.end).getTime():endMs; if(!isNaN(ps)&&!isNaN(pe)) acc+=Math.max(0,pe-ps); return acc; },0);
+    // Since activeMinutes already excludes inactivity, compute inactivity as remainder of total span
+    const inactivityDedMs = Math.max(0, totalSpanMs - manualPausedMs - activeMs);
     const payRate = 12.21, expenseRate = 0.45;
     const pay = (shift.pay != null) ? shift.pay : parseFloat(((activeMinutes/60)*payRate).toFixed(2));
     const mileageExpense = (shift.mileageExpense != null) ? shift.mileageExpense : parseFloat((miles*expenseRate).toFixed(2));
