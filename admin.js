@@ -545,8 +545,12 @@ function resolvePricePerClean(quote) {
 
 function resolveStatusCategory(quote) {
   const statusText = String(quote.status || "").toLowerCase();
+  const paymentStatus = String(quote.paymentStatus || "").toLowerCase();
+  
   if (statusText.includes("cancel") || statusText.includes("archiv")) return "CANCELLED";
+  if (paymentStatus === "paid" || statusText.includes("paid")) return "PAID";
   if (statusText.includes("booked")) return "BOOKED";
+  if (statusText.includes("pending payment")) return "PENDING_PAYMENT";
   return "NEEDS_BOOKING";
 }
 
@@ -1227,6 +1231,10 @@ function filterQuotes() {
 
       if (statusSelection === "NEEDS_BOOKING" && category !== "NEEDS_BOOKING") return false;
 
+      if (statusSelection === "PENDING_PAYMENT" && category !== "PENDING_PAYMENT") return false;
+
+      if (statusSelection === "PAID" && category !== "PAID") return false;
+
     }
 
     return true;
@@ -1402,9 +1410,13 @@ function renderTable(list) {
     const statusCategory = resolveStatusCategory(quote);
     if (statusCategory === "CANCELLED") {
       row.classList.add("status-cancelled");
+    } else if (statusCategory === "PAID") {
+      row.classList.add("status-paid");
     } else if (statusCategory === "BOOKED") {
       row.classList.add("status-booked");
       row.classList.add("booked");
+    } else if (statusCategory === "PENDING_PAYMENT") {
+      row.classList.add("status-pending-payment");
     } else if (statusCategory === "NEEDS_BOOKING") {
       row.classList.add("status-pending");
     }
@@ -1641,9 +1653,13 @@ function renderCards(list) {
           ? "quote-card--booked"
           : statusCategory === "CANCELLED"
             ? "quote-card--cancelled"
-            : statusCategory === "NEEDS_BOOKING"
-              ? "quote-card--needs-booking"
-              : "";
+            : statusCategory === "PAID"
+              ? "quote-card--paid"
+              : statusCategory === "PENDING_PAYMENT"
+                ? "quote-card--pending-payment"
+                : statusCategory === "NEEDS_BOOKING"
+                  ? "quote-card--needs-booking"
+                  : "";
       const contactBlock = [
         phone
           ? `<a href="tel:${phone}" class="quote-card__contact">${phone}</a>`
@@ -1657,7 +1673,11 @@ function renderCards(list) {
           ? "quote-card__status-pill--booked"
           : statusCategory === "CANCELLED"
             ? "quote-card__status-pill--cancelled"
-            : "quote-card__status-pill--needs-booking";
+            : statusCategory === "PAID"
+              ? "quote-card__status-pill--paid"
+              : statusCategory === "PENDING_PAYMENT"
+                ? "quote-card__status-pill--pending-payment"
+                : "quote-card__status-pill--needs-booking";
       return `
         <article class="quote-card ${cardClass}" data-id="${quote.id}">
           <div class="quote-card__header">

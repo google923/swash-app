@@ -983,6 +983,16 @@ tbody tr:hover {
   background: rgba(28, 156, 93, 0.12);
 }
 
+.status-paid {
+  background: rgba(0, 120, 215, 0.08);
+  border-left: 3px solid #0078d7;
+}
+
+.status-pending-payment {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid #f59e0b;
+}
+
 .tab-btn {
   padding: 8px 12px;
   border-radius: 20px;
@@ -2656,6 +2666,16 @@ body.embed-mode .banner {
   border-left-color: #1c9c5d;
 }
 
+.quote-card--paid {
+  border-color: rgba(0, 120, 215, 0.28);
+  border-left-color: #0078d7;
+}
+
+.quote-card--pending-payment {
+  border-color: rgba(245, 158, 11, 0.28);
+  border-left-color: #f59e0b;
+}
+
 .quote-card--needs-booking {
   border-color: rgba(245, 158, 11, 0.28);
   border-left-color: #f59e0b;
@@ -2788,6 +2808,16 @@ body.embed-mode .banner {
 .quote-card__status-pill--booked {
   background: rgba(28, 156, 93, 0.18);
   color: #0f8a3b;
+}
+
+.quote-card__status-pill--paid {
+  background: rgba(0, 120, 215, 0.18);
+  color: #0078d7;
+}
+
+.quote-card__status-pill--pending-payment {
+  background: rgba(245, 158, 11, 0.18);
+  color: #b36b00;
 }
 
 .quote-card__status-pill--needs-booking {
