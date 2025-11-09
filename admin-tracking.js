@@ -33,6 +33,25 @@ const aSales = document.getElementById("aSales");
 const aConv = document.getElementById("aConv");
 const aMiles = document.getElementById("aMiles");
 const aDph = document.getElementById("aDph");
+// Shift summary modal elements
+const shiftSummaryModal = document.getElementById('shiftSummaryModal');
+const shiftSummaryBody = document.getElementById('shiftSummaryBody');
+const shiftSummaryClose = document.getElementById('shiftSummaryClose');
+const shiftSummaryReplay = document.getElementById('shiftSummaryReplay');
+
+shiftSummaryClose?.addEventListener('click', () => shiftSummaryModal?.close());
+shiftSummaryReplay?.addEventListener('click', () => {
+  const repId = shiftSummaryReplay.getAttribute('data-rep-id');
+  const date = shiftSummaryReplay.getAttribute('data-date');
+  if (!repId || !date) return;
+  getDocs(query(collection(db, 'repLogs', repId, 'dates', date, 'doorLogs'))).then(snap => {
+    const logs = []; snap.forEach(d => logs.push(d.data()));
+    logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
+    placeDoorMarkers(logs);
+    setupReplay(logs);
+    shiftSummaryModal.close();
+  });
+});
 
 // Replay controls
 const replayRange = document.getElementById('replayRange');
@@ -170,6 +189,13 @@ async function loadTerritories() {
     // First try to load from 'territories' collection
     const snap = await getDocs(collection(db, "territories"));
     let loaded = false;
+    // Insert an (All Territories) option if not present
+    if (!terrSel.querySelector('option[value="__ALL__"]')) {
+      const allOpt = document.createElement('option');
+      allOpt.value = '__ALL__';
+      allOpt.textContent = '(All Territories)';
+      terrSel.appendChild(allOpt);
+    }
     snap.forEach(d => {
       const data = d.data();
       state.territories.push({ id: d.id, ...data });
@@ -209,18 +235,32 @@ async function loadTerritories() {
 
 function loadRepShiftHistory() {
   // Simplified: fetch all repShifts docs
-  getDocs(collection(db, "repShifts")).then(snap => {
+  // Order by date descending if index exists; fallback to unordered
+  getDocs(query(collection(db, "repShifts"), orderBy('date', 'desc'))).then(snap => {
     state.shifts = [];
     shiftHistoryEl.innerHTML = '';
     snap.forEach(d => { state.shifts.push({ id: d.id, ...d.data() }); });
-    state.shifts.sort((a,b) => (a.date > b.date ? -1 : 1));
-    state.shifts.forEach(s => {
-      const div = document.createElement('div');
-      div.className = 'recent-item';
-      div.innerHTML = `<div>${s.date}</div><div>${s.repId}<br>${s.totals?.doors||0} doors / ${s.miles?.toFixed(1)||0} mi</div>`;
-      div.addEventListener('click', () => replayShift(s));
-      shiftHistoryEl.appendChild(div);
-    });
+    // Already ordered via query; if orderBy fails (rules/index), we would need manual sort.
+    renderShiftHistory();
+    // If current filter is All reps with a date range, auto-refresh stats now that shifts are loaded
+    if (!repSel.value && dateStartInput.value && dateEndInput.value) {
+      refreshStatsRangeAll();
+    }
+  });
+}
+
+function renderShiftHistory() {
+  shiftHistoryEl.innerHTML = '';
+  const repFilter = state.filters.rep || '';
+  const terrFilter = state.filters.territory || '';
+  state.shifts.forEach(s => {
+    if (repFilter && s.repId !== repFilter) return;
+    if (terrFilter && terrFilter !== '__ALL__' && terrFilter !== '' && s.territoryId && s.territoryId !== terrFilter) return;
+    const div = document.createElement('div');
+    div.className = 'recent-item';
+    div.innerHTML = `<div>${s.date}</div><div>${s.repId}<br>${s.totals?.doors||0} doors / ${s.miles?.toFixed(1)||0} mi</div>`;
+    div.addEventListener('click', () => openShiftSummary(s));
+    shiftHistoryEl.appendChild(div);
   });
 }
 
@@ -233,6 +273,61 @@ function replayShift(shift) {
     snap.forEach(d => logs.push(d.data()));
     logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
     placeDoorMarkers(logs);
+  });
+}
+
+function openShiftSummary(shift) {
+  getDocs(query(collection(db, 'repLogs', shift.repId, 'dates', shift.date, 'doorLogs'))).then(snap => {
+    const logs = []; snap.forEach(d => logs.push(d.data()));
+    logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
+    const totalDoors = shift.totals?.doors || logs.length;
+    const x = shift.totals?.x ?? logs.filter(l=>l.status==='X').length;
+    const o = shift.totals?.o ?? logs.filter(l=>l.status==='O').length;
+    const sales = shift.totals?.sales ?? logs.filter(l=>l.status==='SignUp').length;
+    const conv = totalDoors ? ((sales/totalDoors)*100).toFixed(1) : '0.0';
+    const miles = shift.miles || 0;
+    const startMs = shift.startTime ? new Date(shift.startTime).getTime() : (logs[0]? new Date(logs[0].timestamp).getTime() : 0);
+    const endMs = shift.endTime ? new Date(shift.endTime).getTime() : (logs[logs.length-1]? new Date(logs[logs.length-1].timestamp).getTime() : startMs);
+    const totalSpanMs = Math.max(0, endMs - startMs);
+    const activeMinutes = shift.activeMinutes ?? 0;
+    const activeMs = activeMinutes * 60000;
+  const manualPausedMs = (shift.pauses||[]).reduce((acc,p)=>{ if(!p || p.reason !== 'manual' || !p.start) return acc; const ps=new Date(p.start).getTime(); const pe=p.end?new Date(p.end).getTime():endMs; if(!isNaN(ps)&&!isNaN(pe)) acc+=Math.max(0,pe-ps); return acc; },0);
+  // Since activeMinutes already excludes inactivity, compute inactivity as remainder of total span
+  const inactivityDedMs = Math.max(0, totalSpanMs - manualPausedMs - activeMs);
+    const payRate = 12.21, expenseRate = 0.45;
+    const pay = (shift.pay != null) ? shift.pay : parseFloat(((activeMinutes/60)*payRate).toFixed(2));
+    const mileageExpense = (shift.mileageExpense != null) ? shift.mileageExpense : parseFloat((miles*expenseRate).toFixed(2));
+    const totalOwed = (shift.totalOwed != null) ? shift.totalOwed : parseFloat((pay + mileageExpense).toFixed(2));
+    const dph = activeMinutes ? (totalDoors / (activeMinutes/60)) : 0;
+    const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '-';
+    const toMin = ms => Math.round(ms/60000);
+    shiftSummaryBody.innerHTML = `
+      <table class="summary-table">
+        <tr><td>Date</td><td>${shift.date}</td></tr>
+        <tr><td>Rep</td><td>${shift.repId}</td></tr>
+        <tr><td>Doors</td><td>${totalDoors}</td></tr>
+        <tr><td>X</td><td>${x}</td></tr>
+        <tr><td>O</td><td>${o}</td></tr>
+        <tr><td>Sales</td><td>${sales}</td></tr>
+        <tr><td>Conversion</td><td>${conv}%</td></tr>
+        <tr><td>Start</td><td>${fmtTime(shift.startTime)}</td></tr>
+        <tr><td>Finish</td><td>${fmtTime(shift.endTime)}</td></tr>
+        <tr><td>Total span (min)</td><td>${toMin(totalSpanMs)}</td></tr>
+        <tr><td>Manual pauses (min)</td><td>${toMin(manualPausedMs)}</td></tr>
+        <tr><td>Inactivity deducted (min)</td><td>${toMin(inactivityDedMs)}</td></tr>
+        <tr><td>Paid minutes</td><td>${activeMinutes}</td></tr>
+        <tr><td>Miles</td><td>${miles.toFixed(2)}</td></tr>
+        <tr><td>Pay (£${payRate}/hr)</td><td>£${pay.toFixed(2)}</td></tr>
+        <tr><td>Mileage (45p/mi)</td><td>£${mileageExpense.toFixed(2)}</td></tr>
+        <tr><td><strong>Total owed</strong></td><td><strong>£${totalOwed.toFixed(2)}</strong></td></tr>
+        <tr><td>Doors / active hour</td><td>${dph.toFixed(1)}</td></tr>
+      </table>
+      <h4 style='margin-top:12px;'>Pauses</h4>
+      <ul class='pause-list'>${(shift.pauses||[]).map(p=>`<li>${fmtTime(p.start)} - ${p.end?fmtTime(p.end):'ongoing'} (${p.reason||'inactive'})</li>`).join('') || '<li>None</li>'}</ul>
+    `;
+    shiftSummaryReplay.setAttribute('data-rep-id', shift.repId);
+    shiftSummaryReplay.setAttribute('data-date', shift.date);
+    shiftSummaryModal.showModal();
   });
 }
 
@@ -339,9 +434,14 @@ function applyFilters() {
     refreshStatsRange();
     state.markerCluster.clearLayers();
     loadLogsInRange(state.filters.rep, state.filters.dateStart, state.filters.dateEnd);
+  } else if (!state.filters.rep && state.filters.dateStart && state.filters.dateEnd) {
+    // Aggregate across ALL reps for the range – update stats only and leave map empty
+    refreshStatsRangeAll();
+    state.markerCluster.clearLayers();
   } else {
     alert('Select a rep and at least a start date');
   }
+  renderShiftHistory();
 }
 
 async function loadLogsInRange(repId, startDate, endDate) {
@@ -399,6 +499,78 @@ function refreshStatsRange() {
   });
 }
 
+function refreshStatsRangeAll() {
+  // Aggregate stats across ALL reps for a date range
+  const startStr = state.filters.dateStart;
+  const endStr = state.filters.dateEnd;
+  if (!startStr || !endStr) return;
+  const terrFilter = state.filters.territory;
+  const qAll = query(
+    collection(db, 'repShifts'),
+    where('date', '>=', startStr),
+    where('date', '<=', endStr)
+  );
+  getDocs(qAll).then(snap => {
+    let totalDoors = 0, totalX = 0, totalO = 0, totalSales = 0, totalMiles = 0, totalActiveMin = 0;
+    snap.forEach(ds => {
+      const d = ds.data();
+      if (!d) return;
+      if (terrFilter && terrFilter !== '' && terrFilter !== '__ALL__' && d.territoryId && d.territoryId !== terrFilter) return;
+      totalDoors += d.totals?.doors || 0;
+      totalX += d.totals?.x || 0;
+      totalO += d.totals?.o || 0;
+      totalSales += d.totals?.sales || 0;
+      totalMiles += d.miles || 0;
+      totalActiveMin += d.activeMinutes || 0;
+    });
+    // Fallback: if Firestore returned nothing, use already loaded state.shifts cache
+    if (totalDoors === 0 && state.shifts.length) {
+      state.shifts.forEach(s => {
+        if (!s.date || s.date < startStr || s.date > endStr) return;
+        if (terrFilter && terrFilter !== '' && terrFilter !== '__ALL__' && s.territoryId && s.territoryId !== terrFilter) return;
+        totalDoors += s.totals?.doors || 0;
+        totalX += s.totals?.x || 0;
+        totalO += s.totals?.o || 0;
+        totalSales += s.totals?.sales || 0;
+        totalMiles += s.miles || 0;
+        totalActiveMin += s.activeMinutes || 0;
+      });
+    }
+    const conv = totalDoors ? ((totalSales/totalDoors)*100).toFixed(1) : 0;
+    aTotal.textContent = totalDoors;
+    aX.textContent = totalX;
+    aO.textContent = totalO;
+    aSales.textContent = totalSales;
+    aConv.textContent = conv + '%';
+    aMiles.textContent = totalMiles.toFixed(2);
+    const dph = totalActiveMin ? (totalDoors / (totalActiveMin/60)) : 0;
+    if (aDph) aDph.textContent = dph.toFixed(1);
+  }).catch(err => {
+    console.warn('Failed to aggregate stats for all reps', err);
+    // Fallback aggregation if query fails
+    let totalDoors = 0, totalX = 0, totalO = 0, totalSales = 0, totalMiles = 0, totalActiveMin = 0;
+    state.shifts.forEach(s => {
+      if (!s.date || s.date < startStr || s.date > endStr) return;
+      if (terrFilter && terrFilter !== '' && terrFilter !== '__ALL__' && s.territoryId && s.territoryId !== terrFilter) return;
+      totalDoors += s.totals?.doors || 0;
+      totalX += s.totals?.x || 0;
+      totalO += s.totals?.o || 0;
+      totalSales += s.totals?.sales || 0;
+      totalMiles += s.miles || 0;
+      totalActiveMin += s.activeMinutes || 0;
+    });
+    const conv = totalDoors ? ((totalSales/totalDoors)*100).toFixed(1) : 0;
+    aTotal.textContent = totalDoors;
+    aX.textContent = totalX;
+    aO.textContent = totalO;
+    aSales.textContent = totalSales;
+    aConv.textContent = conv + '%';
+    aMiles.textContent = totalMiles.toFixed(2);
+    const dph = totalActiveMin ? (totalDoors / (totalActiveMin/60)) : 0;
+    if (aDph) aDph.textContent = dph.toFixed(1);
+  });
+}
+
 function refreshStats() {
   if (state.filters.rep && state.filters.dateStart) {
     getDoc(doc(db, 'repShifts', `${state.filters.rep}_${state.filters.dateStart}`)).then(ds => {
@@ -442,20 +614,67 @@ function populateRepFilter() {
 applyBtn.addEventListener('click', applyFilters);
 exportBtn.addEventListener('click', () => exportCsv());
 
+// Auto-update Stats when filters change and Rep=(All)
+;[repSel, dateStartInput, dateEndInput, terrSel].forEach(el => {
+  el?.addEventListener('change', () => {
+    if (!repSel.value && dateStartInput.value && dateEndInput.value) {
+      refreshStatsRangeAll();
+    }
+  });
+});
+
 function exportCsv() {
   if (!state.filters.rep || !state.filters.dateStart) { alert('Select rep and start date'); return; }
-  getDocs(query(collection(db, 'repLogs', state.filters.rep, 'dates', state.filters.dateStart, 'doorLogs'))).then(snap => {
-    const logs = [];
-    snap.forEach(d => logs.push(d.data()));
-    if (!logs.length) { alert('No logs'); return; }
-    logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
-    const rows = ['timestamp,status,gpsLat,gpsLng,note'];
-    logs.forEach(l => rows.push(`${l.timestamp},${l.status},${l.gpsLat},${l.gpsLng},${(l.note||'').replace(/,/g,';')}`));
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `${state.filters.rep}_${state.filters.dateStart}_logs.csv`; a.click();
-    URL.revokeObjectURL(url);
-  });
+  if (state.filters.dateEnd) {
+    // Range export: per-shift summary rows
+    const start = new Date(state.filters.dateStart);
+    const end = new Date(state.filters.dateEnd);
+    const dates = [];
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(d.toISOString().substring(0,10));
+    }
+    Promise.all(dates.map(dateStr => getDoc(doc(db, 'repShifts', `${state.filters.rep}_${dateStr}`)))).then(shiftsDocs => {
+      const header = 'date,repId,doors,x,o,sales,conversionPercent,miles,activeMinutes,manualPausedMinutes,inactivityDeductedMinutes,pay,mileageExpense,totalOwed,startTime,endTime';
+      const rows = [header];
+      shiftsDocs.forEach(ds => {
+        const s = ds.data(); if (!s) return;
+        const doors = s.totals?.doors || 0;
+        const x = s.totals?.x || 0;
+        const o = s.totals?.o || 0;
+        const sales = s.totals?.sales || 0;
+        const conv = doors ? ((sales/doors)*100).toFixed(1) : '0.0';
+        const miles = s.miles || 0;
+        const activeMinutes = s.activeMinutes || 0;
+        const startMs = s.startTime ? new Date(s.startTime).getTime() : 0;
+        const endMs = s.endTime ? new Date(s.endTime).getTime() : startMs;
+    const totalSpanMs = Math.max(0, endMs - startMs);
+    const manualPausedMs = (s.pauses||[]).reduce((acc,p)=>{ if(!p || p.reason !== 'manual' || !p.start) return acc; const ps=new Date(p.start).getTime(); const pe=p.end?new Date(p.end).getTime():endMs; if(!isNaN(ps)&&!isNaN(pe)) acc+=Math.max(0,pe-ps); return acc; },0);
+    const inactivityDedMs = Math.max(0, totalSpanMs - manualPausedMs - (activeMinutes*60000));
+        const pay = s.pay != null ? s.pay : parseFloat(((activeMinutes/60)*12.21).toFixed(2));
+        const mileageExpense = s.mileageExpense != null ? s.mileageExpense : parseFloat((miles*0.45).toFixed(2));
+        const totalOwed = s.totalOwed != null ? s.totalOwed : parseFloat((pay + mileageExpense).toFixed(2));
+  rows.push(`${s.date},${s.repId},${doors},${x},${o},${sales},${conv},${miles.toFixed(2)},${activeMinutes},${Math.round(manualPausedMs/60000)},${Math.round(inactivityDedMs/60000)},${pay.toFixed(2)},${mileageExpense.toFixed(2)},${totalOwed.toFixed(2)},${s.startTime||''},${s.endTime||''}`);
+      });
+      if (rows.length === 1) { alert('No shifts found in range'); return; }
+      const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${state.filters.rep}_${state.filters.dateStart}_${state.filters.dateEnd}_shift-summary.csv`; a.click();
+      URL.revokeObjectURL(url);
+    });
+  } else {
+    // Single-day per-log export
+    getDocs(query(collection(db, 'repLogs', state.filters.rep, 'dates', state.filters.dateStart, 'doorLogs'))).then(snap => {
+      const logs = []; snap.forEach(d => logs.push(d.data()));
+      if (!logs.length) { alert('No logs'); return; }
+      logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
+      const rows = ['timestamp,status,gpsLat,gpsLng,note'];
+      logs.forEach(l => rows.push(`${l.timestamp},${l.status},${l.gpsLat},${l.gpsLng},${(l.note||'').replace(/,/g,';')}`));
+      const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${state.filters.rep}_${state.filters.dateStart}_logs.csv`; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
 }
 
 // Init
@@ -466,3 +685,29 @@ populateRepFilter();
 loadRepShiftHistory();
 
 window._adminTrackingState = state;
+
+// Auto-fill pay period dates (20th cycle) if empty
+(function autofillPayPeriod(){
+  if (dateStartInput.value || dateEndInput.value) return;
+  const today = new Date();
+  let periodStart, periodEnd;
+  if (today.getDate() >= 20) {
+    periodStart = new Date(today.getFullYear(), today.getMonth(), 20);
+    periodEnd = new Date(today.getFullYear(), today.getMonth()+1, 19);
+  } else {
+    periodStart = new Date(today.getFullYear(), today.getMonth()-1, 20);
+    periodEnd = new Date(today.getFullYear(), today.getMonth(), 19);
+  }
+  dateStartInput.value = periodStart.toISOString().substring(0,10);
+  dateEndInput.value = periodEnd.toISOString().substring(0,10);
+  // If Rep=(All) is currently selected (default) trigger an initial aggregation
+  // so the Stats section isn't left at 0s on first load.
+  try {
+    if (!repSel.value && dateStartInput.value && dateEndInput.value) {
+      refreshStatsRangeAll();
+    }
+  } catch(_) {}
+})();
+
+// Expose helper for debugging
+window._renderShiftHistory = renderShiftHistory;
