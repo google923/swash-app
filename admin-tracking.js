@@ -16,6 +16,7 @@ const state = {
   territories: [],
   filters: { rep: "", date: "", territory: "" },
   shifts: [],
+  repNames: {}, // cache repId -> rep name for shift history rendering
 };
 
 // DOM refs
@@ -277,7 +278,25 @@ function renderShiftHistory() {
     }
     const div = document.createElement('div');
     div.className = 'recent-item';
-    div.innerHTML = `<div>${s.date}</div><div>${s.repId}<br>${s.totals?.doors||0} doors / ${s.miles?.toFixed(1)||0} mi</div>`;
+    const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '-';
+    const started = fmtTime(s.startTime);
+    const finished = s.endTime ? fmtTime(s.endTime) : 'Still in progress';
+    const doors = s.totals?.doors || 0;
+    const miles = (s.miles != null) ? s.miles.toFixed(1) : '0.0';
+    const cachedName = state.repNames[s.repId] || s.repId;
+    div.innerHTML = `<div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+      <strong>${s.date}</strong>
+      <span>Rep: <span class="rep-name">${cachedName}</span></span>
+      <span>Started: ${started}</span>
+      <span>Finished: ${finished}</span>
+      <span>${doors} doors / ${miles} mi</span>
+    </div>`;
+    if (!state.repNames[s.repId]) {
+      getRepName(s.repId).then(name => {
+        const nameSpan = div.querySelector('.rep-name');
+        if (nameSpan) nameSpan.textContent = name;
+      });
+    }
     div.addEventListener('click', () => openShiftSummary(s));
     shiftHistoryEl.appendChild(div);
   });
@@ -373,8 +392,11 @@ function getRepColor(repId) {
 
 async function getRepName(repId) {
   try {
+    if (state.repNames[repId]) return state.repNames[repId];
     const userDoc = await getDoc(doc(db, 'users', repId));
-    return userDoc.exists() ? (userDoc.data().name || repId) : repId;
+    const name = userDoc.exists() ? (userDoc.data().name || repId) : repId;
+    state.repNames[repId] = name;
+    return name;
   } catch(_) { return repId; }
 }
 
