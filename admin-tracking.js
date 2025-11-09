@@ -934,24 +934,18 @@ async function ensureLiveShift(repId, dateStr) {
     logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
     if (!logs.length) {
       // No doors yet; synthesize placeholder live shift with unknown start
-      state.shifts.unshift({ repId, date: dateStr, startTime: null, endTime: null, totals:{doors:0,x:0,o:0,sales:0}, miles: 0 });
+      state.shifts.unshift({ repId, date: dateStr, startTime: null, endTime: null, pauses: [] });
       renderShiftHistory();
       return;
     }
-    const first = logs[0]; const last = logs[logs.length-1];
-    let x=0,o=0,sales=0; let miles=0;
-    let prev = { lat:first.gpsLat, lng:first.gpsLng };
-    logs.forEach(l => {
-      if (l.status==='X') x++; else if (l.status==='O') o++; else if (l.status==='SignUp') sales++;
-      const cur = { lat:l.gpsLat, lng:l.gpsLng }; miles += haversineMiles(prev, cur); prev = cur;
-    });
+    const first = logs[0];
+    // Create a minimal live shift object; openShiftSummary will recalculate everything from logs
     const shift = {
       repId,
       date: dateStr,
       startTime: first.timestamp,
       endTime: null,
-      totals: { doors: logs.length, x, o, sales },
-      miles,
+      pauses: [], // No pause data until shift is submitted
     };
     state.shifts.unshift(shift);
     renderShiftHistory();
