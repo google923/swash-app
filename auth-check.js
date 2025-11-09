@@ -48,6 +48,8 @@ const IS_EMBED = (() => {
 })();
 
 const REDIRECT_DELAY_MS = 200;
+// Grace period to let Firebase restore sessions before redirecting away from app pages
+const HANDSHAKE_GRACE_MS = 1500;
 
 const authStateManager = (() => {
   let resolveReady;
@@ -180,6 +182,7 @@ function redirectToLogin() {
 
 let logoutListenerAttached = false;
 let redirectTimer = null;
+let pendingLoginRedirectTimer = null;
 
 function normalisePath(targetUrl) {
   try {
@@ -329,13 +332,24 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     authStateManager.resolveReady(null, "unauthorised");
-    // IMPORTANT: If an inline auth overlay exists, stay on the current page
-    // and do NOT redirect during the initial auth handshake. Redirects while
-    // Firebase is restoring the session cause a loop (login -> rep-home -> back).
+    // IMPORTANT: Avoid redirect loops while Firebase restores the session.
+    // If no inline overlay exists, wait a short grace period before redirecting.
     if (!IS_EMBED && PAGE_TYPE && PAGE_TYPE !== "login") {
       const overlay = document.getElementById("authOverlay");
       if (!overlay) {
-        await handlePageRouting(PAGE_TYPE);
+        if (pendingLoginRedirectTimer) {
+          clearTimeout(pendingLoginRedirectTimer);
+          pendingLoginRedirectTimer = null;
+        }
+        pendingLoginRedirectTimer = setTimeout(async () => {
+          // Only redirect if still unauthorised
+          if (!auth.currentUser) {
+            await handlePageRouting(PAGE_TYPE);
+          } else {
+            console.log("[Auth] Session restored during grace; skip redirect");
+          }
+          pendingLoginRedirectTimer = null;
+        }, HANDSHAKE_GRACE_MS);
       } else {
         console.log("[Auth] Overlay present; suppressing redirect until user signs in.");
       }
@@ -357,6 +371,12 @@ onAuthStateChanged(auth, async (user) => {
   authStateManager.state.role = role;
   window.userRole = role;
   console.log(`[Auth] Role: ${role}`);
+
+  // Cancel any pending delayed redirects now that we have a user
+  if (pendingLoginRedirectTimer) {
+    clearTimeout(pendingLoginRedirectTimer);
+    pendingLoginRedirectTimer = null;
+  }
 
   const overlay = document.getElementById("authOverlay");
   if (overlay) {
