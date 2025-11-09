@@ -17,6 +17,7 @@ const state = {
   filters: { rep: "", date: "", territory: "" },
   shifts: [],
   repNames: {}, // cache repId -> rep name for shift history rendering
+  territoryBounds: null, // L.LatLngBounds covering all territories
 };
 
 // DOM refs
@@ -27,6 +28,7 @@ const terrSel = document.getElementById("filterTerritory");
 const applyBtn = document.getElementById("applyFilters");
 const exportBtn = document.getElementById("exportCsv");
 const shiftHistoryEl = document.getElementById("shiftHistory");
+const mapOverlay = document.getElementById("mapOverlay");
 const aTotal = document.getElementById("aTotal");
 const aX = document.getElementById("aX");
 const aO = document.getElementById("aO");
@@ -185,6 +187,26 @@ function initMap() {
   state.map.setView([52.5,-1.9], 12);
 }
 
+function setOverlayVisible(visible) {
+  if (!mapOverlay) return;
+  if (visible) mapOverlay.classList.remove('hidden'); else mapOverlay.classList.add('hidden');
+}
+
+function fitToTerritories() {
+  if (state.map && state.territoryBounds) {
+    try { state.map.fitBounds(state.territoryBounds, { padding:[30,30], maxZoom: 13 }); } catch(_) {}
+  }
+}
+
+function updateMapOverlay() {
+  const hasReps = state.repMarkers.size > 0;
+  setOverlayVisible(!hasReps);
+  if (!hasReps) {
+    // When no reps, show all territories by default
+    fitToTerritories();
+  }
+}
+
 async function loadTerritories() {
   try {
     // First try to load from 'territories' collection
@@ -204,6 +226,7 @@ async function loadTerritories() {
       noneOpt.textContent = '(No territory assigned)';
       terrSel.appendChild(noneOpt);
     }
+    let bounds = null;
     snap.forEach(d => {
       const data = d.data();
       state.territories.push({ id: d.id, ...data });
@@ -213,10 +236,12 @@ async function loadTerritories() {
       const color = data.color || '#0078d7';
       if (Array.isArray(data.geoBoundary) && data.geoBoundary.length >= 3) {
         const latlngs = data.geoBoundary.map(p => [p[0], p[1]]);
-        L.polygon(latlngs, { color, weight:1, fillOpacity:0.08 }).addTo(state.map);
+        const poly = L.polygon(latlngs, { color, weight:1, fillOpacity:0.08 }).addTo(state.map);
+        bounds = bounds ? bounds.extend(poly.getBounds()) : poly.getBounds();
       } else if (data.center && typeof data.radius === 'number') {
         // Handle circle territories stored in collection
-        L.circle([data.center.lat, data.center.lng], { radius: data.radius, color, weight:1, fillOpacity:0.08 }).addTo(state.map);
+        const cir = L.circle([data.center.lat, data.center.lng], { radius: data.radius, color, weight:1, fillOpacity:0.08 }).addTo(state.map);
+        bounds = bounds ? bounds.extend(cir.getBounds()) : cir.getBounds();
       }
       loaded = true;
     });
@@ -234,12 +259,19 @@ async function loadTerritories() {
           const color = t.color || '#0078d7';
           if (t.type === 'polygon' && Array.isArray(t.path) && t.path.length >= 3) {
             const latlngs = t.path.map(p => [p.lat, p.lng]);
-            L.polygon(latlngs, { color, weight:1, fillOpacity:0.08 }).addTo(state.map);
+            const poly = L.polygon(latlngs, { color, weight:1, fillOpacity:0.08 }).addTo(state.map);
+            bounds = bounds ? bounds.extend(poly.getBounds()) : poly.getBounds();
           } else if (t.type === 'circle' && t.center && typeof t.radius === 'number') {
-            L.circle([t.center.lat, t.center.lng], { radius: t.radius || 1000, color, weight:1, fillOpacity:0.08 }).addTo(state.map);
+            const cir = L.circle([t.center.lat, t.center.lng], { radius: t.radius || 1000, color, weight:1, fillOpacity:0.08 }).addTo(state.map);
+            bounds = bounds ? bounds.extend(cir.getBounds()) : cir.getBounds();
           }
         });
       }
+    }
+    // After loading, store and fit to all territories if available
+    if (bounds) {
+      state.territoryBounds = bounds;
+      fitToTerritories();
     }
   } catch (err) {
     console.error("Error loading territories:", err);
@@ -449,6 +481,8 @@ function subscribeRepLocations() {
         state.map.fitBounds(padded, { animate:true, padding:[20,20], maxZoom: 15 });
       } catch(_) {}
     }
+    // Toggle overlay depending on whether any reps are present
+    updateMapOverlay();
   });
 }
 

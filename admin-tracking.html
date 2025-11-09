@@ -14,10 +14,37 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <style>
-    .admin-grid { display:grid; grid-template-columns: 340px 1fr; gap: 16px; }
+    .admin-grid { display:grid; grid-template-columns: 360px 1fr; gap: 16px; }
+    .map-wrap { position: relative; }
     #adminMap { height: 72vh; min-height: 480px; width: 100%; }
+    .map-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.45); color:#fff; font-size:1.25rem; font-weight:800; z-index:500; text-align:center; letter-spacing:0.3px; }
+    .map-overlay.hidden { display:none; }
     .panel { background: var(--bg-card); border:1px solid var(--border-soft); border-radius: var(--radius-md); padding: 16px; box-shadow: var(--shadow-soft); }
     .stat-row { display:grid; grid-template-columns: repeat(3,1fr); gap:8px; }
+    .stats-card { background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; }
+    .stats-card .num { font-size:1.25rem; font-weight:800; color:#0b63b5; }
+    .recent-list .recent-item { display:grid; grid-template-columns: 1fr auto; gap:6px; padding:8px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; cursor:pointer; }
+    .recent-list .recent-item:hover { background:#f8fbff; }
+    details.filters { border:1px solid var(--border-soft); border-radius:12px; padding:8px 12px; background:#f6faff; }
+    details.filters > summary { cursor:pointer; font-weight:700; color:#0b63b5; outline:none; list-style:none; }
+    details.filters[open] { padding-bottom:12px; }
+    .filters-grid { display:grid; grid-template-columns: 1fr; gap:8px; }
+    .filters-row { display:flex; gap:8px; }
+    .filters-row > label { flex:1; display:flex; flex-direction:column; gap:6px; font-weight:600; color:var(--text-muted); }
+    .filters-actions { display:flex; gap:8px; margin-top:8px; }
+    .summary-table { width:100%; border-collapse:collapse; }
+    .summary-table td { padding:6px 8px; border-bottom:1px solid #eef2f7; }
+    .pause-list { margin:6px 0 0 18px; }
+    #shiftSummaryModal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.4); z-index: 60; padding: 20px; }
+    #shiftSummaryModal[open] { display:flex; }
+    #shiftSummaryModal .modal__dialog { background: #fff; padding: 20px; border-radius: 14px; width: min(640px, 96vw); max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-soft); }
+    #shiftSummaryModal .modal__footer { display:flex; justify-content: space-between; align-items:center; gap:12px; margin-top:12px; }
+    @media (max-width: 900px) {
+      .admin-grid { grid-template-columns: 1fr; }
+      #adminMap { height: 58vh; min-height: 360px; }
+      .panel { padding: 12px; }
+      .stat-row { grid-template-columns: repeat(2,1fr); }
+    }
   </style>
 </head>
 <body>
@@ -71,29 +98,33 @@
       <h1>🛰️ Rep Tracking Dashboard</h1>
       <div class="admin-grid">
         <div class="panel">
-          <h3>Filters</h3>
-          <div class="row">
-            <label>Rep:
-              <select id="filterRep"></select>
-            </label>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <label style="flex:1;">From:
-              <input id="filterDateStart" type="date" />
-            </label>
-            <label style="flex:1;">To:
-              <input id="filterDateEnd" type="date" />
-            </label>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <label>Territory:
-              <select id="filterTerritory"></select>
-            </label>
-          </div>
-          <div class="row" style="margin-top:8px;">
-            <button id="applyFilters" class="btn btn-primary">Apply</button>
-            <button id="exportCsv" class="btn btn-secondary">Export CSV</button>
-          </div>
+          <details class="filters" open>
+            <summary>Filters</summary>
+            <div class="filters-grid">
+              <div class="filters-row">
+                <label>Rep:
+                  <select id="filterRep"></select>
+                </label>
+              </div>
+              <div class="filters-row">
+                <label>From:
+                  <input id="filterDateStart" type="date" />
+                </label>
+                <label>To:
+                  <input id="filterDateEnd" type="date" />
+                </label>
+              </div>
+              <div class="filters-row">
+                <label>Territory:
+                  <select id="filterTerritory"></select>
+                </label>
+              </div>
+              <div class="filters-actions">
+                <button id="applyFilters" class="btn btn-primary" type="button">Apply</button>
+                <button id="exportCsv" class="btn btn-secondary" type="button">Export CSV</button>
+              </div>
+            </div>
+          </details>
 
           <h3 style="margin-top:16px;">Stats</h3>
           <div class="stat-row">
@@ -118,7 +149,10 @@
         </div>
 
         <div class="panel">
-          <div id="adminMap"></div>
+          <div class="map-wrap">
+            <div id="adminMap"></div>
+            <div id="mapOverlay" class="map-overlay hidden">No reps on shift</div>
+          </div>
         </div>
       </div>
     </section>
@@ -128,5 +162,20 @@
   <script type="module" src="./nav.js"></script>
   <script type="module" src="./firebase-init.js"></script>
   <script type="module" src="./admin-tracking.js"></script>
+
+  <!-- Shift Summary Modal -->
+  <dialog id="shiftSummaryModal">
+    <div class="modal__dialog">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <h3 style="margin:0;">Shift Summary</h3>
+        <button id="shiftSummaryClose" class="btn btn-secondary" type="button">Close</button>
+      </div>
+      <div id="shiftSummaryBody" style="margin-top:10px;"></div>
+      <div class="modal__footer">
+        <span class="text-muted">Review the shift details and deductions.</span>
+        <button id="shiftSummaryReplay" class="btn btn-primary" type="button">Replay this route</button>
+      </div>
+    </div>
+  </dialog>
 </body>
 </html>
