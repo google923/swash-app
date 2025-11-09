@@ -630,9 +630,11 @@ function renderSummary(extra) {
   const conv = total ? ((salesCount/total)*100).toFixed(1) : 0;
   // Transparency on deductions
   const endMs = new Date(state.shift.endTime || nowIso()).getTime();
+  const startMs = new Date(state.shift.startTime).getTime();
   const manualPausedMs = sumManualPausesMs(state.shift, endMs);
   const inactivityPausedMs = computePausedByInactivity(state.shift, endMs);
   const toMin = (ms) => Math.max(0, Math.round(ms/60000));
+  const grossSpanMin = toMin(Math.max(0, endMs - startMs));
   summaryContent.innerHTML = `
     <table style='width:100%;border-collapse:collapse;'>
     <tr><td>Total doors</td><td>${total}</td></tr>
@@ -642,6 +644,7 @@ function renderSummary(extra) {
     <tr><td>Conversion</td><td>${conv}%</td></tr>
     <tr><td>Start</td><td>${formatTime(state.shift.startTime)}</td></tr>
     <tr><td>Finish</td><td>${formatTime(state.shift.endTime)}</td></tr>
+  <tr><td>Total time (Start → Finish)</td><td>${grossSpanMin} min</td></tr>
     <tr><td>Inactivity deducted (>=2m gaps)</td><td>${toMin(inactivityPausedMs)} min</td></tr>
     <tr><td>Manual pauses deducted</td><td>${toMin(manualPausedMs)} min</td></tr>
     <tr><td>Paid minutes</td><td>${extra.activeMinutes}</td></tr>

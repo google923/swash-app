@@ -329,8 +329,16 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     authStateManager.resolveReady(null, "unauthorised");
+    // IMPORTANT: If an inline auth overlay exists, stay on the current page
+    // and do NOT redirect during the initial auth handshake. Redirects while
+    // Firebase is restoring the session cause a loop (login -> rep-home -> back).
     if (!IS_EMBED && PAGE_TYPE && PAGE_TYPE !== "login") {
-      await handlePageRouting(PAGE_TYPE);
+      const overlay = document.getElementById("authOverlay");
+      if (!overlay) {
+        await handlePageRouting(PAGE_TYPE);
+      } else {
+        console.log("[Auth] Overlay present; suppressing redirect until user signs in.");
+      }
     }
     return;
   }
