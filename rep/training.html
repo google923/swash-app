@@ -21,8 +21,15 @@
                 <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
                 <nav id="menuDropdown" class="dropdown">
                     <div class="dropdown-title">Rep Resources</div>
-                    <a href="/rep/rep-home.html">🏠 Home</a>
-                    <a href="../rep-dashboard.html">🧾 Record Daily Log</a>
+                    <a id="rep-home-link" href="/rep/rep-home.html">🏠 Home</a>
+                    <a id="admin-tracking-link" class="hidden" href="/admin-tracking.html">🛰️ Rep Tracking</a>
+                    <a id="admin-dashboard-link" class="hidden" href="/admin.html">Admin Dashboard</a>
+                    <a id="stats-link" class="hidden" href="/admin/stats.html">📊 Stats</a>
+                    <a id="message-log-link" class="hidden" href="/admin/message-log.html">📧 Message Log</a>
+                    <a id="add-customer-link" class="hidden" href="/rep/quote.html">Add Customer</a>
+                    <a id="schedule-link" class="hidden" href="/rep/scheduler.html">Schedule</a>
+                    <a id="manage-users-link" class="hidden" href="/admin/users.html">Manage Users</a>
+                    
                     <a href="./chat.html">💬 Rep Chat</a>
                     <a href="./policy.html">📘 Policy Handbook</a>
                     <a href="./holiday.html">📅 Book Holiday</a>
@@ -39,15 +46,578 @@
 
     <main class="page">
         <section class="content-section">
-            <h1>Training Resources</h1>
-            <div id="trainingContent">
-                <!-- Training content will be populated here -->
+            <h1>📚 Rep Training & Support</h1>
+            <p class="section-subtitle">Master the Swash approach. Help great people get great cleaning.</p>
+
+            <!-- Quick Navigation -->
+            <div class="training-nav">
+                <button class="training-nav-btn active" data-section="quick-start">⚡ Quick Start</button>
+                <button class="training-nav-btn" data-section="mindset">🧠 Mindset & Prep</button>
+                <button class="training-nav-btn" data-section="approach">👋 The Approach</button>
+                <button class="training-nav-btn" data-section="objections">💬 Handling Objections</button>
+                <button class="training-nav-btn" data-section="psychology">🧩 Sales Psychology</button>
+                <button class="training-nav-btn" data-section="resilience">💪 Resilience Tips</button>
+                <button class="training-nav-btn" data-section="resources">🛠️ Tools & Resources</button>
+                <button class="training-nav-btn" data-section="field-workflow">🚶 Field Workflow</button>
+                <button class="training-nav-btn" data-section="faq">❓ FAQ</button>
+            </div>
+
+            <div class="training-content">
+
+                <!-- QUICK START -->
+                <section id="quick-start" class="training-section active">
+                    <h2>⚡ Quick Start: Your First Hour</h2>
+                    
+                    <div class="training-card">
+                        <h3>Before You Leave</h3>
+                        <ul class="checklist">
+                            <li>✅ Clean uniform, lanyard visible</li>
+                            <li>✅ Phone fully charged</li>
+                            <li>✅ Territory map reviewed</li>
+                            <li>✅ Swash app open and ready</li>
+                            <li>✅ Mindset: "I'm here to help"</li>
+                        </ul>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Your Opening Line</h3>
+                        <div class="highlight-box">
+                            <p><strong>"Hi, we're cleaning windows at your neighbours locally — would you like us to clean your windows too?"</strong></p>
+                            <p style="margin-top: 12px; font-size: 14px; color: #555;">Or with social proof: <em>"Hi, we clean for Sarah at No. 22 — would you like yours done too?"</em></p>
+                        </div>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Micro-Goals for Your Shift</h3>
+                        <div class="goals-grid">
+                            <div class="goal-item">
+                                <span class="goal-number">3</span>
+                                <p>Warm-up doors to get into flow</p>
+                            </div>
+                            <div class="goal-item">
+                                <span class="goal-number">3</span>
+                                <p>Strong conversations per hour</p>
+                            </div>
+                            <div class="goal-item">
+                                <span class="goal-number">30s</span>
+                                <p>Max idle time between doors</p>
+                            </div>
+                            <div class="goal-item">
+                                <span class="goal-number">100%</span>
+                                <p>Log every door</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- MINDSET & PREP -->
+                <section id="mindset" class="training-section">
+                    <h2>🧠 Pre-Door Mindset & Preparation</h2>
+                    
+                    <div class="training-card">
+                        <h3>Mental Reset (Do This Every Shift)</h3>
+                        <ul class="mindset-list">
+                            <li>😊 <strong>Smile.</strong> You're part of something that helps people.</li>
+                            <li>🧍 <strong>Posture.</strong> Shoulders back, relaxed, friendly energy.</li>
+                            <li>🎯 <strong>Purpose.</strong> "I'm here to help people keep their homes looking great."</li>
+                            <li>📈 <strong>Reframe rejection.</strong> "Every 'no' gets me closer to a 'yes.'"</li>
+                        </ul>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Door Setup</h3>
+                        <div class="step-by-step">
+                            <div class="step">
+                                <span class="step-num">1</span>
+                                <div>
+                                    <strong>Firm, friendly knock</strong>
+                                    <p>Confident but not aggressive. Let your tone say "I belong here."</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-num">2</span>
+                                <div>
+                                    <strong>Step back 1–2 steps</strong>
+                                    <p>Gives them space, shows respect, feels non-threatening.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <span class="step-num">3</span>
+                                <div>
+                                    <strong>Smile genuinely</strong>
+                                    <p>People respond to warmth. Your face is your first impression.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Territory Awareness</h3>
+                        <ul class="checklist">
+                            <li>✅ Start at one end of your street — move systematically</li>
+                            <li>✅ Avoid repeats — check your map before moving roads</li>
+                            <li>✅ Note which streets or objections come up most</li>
+                            <li>✅ This intel helps future reps and improves your round</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- THE APPROACH -->
+                <section id="approach" class="training-section">
+                    <h2>👋 The Initial Approach & Golden Lines</h2>
+                    
+                    <div class="training-card">
+                        <h3>Your Opening (Scenario: They Open the Door)</h3>
+                        <div class="highlight-box">
+                            <p style="font-size: 16px;"><strong>"Hi, we're cleaning windows at your neighbours locally — would you like us to clean your windows too?"</strong></p>
+                        </div>
+                        <p style="margin-top: 12px; color: #666;">Why it works: Simple, honest, friendly. Tells them who you are, what you do, and invites a "yes."</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Add Social Proof (Even Better)</h3>
+                        <div class="highlight-box">
+                            <p style="font-size: 16px;"><strong>"Hi, we clean for Sarah at No. 22 — would you like yours done too?"</strong></p>
+                        </div>
+                        <p style="margin-top: 12px; color: #666;">One detail (a real neighbour) doubles your chance of a friendly response.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>The Golden Line (When They're Nodding Along)</h3>
+                        <div class="highlight-box">
+                            <p style="font-size: 16px;"><strong>"Would you like me to go through some more details and give us a go then?"</strong></p>
+                        </div>
+                        <p style="margin-top: 12px; color: #666;">Assumes confidence. Confidence sells. If they agree, you're just finishing the form — it's a done deal.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>When They Ask Questions</h3>
+                        <div class="qa-grid">
+                            <div class="qa-item">
+                                <strong>Q: "How do you do it?"</strong>
+                                <p><em>Response:</em> "Could you explain what you mean a little more please?" (They'll tell you what they really want.)</p>
+                                <p style="margin-top: 8px;"><em>Then say:</em> "Swash cleans your windows properly — purified water, specialist brushes, 15+ years' experience. We clean glass, frames, and sills every time and have 5-star Google reviews."</p>
+                            </div>
+                            <div class="qa-item">
+                                <strong>Q: "How much do you charge?"</strong>
+                                <p><em>Counter with:</em> "Do you currently have a window cleaner?"</p>
+                                <p style="margin-top: 8px;">• <strong>If yes:</strong> "Are you getting any issues with the cleaning you have?"</p>
+                                <p>• <strong>If no:</strong> "I'm really sorry but I'm not sure how we can help." (Polite close — they're just price-checking.)</p>
+                            </div>
+                            <div class="qa-item">
+                                <strong>Q: "Thingy does all the windows down here."</strong>
+                                <p><em>Response:</em> "Okay, thank you for letting me know." Then move on confidently.</p>
+                                <p style="margin-top: 8px;">Don't assume they have everyone locked in — half are waiting for someone better.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- HANDLING OBJECTIONS -->
+                <section id="objections" class="training-section">
+                    <h2>💬 Handling Objections: Your Superpower</h2>
+                    
+                    <div class="training-card">
+                        <h3>The Master Key (Use This Everywhere)</h3>
+                        <div class="highlight-box">
+                            <p style="font-size: 16px;"><strong>"Could you explain what you mean a little more please?"</strong></p>
+                        </div>
+                        <p style="margin-top: 12px; color: #666;">Keeps it calm, respectful, and puts you in problem-solver mode. You only solve their real problem — not random guesses.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Price or Frequency Concerns</h3>
+                        <div class="objection-response">
+                            <p><strong>If they say: "Every 4 weeks is too often" or "Too expensive"</strong></p>
+                            <p style="margin-top: 12px;"><em>Respond:</em> "That's no problem at all — we can do your front one month and the back the next. You still get the same great Swash clean, just cheaper each visit."</p>
+                            <p style="margin-top: 12px; background: #f0f8ff; padding: 12px; border-radius: 6px; color: #555;">This keeps them in the system, keeps your round efficient, and feels flexible to them.</p>
+                        </div>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Common Objections & Responses</h3>
+                        <table class="objection-table">
+                            <tr>
+                                <th>Objection</th>
+                                <th>Your Response</th>
+                            </tr>
+                            <tr>
+                                <td>"I need to think about it"</td>
+                                <td>"That's fair, most people feel the same at first. What would help you make a decision?"</td>
+                            </tr>
+                            <tr>
+                                <td>"I don't have time now"</td>
+                                <td>"No problem — it'll only take 2 minutes. Can we do it quick?"</td>
+                            </tr>
+                            <tr>
+                                <td>"I already have someone"</td>
+                                <td>"Great! Are you completely happy with them? Any issues with the cleaning?"</td>
+                            </tr>
+                            <tr>
+                                <td>"I clean my own windows"</td>
+                                <td>"Respect that! How often do you manage it? (Most people find it's more hassle than it's worth.)"</td>
+                            </tr>
+                            <tr>
+                                <td>"Not interested"</td>
+                                <td>"No worries — lovely to meet you. If anything changes, keep our number." (Smile, move on.)</td>
+                            </tr>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- SALES PSYCHOLOGY -->
+                <section id="psychology" class="training-section">
+                    <h2>🧩 Sales Psychology: Triggers That Work</h2>
+                    
+                    <div class="psychology-grid">
+                        <div class="psychology-card">
+                            <h4>📣 Social Proof</h4>
+                            <p>"We already clean for Sarah at No. 22."</p>
+                            <p style="font-size: 13px; color: #666; margin-top: 10px;">People feel safer doing what others already do.</p>
+                        </div>
+                        <div class="psychology-card">
+                            <h4>⏰ Scarcity</h4>
+                            <p>"We're just filling up the last few spaces for your street."</p>
+                            <p style="font-size: 13px; color: #666; margin-top: 10px;">Limited availability makes offers feel more valuable.</p>
+                        </div>
+                        <div class="psychology-card">
+                            <h4>🔄 Consistency</h4>
+                            <p>"We'll keep you on the same schedule every 4 weeks."</p>
+                            <p style="font-size: 13px; color: #666; margin-top: 10px;">Predictability is comforting. People like knowing what to expect.</p>
+                        </div>
+                        <div class="psychology-card">
+                            <h4>🏅 Authority</h4>
+                            <p>"We're fully insured and have 15+ years' experience."</p>
+                            <p style="font-size: 13px; color: #666; margin-top: 10px;">Credentials build trust instantly.</p>
+                        </div>
+                        <div class="psychology-card">
+                            <h4>🤝 Reciprocity</h4>
+                            <p>"You'll get a text reminder before each clean so you're always informed."</p>
+                            <p style="font-size: 13px; color: #666; margin-top: 10px;">Extra care makes people want to say yes.</p>
+                        </div>
+                        <div class="psychology-card">
+                            <h4>👁️ Visibility</h4>
+                            <p>"Your neighbours will see the difference on your windows."</p>
+                            <p style="font-size: 13px; color: #666; margin-top: 10px;">Wanting to look good is universal.</p>
+                        </div>
+                    </div>
+
+                    <div class="training-card" style="margin-top: 20px;">
+                        <h3>How to Use These Triggers Naturally</h3>
+                        <ul style="line-height: 1.8;">
+                            <li>Don't force them. Mention the one that fits the conversation.</li>
+                            <li>If they mention a neighbour, say "We clean for them!" (Social proof.)</li>
+                            <li>If they hesitate, mention you're filling up fast. (Scarcity.)</li>
+                            <li>If they want to know you're legit, lead with your experience. (Authority.)</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- RESILIENCE TIPS -->
+                <section id="resilience" class="training-section">
+                    <h2>💪 Emotional Resilience & Staying Strong</h2>
+                    
+                    <div class="training-card">
+                        <h3>The Reality of Door Knocking</h3>
+                        <p>You'll get plenty of "no's." That's normal and it's <strong>not personal.</strong></p>
+                        <p style="margin-top: 12px; color: #666;">Most people you sign up said "no" to someone else yesterday. You're just the one who kept knocking.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Resilience Techniques (Use These Daily)</h3>
+                        <div class="resilience-technique">
+                            <h4>😊 The Post-No Smile Reset</h4>
+                            <p>After every rejection, smile genuinely. It resets your mindset instantly. Your energy changes, and the next door feels fresh.</p>
+                        </div>
+                        <div class="resilience-technique">
+                            <h4>🚶 The 3-Second Rule</h4>
+                            <p>Walk to the next door within 3 seconds of a "no." Momentum beats mood. If you pause, doubt creeps in.</p>
+                        </div>
+                        <div class="resilience-technique">
+                            <h4>🎯 Celebrate Activity, Not Results</h4>
+                            <p>Count doors knocked, conversations held, names learned — not just sign-ups. Activity = opportunities. Opportunities = wins (eventually).</p>
+                        </div>
+                        <div class="resilience-technique">
+                            <h4>💭 Reframe Objections as Data</h4>
+                            <p>Every "no" tells you something. "They already have someone" = different message needed. "Price is too high" = mention the flexible option.</p>
+                        </div>
+                        <div class="resilience-technique">
+                            <h4>🗣️ Talk to Fellow Reps</h4>
+                            <p>Share your tough days. You'll hear "Me too." Knowing you're not alone is powerful. Celebrate wins together.</p>
+                        </div>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>End-of-Day Debrief (5 Minutes, Big Impact)</h3>
+                        <div class="debrief-checklist">
+                            <div class="debrief-item">
+                                <strong>📊 How many doors did I log?</strong>
+                                <p>Track your effort. Effort compounds.</p>
+                            </div>
+                            <div class="debrief-item">
+                                <strong>💬 How many people did I actually speak to?</strong>
+                                <p>Quality conversations matter more than door knocks.</p>
+                            </div>
+                            <div class="debrief-item">
+                                <strong>🎤 What lines landed best today?</strong>
+                                <p>Double down on what works. Your instincts are sharpening.</p>
+                            </div>
+                            <div class="debrief-item">
+                                <strong>🔄 What will I do slightly differently tomorrow?</strong>
+                                <p>Small tweaks compound into big improvements.</p>
+                            </div>
+                        </div>
+                        <p style="margin-top: 16px; background: #fff3cd; padding: 12px; border-radius: 6px; color: #555;"><strong>Pro tip:</strong> Log notes in the app or voice-record them. Improvement compounds daily.</p>
+                    </div>
+                </section>
+
+                <!-- TOOLS & RESOURCES -->
+                <section id="resources" class="training-section">
+                    <h2>🛠️ Tools, Templates & Resources</h2>
+                    
+                    <div class="training-card">
+                        <h3>In-App Logging</h3>
+                        <ul class="checklist">
+                            <li>✅ Log <strong>every door</strong> you knock</li>
+                            <li>✅ Use the three statuses: <strong>Sign-up ✅ | Out ⚪ | Not Interested ❌</strong></li>
+                            <li>✅ Add notes for each door (e.g., "Already has cleaner," "Interested but busy")</li>
+                            <li>✅ Your logs help future reps and improve your round</li>
+                        </ul>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>What to Say & When</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 12px;">
+                            <tr style="background: #f5f5f5;">
+                                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Situation</th>
+                                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">What to Say</th>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd;">Door opens, no answer</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">"Hi, we're cleaning windows at your neighbours locally — would you like us to clean your windows too?"</td>
+                            </tr>
+                            <tr style="background: #f9f9f9;">
+                                <td style="padding: 10px; border: 1px solid #ddd;">They ask a question</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">"Could you explain what you mean a little more please?"</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd;">They're hesitating</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">"Would you like me to go through some more details and give us a go then?"</td>
+                            </tr>
+                            <tr style="background: #f9f9f9;">
+                                <td style="padding: 10px; border: 1px solid #ddd;">Price concern</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">"We can do your front one month and the back the next — same great clean, just cheaper each visit."</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd;">Already has a cleaner</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">"Are you getting any issues with the cleaning you have at the moment?"</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Territory Mapping</h3>
+                        <ul class="checklist">
+                            <li>✅ Review your territory map before each shift</li>
+                            <li>✅ Mark which streets/postcodes you've covered</li>
+                            <li>✅ Note which areas have high conversion rates</li>
+                            <li>✅ Share insights with other reps — together you build efficiency</li>
+                        </ul>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>Performance Tracking</h3>
+                        <p>Check your <a href="./performance.html" style="color: #0078d7; font-weight: 600;">Performance Dashboard</a> weekly:</p>
+                        <ul class="checklist" style="margin-top: 12px;">
+                            <li>✅ Doors knocked</li>
+                            <li>✅ Sign-ups created</li>
+                            <li>✅ Conversion rate %</li>
+                            <li>✅ Compare week-on-week — spot improvements</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- FIELD WORKFLOW (Step-by-step) -->
+                <section id="field-workflow" class="training-section">
+                    <h2>🚶 Step-by-step: From Territory to Log</h2>
+
+                    <div class="training-card">
+                        <h3>1) Pick where to go (Territory Map)</h3>
+                        <p>Open the <a href="./map.html" style="color:#0078d7;font-weight:600">Territory Map</a>. You can see:</p>
+                        <ul class="checklist">
+                            <li>🗺️ All territories and their colours</li>
+                            <li>👥 Which reps are assigned to each territory</li>
+                            <li>📅 Focus period badges (dates to prioritise that area)</li>
+                        </ul>
+                        <p class="text-muted" style="margin-top:8px">Tip: Zoom to your assigned areas first. Work one road fully before moving on.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>2) Travel to your chosen road</h3>
+                        <ul class="checklist">
+                            <li>🚗 Park so you can cover the street end-to-end</li>
+                            <li>📶 Make sure your phone has battery/signal (offline still works)</li>
+                            <li>📍 Turn on location if you want mileage and live stats accurate</li>
+                        </ul>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>3) Open the Rep Log</h3>
+                        <p>Go to <a href="./rep-log.html" style="color:#0078d7;font-weight:600">Rep Log</a> and press <strong>Start Day</strong>. This will:</p>
+                        <ul class="checklist">
+                            <li>🕒 Start timing your shift</li>
+                            <li>📍 Track your current position (for miles + map pins)</li>
+                            <li>📊 Prepare stats for the day (doors/hour, conversion)</li>
+                        </ul>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>4) Log every door (address modal)</h3>
+                        <p>For each door you knock, tap one of the three buttons:</p>
+                        <ul class="checklist">
+                            <li>🔴 <strong>X</strong> — Not interested</li>
+                            <li>🟠 <strong>O</strong> — Out / No answer</li>
+                            <li>🟢 <strong>Sign Up</strong> — Customer joined</li>
+                        </ul>
+                        <p>When you tap a status, a small form pops up asking for <strong>House No.</strong>, <strong>Road Name</strong>, and <strong>Notes</strong>. For Sign Ups, you’ll also see a quick <strong>plan/price</strong> box.</p>
+                        <p class="text-muted" style="margin-top:8px">Why? Address notes help you and other reps avoid duplicates and build the round faster.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>5) Watch your stats live</h3>
+                        <ul class="checklist">
+                            <li>📊 <strong>Total / X / O / Sales</strong> update instantly</li>
+                            <li>⏱️ <strong>Doors per hour</strong> shows your pace (last 60 mins)</li>
+                            <li>🛣️ <strong>Miles</strong> auto‑track as you move between doors</li>
+                        </ul>
+                        <p>Your map pins show each door you logged (colour-coded). Tap any pin to re‑read your notes.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>6) Finish and submit</h3>
+                        <p>When you’re done, press <strong>Submit Log</strong>. The app calculates:</p>
+                        <ul class="checklist">
+                            <li>🕒 <strong>Paid minutes</strong> (active time)</li>
+                            <li>💷 <strong>Pay</strong> at the current hourly rate</li>
+                            <li>🛣️ <strong>Mileage</strong> and <strong>mileage expense</strong> (45p/mi)</li>
+                            <li>✅ A shift summary popup with all figures</li>
+                        </ul>
+                        <p>These totals sync to your account and feed the <a href="./commission.html" style="color:#0078d7;font-weight:600">Commission & Mileage</a> page.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>7) Where your numbers go</h3>
+                        <ul class="checklist">
+                            <li>🧮 <strong>Commission</strong> — from successful Sign Ups and converted quotes</li>
+                            <li>⛽ <strong>Mileage reimbursement</strong> — from your daily miles</li>
+                            <li>📈 <strong>Performance Dashboard</strong> — trends and weekly targets</li>
+                        </ul>
+                        <p class="text-muted">You can revisit your month and individual days anytime from your Rep Home or Commission pages.</p>
+                    </div>
+                </section>
+
+                <!-- FAQ -->
+                <section id="faq" class="training-section">
+                    <h2>❓ Frequently Asked Questions</h2>
+                    
+                    <div class="faq-item">
+                        <h4>Q: What if they don't open the door?</h4>
+                        <p>Log it as "Out." Come back another time. Or drop a leaflet if you have one. Don't take it personally — they might be sleeping, showering, or just busy.</p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h4>Q: How do I handle a really grumpy person?</h4>
+                        <p>Stay calm and friendly. "Okay, I hear you — have a lovely day." Then move on. Your smile might be the nicest thing they see that day, but your job is to be professional, not change their mood.</p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h4>Q: Is it okay to do repeat visits to the same street?</h4>
+                        <p>Yes, but space them out. If someone said "no" today, they might say "yes" in 3 months. Log it and note when you'll try again. Different reps can have different success with the same doors.</p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h4>Q: How long should each door visit take?</h4>
+                        <p>Aim for 2–3 minutes max per door. If someone's interested, the form takes 1–2 minutes. If they say no quickly, move on. Momentum matters.</p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h4>Q: What if I mess up the details on the form?</h4>
+                        <p>Chris will review it before the first clean. If something's wrong, he'll call the customer to confirm. Don't stress — mistakes happen, and they're fixable.</p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h4>Q: How do I build confidence for my first shift?</h4>
+                        <p>Remember: your first 3 doors are "warm-up doors." They don't have to be perfect. By door 4–5, you'll find your rhythm. The app, the approach, and your smile — that's all you need.</p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h4>Q: What's the best time of day to knock doors?</h4>
+                        <p>Weekday afternoons (3–6 PM) and Saturday mornings (9 AM–12 PM) tend to have better answer rates. Avoid meal times (12–1 PM, 5–6 PM). But track what works in your territory.</p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h4>Q: Can I text or call leads if they ask for more time?</h4>
+                        <p>If they give you their number and say "call me later," absolutely follow up after a few days. But respect their preference. If they say "no thanks," move on gracefully.</p>
+                    </div>
+
+                    <div class="faq-item">
+                        <h4>Q: How do I stay positive after lots of rejections?</h4>
+                        <p>Use the 3-second rule and smile resets. Log your activity (doors knocked = wins). Talk to other reps. Remember: most of your future customers said "no" to someone else first. You're building long-term relationships, not just collecting quick yeses.</p>
+                    </div>
+                </section>
+
+                <!-- CORE VALUES REMINDER -->
+                <div class="training-card core-values" style="margin-top: 40px; background: linear-gradient(135deg, #0078d7, #005a9e); color: white;">
+                    <h3>🎯 The Swash Rep Mindset</h3>
+                    <ul style="color: white;">
+                        <li>You're here to <strong>help</strong>, not to pressure.</li>
+                        <li>Every door is a <strong>new opportunity</strong> — treat each one fresh.</li>
+                        <li>Use curiosity: <strong>"Could you explain more please?"</strong> — it's your superpower.</li>
+                        <li>Stay <strong>polite, consistent, and confident.</strong></li>
+                        <li>Represent Swash like it's your own name on the van.</li>
+                        <li style="margin-top: 16px; padding-top: 16px; border-top: 2px solid rgba(255,255,255,0.3);"><strong>Every time you knock, you build Swash. You're the face of the company. People will remember your smile, your tone, and your honesty long after the chat.</strong></li>
+                    </ul>
+                    <p style="margin-top: 20px; font-size: 16px; font-weight: 600;">We don't just clean windows — We build trust, pride, and repeat business.</p>
+                    <p style="margin-top: 8px; font-size: 18px;">Keep it simple. Stay positive. <strong>Swash on.</strong> 💦</p>
+                </div>
+
             </div>
         </section>
     </main>
 
     <script type="module" src="../auth-check.js"></script>
-    <script type="module" src="../menu.js"></script>
-    <script type="module" src="../under-dev.js"></script>
+    <script type="module" src="../nav.js"></script>
+    <script type="module">
+        import { initMenuDropdown } from "./menu.js";
+        initMenuDropdown();
+    </script>
+    <script>
+        // Training page navigation
+        document.querySelectorAll('.training-nav-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const sectionId = this.getAttribute('data-section');
+                
+                // Remove active class from all buttons and sections
+                document.querySelectorAll('.training-nav-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.training-section').forEach(s => s.classList.remove('active'));
+                
+                // Add active class to clicked button and target section
+                this.classList.add('active');
+                document.getElementById(sectionId).classList.add('active');
+                
+                // Smooth scroll to section
+                document.getElementById(sectionId).scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        // Smooth scroll on load if hash exists
+        window.addEventListener('load', function() {
+            if (window.location.hash) {
+                const sectionId = window.location.hash.substring(1);
+                const btn = document.querySelector(`[data-section="${sectionId}"]`);
+                if (btn) btn.click();
+            }
+        });
+    </script>
 </body>
 </html>

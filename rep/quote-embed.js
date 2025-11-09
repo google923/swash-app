@@ -59,8 +59,10 @@ const selectors = {
 };
 
 // Mark page as embedded when in an iframe or ?embed=true
+let EMBED_PARAMS = {};
 try {
   const params = new URLSearchParams(location.search);
+  EMBED_PARAMS = Object.fromEntries(params.entries());
   const isEmbedded = (function(){
     try { return window.self !== window.top; } catch (_) { return true; }
   })() || params.get("embed") === "true";
@@ -78,6 +80,11 @@ if (selectors.repCode) {
   selectors.repCode.setAttribute("spellcheck", "false");
   selectors.repCode.setAttribute("inputmode", "text");
   selectors.repCode.dataset.lpignore = "true";
+  // Apply rep code from ?rep=NAME when provided
+  try {
+    const repFromQuery = EMBED_PARAMS?.rep;
+    if (repFromQuery) selectors.repCode.value = String(repFromQuery).slice(0, 40);
+  } catch(_) {}
 }
 
 if (selectors.email) {
@@ -427,6 +434,24 @@ async function handleSubmit() {
       `<p class="status warning">Could not save quote at this time. Please try again later.</p>`,
     );
   }
+
+  // Post message outward so parent (rep-log signup modal) can capture quote data
+  try {
+    const payload = {
+      type: 'SWASH_QUOTE_CREATED',
+      quote: {
+        refCode: quote.refCode,
+        pricePerClean: quote.pricePerClean.toFixed(2),
+        priceUpfront: quote.price.toFixed(2),
+        plan: quote.tier.toUpperCase(),
+        houseSize: quote.houseSize,
+        houseType: quote.houseType,
+        extras: buildExtrasLabel(quote),
+        email: quote.email
+      }
+    };
+    window.parent?.postMessage(payload, '*');
+  } catch(e) { console.warn('postMessage failed', e); }
 }
 
 function registerEvents() {
@@ -495,3 +520,17 @@ if (document.readyState === "loading") {
 } else {
   startCalculator();
 }
+
+// Receive prefill messages from parent (rep-log signup modal)
+window.addEventListener('message', (event) => {
+  if (!event?.data || typeof event.data !== 'object') return;
+  if (event.data.type === 'SWASH_PREFILL') {
+    try {
+      const { address, customerName, email, rep } = event.data;
+      if (address && selectors.address) selectors.address.value = String(address);
+      if (customerName && selectors.customerName) selectors.customerName.value = String(customerName);
+      if (email && selectors.email) selectors.email.value = String(email);
+      if (rep && selectors.repCode) selectors.repCode.value = String(rep).toUpperCase();
+    } catch(_) {}
+  }
+});

@@ -15,6 +15,7 @@ import {
   where,
   getDoc,
   setDoc,
+  arrayUnion,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import {
   getAuth,
@@ -60,6 +61,8 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const elements = {
   startWeek: document.getElementById("startWeek"),
   generate: document.getElementById("generate"),
+  viewToday: document.getElementById("viewToday"),
+  toggleSaturday: document.getElementById("toggleSaturday"),
   search: document.getElementById("scheduleSearch"),
   schedule: document.getElementById("schedule"),
   showPreviousWeek: document.getElementById("showPreviousWeek"),
@@ -72,6 +75,7 @@ const elements = {
   dayMessageProgress: document.getElementById("dayMessageProgress"),
   dayMessageErrors: document.getElementById("dayMessageErrors"),
   sendDayMessage: document.getElementById("sendDayMessage"),
+  dayMessageModeRadios: () => Array.from(document.querySelectorAll('input[name="sendMode"]')),
   dayMessageCancel: document.getElementById("cancelDayMessage"),
   newTemplateSection: document.getElementById("newTemplateSection"),
   newTemplateName: document.getElementById("newTemplateName"),
@@ -115,6 +119,7 @@ const state = {
   areas: [], // User-defined service areas
   currentUserId: null, // Will be set from auth
   orderJobsContext: null, // { dateKey, entries: [{ quote, originalIndex }], optimizedOrder: [] }
+  includeSaturday: false, // user preference for showing Saturday in week view
 };
 
 // ===== AREAS MANAGEMENT =====
@@ -545,6 +550,19 @@ function formatTelHref(raw) {
   return `tel:${encodeURIComponent(s)}`;
 }
 
+// Normalize commonly entered UK numbers to E.164 (+44...) for SMS API
+function normalizeUkPhone(raw) {
+  if (!raw) return null;
+  let s = String(raw).trim().replace(/[\s\-()]/g, "");
+  if (!s) return null;
+  if (s.startsWith('+')) return s; // assume already E.164
+  if (/^00\d+/.test(s)) return `+${s.slice(2)}`;
+  if (/^44\d+/.test(s)) return `+${s}`;
+  if (/^0\d+/.test(s)) return `+44${s.slice(1)}`;
+  if (/^\d+$/.test(s)) return `+${s}`; // bare digits
+  return null;
+}
+
 function populateCleanerSelect(
   select,
   { includePlaceholder = false, placeholderLabel = "Select cleaner", includeAll = false, includeUnassigned = false } = {},
@@ -752,14 +770,15 @@ function renderSchedule() {
     section.className = "schedule-week";
     const header = document.createElement("header");
     header.className = "week-header";
-    const weekEnd = addDays(weekStart, 4); // Mon–Fri
+    const weekEnd = addDays(weekStart, state.includeSaturday ? 5 : 4); // Mon–Fri or Mon–Sat
     const weekNumber = getCycleWeekNumber(weekStart);
     header.textContent = `Week ${weekNumber}: ${formatDate(weekStart)} – ${formatDate(weekEnd)}`;
     section.appendChild(header);
     const table = document.createElement("div");
     table.className = "schedule-table";
-    // Only Monday–Friday
-    for (let dayOffset = 0; dayOffset < 5; dayOffset += 1) {
+    // Monday–Friday (5) or Monday–Saturday (6)
+    const daysInWeek = state.includeSaturday ? 6 : 5;
+    for (let dayOffset = 0; dayOffset < daysInWeek; dayOffset += 1) {
       const dayDate = addDays(weekStart, dayOffset);
       const isoKey = toIsoDate(dayDate);
       let entries = scheduleMap.get(isoKey) || [];
@@ -829,7 +848,10 @@ function renderSchedule() {
               <div class="job-meta">
                 <span class="job-price">${price}</span>
                 <span class="job-cleaner">${cleaner}</span>
-                <button class="job-mark-done" data-quote-id="${quote.id}" title="Send customer receipt and mark complete" aria-label="Mark job as done">✓ Done</button>
+                ${isJobCompleted(quote) 
+                  ? `<span class="job-status-completed" data-quote-id="${quote.id}" title="Click to undo completion" style="cursor: pointer;" aria-label="Undo job completion">${escapeHtml(getCompletionDisplay(quote))}</span>`
+                  : `<button class="job-mark-done" data-quote-id="${quote.id}" title="Send customer receipt and mark complete" aria-label="Mark job as done">Mark done</button>`
+                }
               </div>
             </div>
             <div class="schedule-job__details" hidden>
@@ -888,6 +910,7 @@ function renderSchedule() {
         <option value="">Day actions...</option>
         <option value="order">Order jobs 🚗</option>
         <option value="send">Send messages</option>
+        <option value="delete">Delete selected 🗑️</option>
       `;
       dayFooter.appendChild(actionsSelect);
       
@@ -1067,6 +1090,17 @@ async function rescheduleQuote(quoteId, newDate) {
   }
 }
 
+// Reschedule multiple quotes to the same day, preserving their relative order
+async function rescheduleQuotes(quoteIds, newDate) {
+  const updated = [];
+  for (const quoteId of quoteIds) {
+    // Run sequentially to avoid overloading and to preserve order
+    const ok = await rescheduleQuote(quoteId, newDate);
+    if (ok) updated.push(quoteId);
+  }
+  return updated.length === quoteIds.length;
+}
+
 async function refreshData() {
   state.quotes = await fetchBookedQuotes();
   renderSchedule();
@@ -1133,6 +1167,77 @@ async function reorderWithinDay(dateKey, draggedId, beforeId) {
     return true;
   } catch (error) {
     console.error("Failed to reorder within day", { dateKey, draggedId, beforeId }, error);
+    return false;
+  }
+}
+
+// Reorder multiple jobs within the same day, inserting the group before target while
+// keeping the group's relative order.
+async function reorderMultipleWithinDay(dateKey, draggedIds, beforeId) {
+  try {
+    console.log("=== reorderMultipleWithinDay START ===", { dateKey, draggedIds, beforeId });
+
+    const scheduleMap = buildScheduleMap(state.startDate, state.weeksVisible);
+    const entries = (scheduleMap.get(dateKey) || []).map((e, i) => ({
+      id: e.quote.id,
+      quote: e.quote,
+      key: (e.quote.dayOrders && e.quote.dayOrders[dateKey] != null) ? e.quote.dayOrders[dateKey] : i * 1000,
+    })).sort((a, b) => a.key - b.key);
+
+    const idSet = new Set(draggedIds);
+
+    // Current list without the dragged group
+    const remaining = entries.filter(e => !idSet.has(e.id));
+
+    // Target index (insert before this id). If no beforeId, append at end
+    let targetIdx = beforeId ? remaining.findIndex(e => e.id === beforeId) : -1;
+    if (targetIdx === -1) targetIdx = remaining.length;
+
+    // Determine key range for insertion
+    const prevKey = targetIdx > 0 ? remaining[targetIdx - 1].key : null;
+    const nextKey = targetIdx < remaining.length ? remaining[targetIdx]?.key : null;
+
+    let startKey, step;
+    const count = draggedIds.length;
+    if (prevKey == null && nextKey == null) {
+      // Day was empty previously; start keys from 0 with spacing 1000
+      startKey = 0;
+      step = 1000;
+    } else if (prevKey == null) {
+      // Insert before first; step backwards from nextKey
+      step = 1000;
+      startKey = nextKey - step * count;
+    } else if (nextKey == null) {
+      // Insert at end; step forward after prevKey
+      step = 1000;
+      startKey = prevKey + step;
+    } else {
+      // Spread evenly between prev and next
+      step = (nextKey - prevKey) / (count + 1);
+      if (step <= 0) {
+        // Fallback spacing if keys are equal or reversed
+        step = 1;
+      }
+      startKey = prevKey + step;
+    }
+
+    // Apply new keys in the current visible order of draggedIds
+    for (let i = 0; i < count; i++) {
+      const id = draggedIds[i];
+      const newKey = startKey + i * step;
+      const quote = state.quotes.find(q => q.id === id);
+      if (quote) {
+        if (!quote.dayOrders) quote.dayOrders = {};
+        quote.dayOrders[dateKey] = newKey;
+      }
+      const fieldPath = `dayOrders.${dateKey}`;
+      await updateDoc(doc(db, "quotes", id), { [fieldPath]: newKey });
+    }
+
+    console.log("=== reorderMultipleWithinDay END ===");
+    return true;
+  } catch (error) {
+    console.error("Failed to reorder multiple within day", { dateKey, draggedIds, beforeId }, error);
     return false;
   }
 }
@@ -1335,14 +1440,135 @@ async function handleMarkJobDone(quoteId) {
     return;
   }
   
-  // Show confirmation
-  if (!confirm(`Send completion receipt to ${quote.customerName}?`)) {
-    return;
-  }
+  // Show custom confirmation dialog with Yes/No/Cancel
+  const userConfirmed = await new Promise((resolve) => {
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-width: 300px;
+      text-align: center;
+    `;
+    
+    const message = document.createElement('p');
+    message.textContent = `Send completion receipt to ${quote.customerName}?`;
+    message.style.cssText = 'margin: 0 0 20px 0; font-size: 16px; color: #333;';
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display: flex; gap: 10px; justify-content: center;';
+    
+    const yesBtn = document.createElement('button');
+    yesBtn.textContent = 'Yes';
+    yesBtn.style.cssText = `
+      background: #0078d7;
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    `;
+    yesBtn.onmouseover = () => yesBtn.style.background = '#005a9c';
+    yesBtn.onmouseout = () => yesBtn.style.background = '#0078d7';
+    yesBtn.onclick = () => {
+      dialog.remove();
+      overlay.remove();
+      resolve(true);
+    };
+    
+    const noBtn = document.createElement('button');
+    noBtn.textContent = 'No';
+    noBtn.style.cssText = `
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    `;
+    noBtn.onmouseover = () => noBtn.style.background = '#5a6268';
+    noBtn.onmouseout = () => noBtn.style.background = '#6c757d';
+    noBtn.onclick = () => {
+      dialog.remove();
+      overlay.remove();
+      resolve(false);
+    };
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+      background: #e2e6eb;
+      color: #333;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    `;
+    cancelBtn.onmouseover = () => cancelBtn.style.background = '#d1d5db';
+    cancelBtn.onmouseout = () => cancelBtn.style.background = '#e2e6eb';
+    cancelBtn.onclick = () => {
+      dialog.remove();
+      overlay.remove();
+      resolve(false);
+    };
+    
+    buttonContainer.appendChild(yesBtn);
+    buttonContainer.appendChild(noBtn);
+    buttonContainer.appendChild(cancelBtn);
+    
+    dialog.appendChild(message);
+    dialog.appendChild(buttonContainer);
+    
+    // Overlay to dim background
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+    `;
+    overlay.onclick = () => {
+      dialog.remove();
+      overlay.remove();
+      resolve(false);
+    };
+    
+    document.body.appendChild(overlay);
+    document.body.appendChild(dialog);
+    yesBtn.focus();
+  });
+  
+  // Mark job as completed regardless of receipt email choice
+  const completionDate = new Date().toLocaleDateString("en-GB");
+  const updateData = {
+    status: "Completed - " + completionDate,
+    completedDate: new Date().toISOString(),
+  };
   
   try {
-    // Send receipt email
-    const receiptMessage = `
+    // Send receipt email if user confirmed
+    if (userConfirmed) {
+      const receiptMessage = `
 Your cleaning has been completed. Thank you for choosing Swash!
 
 Customer: ${quote.customerName || "N/A"}
@@ -1354,25 +1580,45 @@ If you have any questions, please don't hesitate to contact us.
 
 Best regards,
 Swash Team
-    `.trim();
-    
-    await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE, {
-      title: "Cleaning Completed - Receipt",
-      name: quote.customerName || "Customer",
-      message: receiptMessage,
-      email: recipientEmail,
-    });
-    
-    // Update Firestore to mark as completed
-    await updateDoc(doc(db, "quotes", quoteId), {
-      status: "Completed - " + new Date().toLocaleDateString("en-GB"),
-      completedDate: new Date().toISOString(),
-    });
+      `.trim();
+      
+      await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE, {
+        title: "Cleaning Completed - Receipt",
+        name: quote.customerName || "Customer",
+        message: receiptMessage,
+        email: recipientEmail,
+      });
+      
+      // Update Firestore with email log
+      await updateDoc(doc(db, "quotes", quoteId), {
+        status: "Completed - " + completionDate,
+        completedDate: new Date().toISOString(),
+        emailLog: arrayUnion({
+          type: "receipt",
+          subject: "Cleaning Completed - Receipt",
+          sentAt: Date.now(),
+          sentTo: recipientEmail,
+          success: true,
+          body: receiptMessage,
+          sentBy: (function(){
+            const u = auth?.currentUser || null;
+            return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: "rep-scheduler" };
+          })(),
+        })
+      });
+    } else {
+      // Mark as completed without email log
+      await updateDoc(doc(db, "quotes", quoteId), {
+        status: "Completed - " + completionDate,
+        completedDate: new Date().toISOString(),
+      });
+    }
     
     // Show success notification
     const notification = document.createElement("div");
     notification.className = "notification notification--success";
-    notification.textContent = `Receipt sent to ${recipientEmail}`;
+    const notificationMessage = userConfirmed ? `Receipt sent to ${recipientEmail}` : `Job marked as completed`;
+    notification.textContent = notificationMessage;
     notification.style.cssText = `
       position: fixed;
       top: 20px;
@@ -1397,7 +1643,181 @@ Swash Team
     
   } catch (error) {
     console.error("Failed to mark job as done", error);
+    
+    // Log failed receipt email only if email was attempted
+    if (userConfirmed) {
+      try {
+        await updateDoc(doc(db, "quotes", quoteId), {
+          emailLog: arrayUnion({
+            type: "receipt",
+            subject: "Cleaning Completed - Receipt",
+            sentAt: Date.now(),
+            sentTo: recipientEmail,
+            success: false,
+            error: error?.message || "Send failed",
+            body: receiptMessage,
+            sentBy: (function(){
+              const u = auth?.currentUser || null;
+              return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: "rep-scheduler" };
+            })(),
+          })
+        });
+      } catch (logError) {
+        console.warn("Failed to log email failure", logError);
+      }
+    }
+    
     alert(`Failed to send receipt: ${error.message || "Unknown error"}`);
+  }
+}
+
+async function handleUndoCompletion(quoteId) {
+  const quote = state.quotes.find((q) => q.id === quoteId);
+  if (!quote) {
+    alert("Quote not found");
+    return;
+  }
+
+  // Show undo confirmation dialog
+  const confirmed = await new Promise((resolve) => {
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-width: 300px;
+      text-align: center;
+    `;
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Undo';
+    title.style.cssText = 'margin: 0 0 16px 0; font-size: 18px; color: #333;';
+    
+    const message = document.createElement('p');
+    message.textContent = `Mark ${quote.customerName || 'this job'} as incomplete?`;
+    message.style.cssText = 'margin: 0 0 20px 0; font-size: 14px; color: #666;';
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display: flex; gap: 10px; justify-content: center;';
+    
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Confirm';
+    confirmBtn.style.cssText = `
+      background: #0078d7;
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    `;
+    confirmBtn.onmouseover = () => confirmBtn.style.background = '#005a9c';
+    confirmBtn.onmouseout = () => confirmBtn.style.background = '#0078d7';
+    confirmBtn.onclick = () => {
+      dialog.remove();
+      overlay.remove();
+      resolve(true);
+    };
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+      background: #e2e6eb;
+      color: #333;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    `;
+    cancelBtn.onmouseover = () => cancelBtn.style.background = '#d1d5db';
+    cancelBtn.onmouseout = () => cancelBtn.style.background = '#e2e6eb';
+    cancelBtn.onclick = () => {
+      dialog.remove();
+      overlay.remove();
+      resolve(false);
+    };
+    
+    buttonContainer.appendChild(confirmBtn);
+    buttonContainer.appendChild(cancelBtn);
+    
+    dialog.appendChild(title);
+    dialog.appendChild(message);
+    dialog.appendChild(buttonContainer);
+    
+    // Overlay to dim background
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+    `;
+    overlay.onclick = () => {
+      dialog.remove();
+      overlay.remove();
+      resolve(false);
+    };
+    
+    document.body.appendChild(overlay);
+    document.body.appendChild(dialog);
+    confirmBtn.focus();
+  });
+
+  if (!confirmed) {
+    return;
+  }
+
+  // Undo completion by clearing status and completedDate
+  try {
+    await updateDoc(doc(db, "quotes", quoteId), {
+      status: quote.tier ? quote.tier : "Quoted",
+      completedDate: null,
+    });
+
+    // Show success notification
+    const notification = document.createElement("div");
+    notification.className = "notification notification--success";
+    notification.textContent = `Completion undone`;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4caf50;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 4px;
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(notification);
+
+    // Auto-remove notification after 3 seconds
+    setTimeout(() => {
+      notification.style.animation = "slideOut 0.3s ease";
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+
+    // Refresh schedule to show updated status
+    refreshData();
+  } catch (error) {
+    console.error("Failed to undo completion", error);
+    alert(`Failed to undo: ${error.message || "Unknown error"}`);
   }
 }
 
@@ -1407,9 +1827,12 @@ function openOrderJobsModal(dateKey) {
   const entries = (state.quotes || [])
     .filter((quote) => !quote.deleted && quote.bookedDate)
     .flatMap((quote) => {
-      const cleans = getOccurrences(quote);
+      const cleans = getOccurrences(quote, state.startDate, state.weeksVisible);
       return cleans
-        .filter((clean) => clean.dateKey === isoKey)
+        .filter((clean) => {
+          const cleanDateStr = clean.toISOString().split("T")[0];
+          return cleanDateStr === isoKey;
+        })
         .map((clean, idx) => ({
           quote,
           cleanIndex: idx,
@@ -1422,11 +1845,24 @@ function openOrderJobsModal(dateKey) {
     return;
   }
 
-  // Store in state
+  // Store in state with map markers and route context
   state.orderJobsContext = {
     dateKey: isoKey,
     entries: entries,
-    optimizedOrder: entries.map((e) => e.quote.id), // Default to current order
+    optimizedOrder: entries.map((e) => e.quote.id),
+    map: null,
+    markers: [],
+    polyline: null,
+    trafficLayer: null,
+    trafficVisible: false,
+    startLocation: null,
+    finishLocation: null,
+    startLocationCoords: null,
+    finishLocationCoords: null,
+    startTime: 8 * 60, // 8am in minutes
+    finishTime: 17 * 60, // 5pm in minutes
+    directionsService: new google.maps.DirectionsService(),
+    geocoder: new google.maps.Geocoder(),
   };
 
   // Update modal title
@@ -1438,88 +1874,470 @@ function openOrderJobsModal(dateKey) {
     day: "numeric",
   });
   if (elements.orderJobsTitle) {
-    elements.orderJobsTitle.textContent = `Order Jobs for ${dateStr}`;
+    elements.orderJobsTitle.textContent = `Route Planner - ${dateStr}`;
   }
 
-  // Render jobs list
-  renderOrderJobsList();
-
-  // Show modal
+  // Show modal first
   if (elements.orderJobsModal) {
     elements.orderJobsModal.hidden = false;
   }
+
+  // Initialize map and route after modal is visible
+  setTimeout(() => {
+    initializeRoutePlannerMap();
+    initializeRoutePlannerInputs();
+    renderRouteTimeline();
+  }, 100);
 }
 
-function renderOrderJobsList() {
-  if (!elements.orderJobsList || !state.orderJobsContext) return;
+function initializeRoutePlannerMap() {
+  if (!document.getElementById('routePlannerMap')) return;
+  
+  const context = state.orderJobsContext;
+  if (!context) return;
 
-  const { entries } = state.orderJobsContext;
-  elements.orderJobsList.innerHTML = entries
-    .map((entry, idx) => {
-      const { quote } = entry;
-      const address = escapeHtml(quote.address || "Unknown address");
-      const customerName = escapeHtml(quote.customerName || "Unknown");
-      const pricePerClean = resolvePricePerClean(quote);
-      const price = formatCurrency(pricePerClean);
-      const durationMins = Math.round(pricePerClean);
-      const durationDisplay = durationMins === 1 ? "1 min" : `${durationMins} mins`;
+  // Create map centered on first job
+  const firstQuote = context.entries[0]?.quote;
+  if (!firstQuote || !firstQuote.customerLatitude || !firstQuote.customerLongitude) {
+    console.error("First job missing coordinates");
+    return;
+  }
 
-      return `
-        <div class="order-job-item" draggable="true" data-quote-id="${quote.id}" data-index="${idx}">
-          <div class="order-job-drag-handle">⋮⋮</div>
-          <div class="order-job-info">
-            <div class="order-job-number">${idx + 1}</div>
-            <div class="order-job-details">
-              <div class="order-job-name">${customerName}</div>
-              <div class="order-job-address">${address}</div>
-            </div>
-            <div class="order-job-meta">
-              <span class="order-job-price">${price}</span>
-              <span class="order-job-duration">${durationDisplay}</span>
-            </div>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
+  const initialCenter = {
+    lat: firstQuote.customerLatitude,
+    lng: firstQuote.customerLongitude,
+  };
 
-  // Add drag event listeners
-  const jobItems = elements.orderJobsList.querySelectorAll(".order-job-item");
-  jobItems.forEach((item) => {
-    item.addEventListener("dragstart", handleOrderJobDragStart);
-    item.addEventListener("dragover", handleOrderJobDragOver);
-    item.addEventListener("drop", handleOrderJobDrop);
-    item.addEventListener("dragend", handleOrderJobDragEnd);
+  context.map = new google.maps.Map(document.getElementById('routePlannerMap'), {
+    zoom: 12,
+    center: initialCenter,
+    mapTypeControl: true,
+    streetViewControl: false,
   });
-}
 
-let orderJobsDraggedItem = null;
+  // Clear previous markers
+  context.markers.forEach(m => m.setMap(null));
+  context.markers = [];
 
-function handleOrderJobDragStart(e) {
-  orderJobsDraggedItem = this;
-  this.style.opacity = "0.5";
-  e.dataTransfer.effectAllowed = "move";
-}
+  // Add markers for each job
+  const orderedQuotes = context.optimizedOrder
+    .map(id => context.entries.find(e => e.quote.id === id)?.quote)
+    .filter(Boolean);
 
-function handleOrderJobDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = "move";
+  orderedQuotes.forEach((quote, idx) => {
+    if (!quote.customerLatitude || !quote.customerLongitude) return;
 
-  if (orderJobsDraggedItem !== this) {
-    const allItems = Array.from(elements.orderJobsList.querySelectorAll(".order-job-item"));
-    const draggedIdx = allItems.indexOf(orderJobsDraggedItem);
-    const thisIdx = allItems.indexOf(this);
+    const marker = new google.maps.Marker({
+      position: {
+        lat: quote.customerLatitude,
+        lng: quote.customerLongitude,
+      },
+      map: context.map,
+      label: String(idx + 1),
+      title: `${idx + 1}. ${quote.customerName}`,
+    });
 
-    if (draggedIdx < thisIdx) {
-      this.parentNode.insertBefore(orderJobsDraggedItem, this.nextSibling);
-    } else {
-      this.parentNode.insertBefore(orderJobsDraggedItem, this);
-    }
+    const infoWindow = new google.maps.InfoWindow({
+      content: `
+        <div style="font-size: 0.9rem;">
+          <strong>${idx + 1}. ${escapeHtml(quote.customerName)}</strong><br>
+          ${escapeHtml(quote.address || 'No address')}<br>
+          <span style="color: #0078d7; font-weight: 500;">£${quote.pricePerClean} (${Math.round(quote.pricePerClean)}m)</span>
+        </div>
+      `,
+    });
+
+    marker.addListener('click', () => {
+      context.markers.forEach(m => m.infoWindow && m.infoWindow.close());
+      infoWindow.open(context.map, marker);
+    });
+
+    marker.infoWindow = infoWindow;
+    context.markers.push(marker);
+  });
+
+  // Fit map to markers
+  if (context.markers.length > 0) {
+    const bounds = new google.maps.LatLngBounds();
+    context.markers.forEach(m => bounds.extend(m.getPosition()));
+    context.map.fitBounds(bounds);
+  }
+
+  // Draw initial route
+  drawRoutePath();
+
+  // Initialize traffic layer
+  const trafficBtn = document.getElementById('trafficToggleBtn');
+  if (trafficBtn) {
+    trafficBtn.addEventListener('click', toggleTrafficLayer);
   }
 }
 
-function handleOrderJobDrop(e) {
-  e.preventDefault();
+function toggleTrafficLayer() {
+  const context = state.orderJobsContext;
+  if (!context || !context.map) return;
+
+  if (!context.trafficLayer) {
+    context.trafficLayer = new google.maps.TrafficLayer();
+  }
+
+  context.trafficVisible = !context.trafficVisible;
+
+  if (context.trafficVisible) {
+    context.trafficLayer.setMap(context.map);
+    document.getElementById('trafficToggleBtn').style.background = '#4caf50';
+    document.getElementById('trafficToggleBtn').style.color = 'white';
+  } else {
+    context.trafficLayer.setMap(null);
+    document.getElementById('trafficToggleBtn').style.background = '';
+    document.getElementById('trafficToggleBtn').style.color = '';
+  }
+}
+
+function initializeRoutePlannerInputs() {
+  const startLocInput = document.getElementById('routeStartLocation');
+  const finishLocInput = document.getElementById('routeFinishLocation');
+  const startTimeInput = document.getElementById('routeStartTime');
+  const finishTimeInput = document.getElementById('routeFinishTime');
+
+  if (!startLocInput || !finishLocInput) return;
+
+  // Default start location - always use this, never first job address
+  const DEFAULT_START_LOCATION = 'SS4 1PF';
+  
+  const context = state.orderJobsContext;
+  
+  // Always use default start location
+  startLocInput.value = DEFAULT_START_LOCATION;
+  context.startLocation = DEFAULT_START_LOCATION;
+  finishLocInput.value = DEFAULT_START_LOCATION;
+  context.finishLocation = DEFAULT_START_LOCATION;
+
+  // Set default times
+  if (startTimeInput) startTimeInput.value = '08:00';
+  if (finishTimeInput) finishTimeInput.value = '17:00';
+
+  // Add event listeners for both 'change' and 'input' events to catch all edits
+  if (startLocInput) {
+    const handleStartLocChange = () => {
+      context.startLocation = startLocInput.value;
+      // Auto-sync finish location to start location
+      finishLocInput.value = startLocInput.value;
+      context.finishLocation = startLocInput.value;
+      // Redraw route with new locations
+      drawRoutePath();
+    };
+    startLocInput.addEventListener('change', handleStartLocChange);
+    startLocInput.addEventListener('input', handleStartLocChange);
+  }
+
+  if (finishLocInput) {
+    const handleFinishLocChange = () => {
+      context.finishLocation = finishLocInput.value;
+      // Redraw route with new locations
+      drawRoutePath();
+    };
+    finishLocInput.addEventListener('change', handleFinishLocChange);
+    finishLocInput.addEventListener('input', handleFinishLocChange);
+  }
+
+  if (startTimeInput) {
+    startTimeInput.addEventListener('change', () => {
+      const [h, m] = startTimeInput.value.split(':').map(Number);
+      context.startTime = h * 60 + m;
+      renderRouteTimeline();
+    });
+  }
+
+  if (finishTimeInput) {
+    finishTimeInput.addEventListener('change', () => {
+      const [h, m] = finishTimeInput.value.split(':').map(Number);
+      context.finishTime = h * 60 + m;
+      renderRouteTimeline();
+    });
+  }
+}
+
+async function drawRoutePath() {
+  const context = state.orderJobsContext;
+  if (!context || !context.map || context.entries.length === 0) return;
+
+  // Get ordered quotes
+  const orderedQuotes = context.optimizedOrder
+    .map(id => context.entries.find(e => e.quote.id === id)?.quote)
+    .filter(q => q && q.customerLatitude && q.customerLongitude);
+
+  if (orderedQuotes.length < 1) return;
+
+  try {
+    // Geocode start location if provided and not already cached
+    let startCoords = context.startLocationCoords;
+    if (context.startLocation && !startCoords) {
+      const startResult = await geocodeAddress(context.startLocation);
+      if (startResult) {
+        startCoords = startResult;
+        context.startLocationCoords = startResult;
+      }
+    }
+
+    // Geocode finish location if provided and not already cached
+    let finishCoords = context.finishLocationCoords;
+    if (context.finishLocation && !finishCoords) {
+      const finishResult = await geocodeAddress(context.finishLocation);
+      if (finishResult) {
+        finishCoords = finishResult;
+        context.finishLocationCoords = finishResult;
+      }
+    }
+
+    // Use start coords if available, otherwise use first job
+    const originCoords = startCoords || new google.maps.LatLng(
+      orderedQuotes[0].customerLatitude,
+      orderedQuotes[0].customerLongitude
+    );
+
+    // Use finish coords if available, otherwise use last job
+    const destinationCoords = finishCoords || new google.maps.LatLng(
+      orderedQuotes[orderedQuotes.length - 1].customerLatitude,
+      orderedQuotes[orderedQuotes.length - 1].customerLongitude
+    );
+
+    // Build waypoints - include all job locations
+    const waypoints = orderedQuotes.map(quote => ({
+      location: new google.maps.LatLng(quote.customerLatitude, quote.customerLongitude),
+      stopover: true,
+    }));
+
+    const request = {
+      origin: originCoords,
+      destination: destinationCoords,
+      waypoints: waypoints,
+      travelMode: google.maps.TravelMode.DRIVING,
+    };
+
+    const result = await context.directionsService.route(request);
+
+    // Clear previous polyline
+    if (context.polyline) context.polyline.setMap(null);
+
+    // Draw route polyline
+    context.polyline = new google.maps.Polyline({
+      path: result.routes[0].overview_path,
+      geodesic: true,
+      strokeColor: '#0078d7',
+      strokeOpacity: 0.7,
+      strokeWeight: 3,
+      map: context.map,
+    });
+
+    // Update timeline with actual route data
+    renderRouteTimeline(result);
+  } catch (error) {
+    console.error('Route error:', error);
+  }
+}
+
+async function geocodeAddress(address) {
+  const context = state.orderJobsContext;
+  if (!context || !context.geocoder) return null;
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      context.geocoder.geocode({ address }, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK && results[0]) {
+          resolve(results[0].geometry.location);
+        } else {
+          reject(new Error(`Geocoding failed: ${status}`));
+        }
+      });
+    });
+    return result;
+  } catch (error) {
+    console.warn(`Could not geocode "${address}":`, error);
+    return null;
+  }
+}
+
+function renderRouteTimeline(directionsResult = null) {
+  const context = state.orderJobsContext;
+  if (!context) return;
+
+  const timelineDiv = document.getElementById('routeTimeline');
+  if (!timelineDiv) return;
+
+  const orderedQuotes = context.optimizedOrder
+    .map(id => context.entries.find(e => e.quote.id === id)?.quote)
+    .filter(Boolean);
+
+  let currentTime = context.startTime; // minutes from midnight
+  let totalWorkTime = 0;
+  let html = '';
+
+  // Extract real travel durations from Directions API when available
+  // legsDurations[i] = minutes to travel from origin/prev stop to next stop
+  let legsDurations = [];
+  if (directionsResult && directionsResult.routes && directionsResult.routes[0] && directionsResult.routes[0].legs) {
+    try {
+      legsDurations = directionsResult.routes[0].legs.map((leg) => {
+        const sec = (leg.duration && leg.duration.value) ? leg.duration.value : 0;
+        return Math.max(0, Math.round(sec / 60));
+      });
+    } catch (_) {
+      legsDurations = [];
+    }
+  }
+
+  // Helper to get travel minutes between stops. If not available, default to 15m
+  const getTravelMins = (index) => {
+    // index 0 = origin -> first job, index n = last job -> destination
+    if (index >= 0 && index < legsDurations.length) return legsDurations[index];
+    return 15;
+  };
+
+  // Lunch handling
+  const LUNCH_TIME = 13 * 60; // 13:00
+  const LUNCH_DURATION = 60; // 60 minutes
+  let lunchTaken = false;
+  const maybeInsertLunchDuringGap = (gapStart, gapMinutes) => {
+    if (lunchTaken) return 0; // no adjustment
+    const gapEnd = gapStart + gapMinutes;
+    // If we cross 13:00 during this gap, insert lunch at exactly 13:00
+    if (gapStart < LUNCH_TIME && gapEnd > LUNCH_TIME) {
+      // Time already elapsed before lunch within this gap
+      const beforeLunch = LUNCH_TIME - gapStart;
+      // Remaining after lunch within this same gap
+      const afterLunch = gapEnd - LUNCH_TIME;
+      // Move clock to end of lunch, then add the remaining portion
+      currentTime = LUNCH_TIME + LUNCH_DURATION + afterLunch;
+      html += `
+        <div class="route-timeline-item break">
+          <div class="route-timeline-time">${formatTime(LUNCH_TIME)}</div>
+          <div class="route-timeline-job">
+            <div class="route-timeline-job-name">🍽️ Lunch Break</div>
+            <div class="route-timeline-duration">${LUNCH_DURATION} minutes</div>
+          </div>
+        </div>
+      `;
+      lunchTaken = true;
+      return gapMinutes; // full gap consumed (handled by advancing currentTime above)
+    }
+    return 0; // no lunch inserted here
+  };
+
+  // Start location
+  html += `
+    <div class="route-timeline-item">
+      <div class="route-timeline-time">${formatTime(currentTime)}</div>
+      <div class="route-timeline-job">
+        <div class="route-timeline-job-name">📍 Start: ${escapeHtml(context.startLocation || 'Starting point')}</div>
+      </div>
+    </div>
+  `;
+
+  // Jobs with travel time
+  orderedQuotes.forEach((quote, idx) => {
+    const jobDuration = Math.max(0, Math.round(resolvePricePerClean(quote)));
+    totalWorkTime += jobDuration;
+
+    // Travel to this job (from start for idx 0, or from previous job)
+    const travelToJob = getTravelMins(idx); // leg idx maps to origin->job0, job0->job1, etc.
+
+    // If we haven't taken lunch, check if lunch occurs during this travel
+    if (!lunchTaken && travelToJob > 0) {
+      const consumed = maybeInsertLunchDuringGap(currentTime, travelToJob);
+      if (consumed === 0) {
+        currentTime += travelToJob;
+      }
+      // if consumed > 0, currentTime was already advanced inside maybeInsertLunchDuringGap
+    } else {
+      currentTime += travelToJob;
+    }
+
+    // If we passed 13:00 earlier due to a long morning job without an opportunity,
+    // insert lunch now before starting this job
+    if (!lunchTaken && currentTime >= LUNCH_TIME) {
+      html += `
+        <div class="route-timeline-item break">
+          <div class="route-timeline-time">${formatTime(Math.max(LUNCH_TIME, currentTime))}</div>
+          <div class="route-timeline-job">
+            <div class="route-timeline-job-name">🍽️ Lunch Break</div>
+            <div class="route-timeline-duration">${LUNCH_DURATION} minutes</div>
+          </div>
+        </div>
+      `;
+      currentTime = Math.max(LUNCH_TIME, currentTime) + LUNCH_DURATION;
+      lunchTaken = true;
+    }
+
+    // Render the job starting at currentTime
+    html += `
+      <div class="route-timeline-item">
+        <div class="route-timeline-time">${formatTime(currentTime)}</div>
+        <div class="route-timeline-job">
+          <div class="route-timeline-job-name">${idx + 1}. ${escapeHtml(quote.customerName)}</div>
+          <div class="route-timeline-duration">${escapeHtml(quote.address)} • ${jobDuration}m job</div>
+        </div>
+      </div>
+    `;
+
+    const jobStart = currentTime;
+    currentTime += jobDuration; // job work time
+
+    // If lunch time falls between job start and end, insert lunch after job
+    if (!lunchTaken && jobStart < LUNCH_TIME && currentTime >= LUNCH_TIME) {
+      html += `
+        <div class="route-timeline-item break">
+          <div class="route-timeline-time">${formatTime(LUNCH_TIME)}</div>
+          <div class="route-timeline-job">
+            <div class="route-timeline-job-name">🍽️ Lunch Break</div>
+            <div class="route-timeline-duration">${LUNCH_DURATION} minutes</div>
+          </div>
+        </div>
+      `;
+      currentTime = LUNCH_TIME + LUNCH_DURATION;
+      lunchTaken = true;
+    }
+  });
+
+  // Travel to finish location (last leg)
+  const travelToFinish = getTravelMins(orderedQuotes.length);
+
+  if (!lunchTaken) {
+    // Check if lunch occurs during final travel
+    const consumed = maybeInsertLunchDuringGap(currentTime, travelToFinish);
+    if (consumed === 0) currentTime += travelToFinish; // otherwise already advanced
+  } else {
+    currentTime += travelToFinish;
+  }
+
+  // Finish location
+  html += `
+    <div class="route-timeline-item">
+      <div class="route-timeline-time">${formatTime(currentTime)}</div>
+      <div class="route-timeline-job">
+        <div class="route-timeline-job-name">🏁 Finish: ${escapeHtml(context.finishLocation || 'Finish location')}</div>
+      </div>
+    </div>
+  `;
+
+  timelineDiv.innerHTML = html;
+
+  // Update totals
+  const totalDuration = currentTime - context.startTime;
+  document.getElementById('totalRouteDuration').textContent = formatMinutesToHours(totalDuration);
+  document.getElementById('totalWorkDuration').textContent = formatMinutesToHours(totalWorkTime);
+}
+
+function formatTime(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function formatMinutesToHours(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h}h ${m}m`;
 }
 
 function handleOrderJobDragEnd(e) {
@@ -1557,16 +2375,10 @@ async function handleOptimizeRoute() {
     const waypoints = entries
       .map((entry) => {
         const { quote } = entry;
-        // Use latitude/longitude if available, otherwise geocode address
+        // Use latitude/longitude if available
         if (quote.customerLatitude && quote.customerLongitude) {
           return {
             location: new google.maps.LatLng(quote.customerLatitude, quote.customerLongitude),
-            quoteId: quote.id,
-          };
-        } else if (quote.address) {
-          // Geocode the address
-          return {
-            location: quote.address,
             quoteId: quote.id,
           };
         }
@@ -1575,7 +2387,7 @@ async function handleOptimizeRoute() {
       .filter((w) => w !== null);
 
     if (waypoints.length < 2) {
-      alert("Need at least 2 valid addresses to optimize");
+      alert("Need at least 2 valid job addresses to optimize");
       if (btn) {
         btn.disabled = false;
         btn.textContent = originalText;
@@ -1583,72 +2395,80 @@ async function handleOptimizeRoute() {
       return;
     }
 
-    // Use Google Routes API for optimization
-    const directionsService = new google.maps.DirectionsService();
-    const start = waypoints[0];
-    const end = waypoints[waypoints.length - 1];
-    const middle = waypoints.slice(1, -1);
+    // Use promise with timeout for optimization
+    const optimizePromise = new Promise((resolve, reject) => {
+      const directionsService = new google.maps.DirectionsService();
+      const start = waypoints[0];
+      const end = waypoints[waypoints.length - 1];
+      const middle = waypoints.slice(1, -1);
 
-    const request = {
-      origin: start.location,
-      destination: end.location,
-      waypoints: middle.map((w) => ({ location: w.location, stopover: true })),
-      optimizeWaypoints: true,
-      travelMode: google.maps.TravelMode.DRIVING,
-    };
+      const request = {
+        origin: start.location,
+        destination: end.location,
+        waypoints: middle.map((w) => ({ location: w.location, stopover: true })),
+        optimizeWaypoints: true,
+        travelMode: google.maps.TravelMode.DRIVING,
+      };
 
-    directionsService.route(request, (result, status) => {
-      if (status === google.maps.DirectionsStatus.OK) {
-        // Extract optimized order from result
-        const optimizedOrder = [start.quoteId];
+      // Add 10 second timeout
+      const timeoutId = setTimeout(() => {
+        reject(new Error("Route optimization timed out"));
+      }, 10000);
 
-        // Map waypoint indices back to quote IDs
-        const waypointOrder = result.routes[0].waypoint_order;
-        waypointOrder.forEach((idx) => {
-          optimizedOrder.push(middle[idx].quoteId);
-        });
+      directionsService.route(request, (result, status) => {
+        clearTimeout(timeoutId);
 
-        optimizedOrder.push(end.quoteId);
+        if (status === google.maps.DirectionsStatus.OK) {
+          // Extract optimized order from result
+          const optimizedOrder = [start.quoteId];
 
-        // Update state
-        state.orderJobsContext.optimizedOrder = optimizedOrder;
+          // Map waypoint indices back to quote IDs
+          const waypointOrder = result.routes[0].waypoint_order;
+          waypointOrder.forEach((idx) => {
+            optimizedOrder.push(middle[idx].quoteId);
+          });
 
-        // Re-sort entries based on optimized order
-        const oldEntries = state.orderJobsContext.entries;
-        state.orderJobsContext.entries = optimizedOrder.map((qId) =>
-          oldEntries.find((e) => e.quote.id === qId)
-        );
-
-        // Re-render
-        renderOrderJobsList();
-
-        // Show success
-        const notification = document.createElement("div");
-        notification.textContent = "✓ Route optimized using Google Maps";
-        notification.style.cssText = `
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          background: #4caf50;
-          color: white;
-          padding: 12px 20px;
-          border-radius: 4px;
-          z-index: 10000;
-        `;
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
-      } else {
-        alert(`Route optimization failed: ${status}`);
-      }
-
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }
+          optimizedOrder.push(end.quoteId);
+          resolve({ optimizedOrder, start, end });
+        } else {
+          reject(new Error(`Route optimization failed: ${status}`));
+        }
+      });
     });
+
+    const { optimizedOrder } = await optimizePromise;
+
+    // Update state
+    state.orderJobsContext.optimizedOrder = optimizedOrder;
+
+    // Re-sort entries based on optimized order
+    const oldEntries = state.orderJobsContext.entries;
+    state.orderJobsContext.entries = optimizedOrder.map((qId) =>
+      oldEntries.find((e) => e.quote.id === qId)
+    );
+
+    // Re-render the route with new order
+    drawRoutePath();
+
+    // Show success
+    const notification = document.createElement("div");
+    notification.textContent = "✓ Route optimized for efficiency";
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4caf50;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 4px;
+      z-index: 10000;
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 3000);
   } catch (error) {
     console.error("Route optimization error:", error);
-    alert(`Error: ${error.message || "Route optimization failed"}`);
+    alert(`Optimization failed: ${error.message}`);
+  } finally {
     if (btn) {
       btn.disabled = false;
       btn.textContent = originalText;
@@ -1663,7 +2483,8 @@ function handleClearOrder() {
   state.orderJobsContext.entries.sort((a, b) => a._originalIndex - b._originalIndex);
   state.orderJobsContext.optimizedOrder = state.orderJobsContext.entries.map((e) => e.quote.id);
 
-  renderOrderJobsList();
+  // Re-render the route with original order
+  drawRoutePath();
 
   const notification = document.createElement("div");
   notification.textContent = "↻ Order reset to original";
@@ -1684,7 +2505,7 @@ function handleClearOrder() {
 async function handleSaveJobOrder() {
   if (!state.orderJobsContext) return;
 
-  const { dateKey, entries } = state.orderJobsContext;
+  const { dateKey, entries, startLocation, finishLocation } = state.orderJobsContext;
   const btn = elements.saveJobOrder;
   const originalText = btn ? btn.textContent : "";
 
@@ -1704,9 +2525,21 @@ async function handleSaveJobOrder() {
     const updates = entries.map((entry) => {
       const newDayOrders = entry.quote.dayOrders || {};
       newDayOrders[dateKey] = dayOrders[entry.quote.id];
-      return updateDoc(doc(db, "quotes", entry.quote.id), {
+      
+      // Also save route start/finish locations if they exist
+      const updateData = {
         dayOrders: newDayOrders,
-      });
+      };
+      
+      // Save route locations at the quote level
+      if (startLocation) {
+        updateData.routeStartLocation = startLocation;
+      }
+      if (finishLocation) {
+        updateData.routeFinishLocation = finishLocation;
+      }
+      
+      return updateDoc(doc(db, "quotes", entry.quote.id), updateData);
     });
 
     await Promise.all(updates);
@@ -1717,12 +2550,14 @@ async function handleSaveJobOrder() {
       if (quote) {
         if (!quote.dayOrders) quote.dayOrders = {};
         quote.dayOrders[dateKey] = index;
+        if (startLocation) quote.routeStartLocation = startLocation;
+        if (finishLocation) quote.routeFinishLocation = finishLocation;
       }
     });
 
     // Show success
     const notification = document.createElement("div");
-    notification.textContent = "✓ Job order saved";
+    notification.textContent = "✓ Job order & route locations saved";
     notification.style.cssText = `
       position: fixed;
       top: 20px;
@@ -1752,10 +2587,203 @@ async function handleSaveJobOrder() {
   }
 }
 
+async function handleDeleteSelectedJobs(dateKey) {
+  // Get only SELECTED jobs for this date
+  const isoKey = dateKey;
+  const entries = (state.quotes || [])
+    .filter((quote) => !quote.deleted && quote.bookedDate && state.selectedJobIds.has(quote.id))
+    .flatMap((quote) => {
+      const cleans = getOccurrences(quote, state.startDate, state.weeksVisible);
+      return cleans
+        .filter((clean) => {
+          const cleanDateStr = clean.toISOString().split("T")[0];
+          return cleanDateStr === isoKey;
+        })
+        .map((clean, idx) => ({
+          quote,
+          cleanIndex: idx,
+          _originalIndex: state.quotes.indexOf(quote),
+        }));
+    });
+
+  if (entries.length === 0) {
+    alert("No jobs selected for deletion on this day");
+    return;
+  }
+
+  // Show confirmation dialog with list of jobs to delete
+  const jobsList = entries
+    .map((e) => `${escapeHtml(e.quote.customerName)} - £${e.quote.pricePerClean}`)
+    .join("\n");
+
+  const confirmed = await new Promise((resolve) => {
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 500px;
+      text-align: center;
+    `;
+    
+    const title = document.createElement('h3');
+    title.textContent = `Delete ${entries.length} job${entries.length !== 1 ? 's' : ''}?`;
+    title.style.cssText = 'margin: 0 0 16px 0; font-size: 18px; color: #333;';
+    
+    const message = document.createElement('p');
+    message.textContent = 'This action cannot be undone.';
+    message.style.cssText = 'margin: 0 0 16px 0; font-size: 14px; color: #666;';
+    
+    const jobsContainer = document.createElement('div');
+    jobsContainer.style.cssText = `
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 12px;
+      text-align: left;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: #333;
+      white-space: pre-wrap;
+      word-break: break-word;
+    `;
+    jobsContainer.textContent = jobsList;
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = 'display: flex; gap: 10px; justify-content: center;';
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.style.cssText = `
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    `;
+    deleteBtn.onmouseover = () => deleteBtn.style.background = '#c82333';
+    deleteBtn.onmouseout = () => deleteBtn.style.background = '#dc3545';
+    deleteBtn.onclick = () => {
+      dialog.remove();
+      overlay.remove();
+      resolve(true);
+    };
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+      background: #e2e6eb;
+      color: #333;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    `;
+    cancelBtn.onmouseover = () => cancelBtn.style.background = '#d1d5db';
+    cancelBtn.onmouseout = () => cancelBtn.style.background = '#e2e6eb';
+    cancelBtn.onclick = () => {
+      dialog.remove();
+      overlay.remove();
+      resolve(false);
+    };
+    
+    buttonContainer.appendChild(deleteBtn);
+    buttonContainer.appendChild(cancelBtn);
+    
+    dialog.appendChild(title);
+    dialog.appendChild(message);
+    dialog.appendChild(jobsContainer);
+    dialog.appendChild(buttonContainer);
+    
+    // Overlay to dim background
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+    `;
+    overlay.onclick = () => {
+      dialog.remove();
+      overlay.remove();
+      resolve(false);
+    };
+    
+    document.body.appendChild(overlay);
+    document.body.appendChild(dialog);
+    deleteBtn.focus();
+  });
+
+  if (!confirmed) {
+    return;
+  }
+
+  // Delete each quote
+  try {
+    for (const entry of entries) {
+      const quote = entry.quote;
+      await updateDoc(doc(db, "quotes", quote.id), {
+        deleted: true,
+      });
+    }
+    
+    // Refresh data
+    state.quotes = await fetchBookedQuotes();
+    renderSchedule();
+    alert(`${entries.length} job${entries.length !== 1 ? 's' : ''} deleted successfully`);
+  } catch (err) {
+    console.error("Error deleting jobs:", err);
+    alert("Error deleting jobs: " + (err.message || err));
+  }
+}
+
 function closeOrderJobsModal() {
   if (elements.orderJobsModal) {
     elements.orderJobsModal.hidden = true;
   }
+  
+  // Clean up map resources
+  if (state.orderJobsContext) {
+    // Remove all markers from map
+    if (state.orderJobsContext.markers) {
+      state.orderJobsContext.markers.forEach((marker) => {
+        marker.setMap(null);
+      });
+      state.orderJobsContext.markers = [];
+    }
+    
+    // Remove polyline from map
+    if (state.orderJobsContext.polyline) {
+      state.orderJobsContext.polyline.setMap(null);
+      state.orderJobsContext.polyline = null;
+    }
+    
+    // Clear map reference
+    if (state.orderJobsContext.map) {
+      state.orderJobsContext.map = null;
+    }
+  }
+  
   state.orderJobsContext = null;
 }
 
@@ -1777,6 +2805,9 @@ async function handleSendDayMessage() {
     alert("EmailJS not loaded. Cannot send messages.");
     return;
   }
+  // Determine send mode
+  const modeInput = (elements.dayMessageModeRadios() || []).find(r => r.checked);
+  const sendMode = modeInput ? modeInput.value : 'email';
   
   // Get the selected template name
   const templateSelect = elements.dayMessageTemplate;
@@ -1800,26 +2831,129 @@ async function handleSendDayMessage() {
   
   for (const { quote } of entries) {
     const recipientEmail = quote.email || quote.customerEmail;
-    if (!recipientEmail) {
-      console.warn("No email for quote", quote.id);
-      errors.push(`${quote.customerName || "Unknown"}: No email address`);
-      continue;
-    }
     const message = body.replace(/\[NAME\]/gi, quote.customerName || "Customer");
     try {
-      await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE, {
-        title: templateTitle,
-        name: quote.customerName || "",
-        message: message,
-        email: recipientEmail,
-      });
-      sent += 1;
-      if (elements.dayMessageProgress) {
-        elements.dayMessageProgress.textContent = `Sent ${sent} of ${total}`;
+      // Send per selected mode
+      let emailSuccess = false;
+      let smsSuccess = false;
+
+      // Email path (if selected)
+      if (sendMode === 'email' || sendMode === 'both') {
+        if (!recipientEmail) {
+          errors.push(`${quote.customerName || 'Unknown'}: No email address`);
+        } else {
+          await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE, {
+            title: templateTitle,
+            name: quote.customerName || "",
+            message: message,
+            email: recipientEmail,
+          });
+          emailSuccess = true;
+          await updateDoc(doc(db, "quotes", quote.id), {
+            emailLog: arrayUnion({
+              type: "message",
+              subject: templateTitle,
+              sentAt: Date.now(),
+              sentTo: recipientEmail,
+              success: true,
+              body: message,
+              sentBy: (function(){
+                const u = auth?.currentUser || null;
+                return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: "rep-scheduler" };
+              })(),
+            })
+          });
+        }
+      }
+
+      // SMS path (if selected)
+      if (sendMode === 'sms' || sendMode === 'both') {
+        const mobileRaw = quote.mobile || quote.phone || quote.contactNumber;
+        const to = normalizeUkPhone(mobileRaw);
+        if (!to) {
+          errors.push(`${quote.customerName || 'Unknown'}: No valid mobile number`);
+        } else {
+          // Attempt SMS via relative API first; if 404 (not found on current host), retry against fallback Vercel domain.
+          const SMS_RELATIVE_ENDPOINT = '/api/send-sms';
+          const SMS_FALLBACK_ORIGIN = 'https://swash-m0xrn9nb0-christopher-wessells-projects.vercel.app'; // Updated to latest production alias
+          async function sendSmsWithFallback(payload) {
+            let resp = await fetch(SMS_RELATIVE_ENDPOINT, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            if (resp.status === 404) {
+              // Likely running on a host (e.g. Firebase) that doesn't serve the Vercel function. Try fallback origin.
+              try {
+                resp = await fetch(`${SMS_FALLBACK_ORIGIN}${SMS_RELATIVE_ENDPOINT}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+                });
+              } catch (fallbackErr) {
+                throw new Error(`SMS fallback fetch error: ${fallbackErr.message || 'Unknown'}`);
+              }
+            }
+            return resp;
+          }
+          const resp = await sendSmsWithFallback({ to, message });
+          if (!resp.ok) throw new Error(`SMS failed (${resp.status})`);
+          smsSuccess = true;
+          await updateDoc(doc(db, "quotes", quote.id), {
+            emailLog: arrayUnion({
+              type: "sms",
+              subject: templateTitle,
+              sentAt: Date.now(),
+              sentTo: to,
+              success: true,
+              body: message,
+              sentBy: (function(){
+                const u = auth?.currentUser || null;
+                return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: "rep-scheduler" };
+              })(),
+            })
+          });
+        }
+      }
+
+      // Count as sent if at least one channel succeeded
+      if ((sendMode === 'email' && emailSuccess) || (sendMode === 'sms' && smsSuccess) || (sendMode === 'both' && (emailSuccess || smsSuccess))) {
+        sent += 1;
+        if (elements.dayMessageProgress) {
+          elements.dayMessageProgress.textContent = `Sent ${sent} of ${total}`;
+        }
       }
     } catch (error) {
       console.error("Failed to send day message", quote.id, error);
-      errors.push(`${quote.customerName || "Unknown"}: ${error.message || "Send failed"}`);
+      
+      // Log failed attempt for the intended channel(s)
+      try {
+        const failureEntry = (channel, target) => ({
+          type: channel === 'sms' ? 'sms' : 'message',
+          subject: templateTitle,
+          sentAt: Date.now(),
+          sentTo: target || (channel === 'sms' ? (normalizeUkPhone(quote.mobile || quote.phone || quote.contactNumber) || 'unknown') : (recipientEmail || 'unknown')),
+          success: false,
+          error: error?.message || 'Send failed',
+          body: message,
+          sentBy: (function(){
+            const u = auth?.currentUser || null;
+            return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: 'rep-scheduler' };
+          })(),
+        });
+
+        const updates = [];
+        if (sendMode === 'email' || sendMode === 'both') {
+          updates.push(failureEntry('email', recipientEmail));
+        }
+        if (sendMode === 'sms' || sendMode === 'both') {
+          updates.push(failureEntry('sms'));
+        }
+        await updateDoc(doc(db, 'quotes', quote.id), { emailLog: arrayUnion(...updates) });
+      } catch (logError) {
+        console.warn('Failed to log send failure(s)', logError);
+      }
+      errors.push(`${quote.customerName || 'Unknown'}: ${error.message || 'Send failed'}`);
     }
   }
   
@@ -1858,6 +2992,57 @@ function attachEvents() {
     renderSchedule();
   });
 
+  elements.viewToday?.addEventListener("click", () => {
+    // Set to current week (Monday of this week)
+    const today = new Date();
+    state.startDate = normalizeStartDate(today);
+    state.weeksVisible = 1; // Show only current week
+    // If it's Saturday today, auto-enable Saturday so "today" is visible
+    if (today.getDay() === 6) {
+      state.includeSaturday = true;
+      try { localStorage.setItem("swashShowSaturday", "1"); } catch (_) {}
+      if (elements.toggleSaturday) {
+        elements.toggleSaturday.textContent = "📆 Hide Saturday";
+        elements.toggleSaturday.setAttribute("aria-pressed", "true");
+      }
+    }
+    if (elements.startWeek) {
+      elements.startWeek.value = state.startDate.toISOString().slice(0, 10);
+    }
+    renderSchedule();
+    // Auto-scroll to today's row and briefly highlight it
+    try {
+      const todayIso = toIsoDate(today);
+      setTimeout(() => {
+        const row = document.querySelector(`.schedule-row[data-date="${todayIso}"]`);
+        if (row) {
+          row.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+          const prevBg = row.style.backgroundColor;
+          row.style.transition = "background-color 0.6s ease";
+          row.style.backgroundColor = "#fff9c4"; // soft highlight
+          setTimeout(() => { row.style.backgroundColor = prevBg || ""; }, 1800);
+        }
+      }, 50);
+    } catch (_) {}
+    updateShowNextWeekButton();
+  });
+
+  // Saturday toggle
+  elements.toggleSaturday?.addEventListener("click", () => {
+    state.includeSaturday = !state.includeSaturday;
+    try {
+      localStorage.setItem("swashShowSaturday", state.includeSaturday ? "1" : "0");
+    } catch (e) {
+      console.warn("Failed to persist Saturday toggle", e);
+    }
+    // Update button labeling/state
+    if (elements.toggleSaturday) {
+      elements.toggleSaturday.textContent = state.includeSaturday ? "📆 Hide Saturday" : "📆 Show Saturday";
+      elements.toggleSaturday.setAttribute("aria-pressed", state.includeSaturday ? "true" : "false");
+    }
+    renderSchedule();
+  });
+
   elements.search?.addEventListener("input", (event) => {
     state.searchTerm = event.target.value || "";
     applySearchHighlight();
@@ -1892,18 +3077,28 @@ function attachEvents() {
       if (event.target.closest('.job-select') || event.target.closest('.day-select-wrap')) return;
       const job = event.target.closest(".schedule-job");
       if (!job) return;
-      state.draggingIds = [job.dataset.id];
-      state.dragOriginDate = job.dataset.date || null;
+      const originDate = job.dataset.date || null;
+      // If this job is selected, drag all selected jobs from the same day
+      if (state.selectedJobIds.has(job.dataset.id)) {
+        const row = job.closest('.schedule-row');
+        const idsInThisRow = Array.from(row.querySelectorAll('.schedule-job')).map(el => el.dataset.id);
+        state.draggingIds = idsInThisRow.filter(id => state.selectedJobIds.has(id));
+      } else {
+        state.draggingIds = [job.dataset.id];
+      }
+      state.dragOriginDate = originDate;
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", job.dataset.id);
-      job.classList.add("dragging");
+      // Add dragging class to all dragged cards for visual feedback
+      state.draggingIds.forEach((id) => {
+        const card = elements.schedule.querySelector(`.schedule-job[data-id="${id}"]`);
+        if (card) card.classList.add("dragging");
+      });
     });
 
     elements.schedule.addEventListener("dragend", (event) => {
-      const job = event.target.closest(".schedule-job");
-      if (job) {
-        job.classList.remove("dragging");
-      }
+      // Remove dragging class from any cards
+      elements.schedule.querySelectorAll('.schedule-job.dragging').forEach(el => el.classList.remove('dragging'));
       state.draggingIds = [];
       state.dragOriginDate = null;
       state.dragTargetJobId = null;
@@ -1938,8 +3133,9 @@ function attachEvents() {
       const mouseY = event.clientY - rowRect.top;
       
       // Find jobs in this row, excluding the dragged one
+      const draggingSet = new Set(state.draggingIds);
       const jobs = Array.from(row.querySelectorAll(".schedule-job")).filter(
-        (job) => job.dataset.id !== state.draggingIds[0]
+        (job) => !draggingSet.has(job.dataset.id)
       );
       
       if (jobs.length === 0) return;
@@ -1996,19 +3192,18 @@ function attachEvents() {
       const row = event.target.closest(".schedule-row");
       if (!row || !state.draggingIds.length) return;
       
-      const dateKey = row.dataset.date;
-      const quoteId = state.draggingIds[0];
+  const dateKey = row.dataset.date;
+  const draggedIds = state.draggingIds.slice();
       const targetJobId = state.dragTargetJobId; // Use the target from dragover
       state.dragTargetJobId = null; // Clear it
       
-      console.log("DROP EVENT - dateKey:", dateKey, "quoteId:", quoteId, "dragOriginDate:", state.dragOriginDate, "targetJobId:", targetJobId);
+  console.log("DROP EVENT - dateKey:", dateKey, "draggedIds:", draggedIds.join(","), "dragOriginDate:", state.dragOriginDate, "targetJobId:", targetJobId);
       
       // If dropping within the same day
       if (state.dragOriginDate && state.dragOriginDate === dateKey) {
         // Only reorder if we found a valid target during dragover
-        if (targetJobId && targetJobId !== quoteId) {
-          console.log("Calling reorderWithinDay with stored target:", dateKey, quoteId, targetJobId);
-          const ok = await reorderWithinDay(dateKey, quoteId, targetJobId);
+        if (draggedIds.length > 1) {
+          const ok = await reorderMultipleWithinDay(dateKey, draggedIds, targetJobId || null);
           if (!ok) {
             console.error("Failed to reorder within day");
           } else {
@@ -2017,8 +3212,20 @@ function attachEvents() {
             await delay(150);
             console.log("Re-rendering after reorder");
           }
-        } else {
-          console.log("No stored target or dropping at end");
+        } else if (draggedIds.length === 1) {
+          if (targetJobId && targetJobId !== draggedIds[0]) {
+            console.log("Calling reorderWithinDay with stored target:", dateKey, draggedIds[0], targetJobId);
+            const ok = await reorderWithinDay(dateKey, draggedIds[0], targetJobId);
+            if (!ok) {
+              console.error("Failed to reorder within day");
+            } else {
+              console.log("Reorder successful, waiting before re-render...");
+              await delay(150);
+              console.log("Re-rendering after reorder");
+            }
+          } else {
+            console.log("No stored target or dropping at end");
+          }
         }
         
         renderSchedule();
@@ -2027,7 +3234,9 @@ function attachEvents() {
       
       // Dropping to a different day - reschedule
       const targetDate = new Date(`${dateKey}T00:00:00`);
-      const success = await rescheduleQuote(quoteId, targetDate);
+      const success = draggedIds.length > 1
+        ? await rescheduleQuotes(draggedIds, targetDate)
+        : await rescheduleQuote(draggedIds[0], targetDate);
       if (success) {
         renderSchedule();
       } else {
@@ -2043,6 +3252,17 @@ function attachEvents() {
         const quoteId = markDoneBtn.dataset.quoteId;
         if (quoteId) {
           handleMarkJobDone(quoteId);
+        }
+        return;
+      }
+      
+      // Check if clicking the completed status box to undo
+      const completedStatus = event.target.closest(".job-status-completed");
+      if (completedStatus) {
+        event.stopPropagation();
+        const quoteId = completedStatus.dataset.quoteId;
+        if (quoteId) {
+          handleUndoCompletion(quoteId);
         }
         return;
       }
@@ -2103,6 +3323,10 @@ function attachEvents() {
         } else if (action === "send" && dateKey) {
           openDayMessageModal(dateKey);
           // Reset dropdown after modal opens
+          setTimeout(() => { event.target.value = ""; }, 100);
+        } else if (action === "delete" && dateKey) {
+          handleDeleteSelectedJobs(dateKey);
+          // Reset dropdown after action
           setTimeout(() => { event.target.value = ""; }, 100);
         }
         return;
@@ -2183,6 +3407,20 @@ export async function startSchedulerApp() {
   state.weeksVisible = INITIAL_WEEKS;
   state.draggingIds = [];
   clearSelectedJobs();
+
+  // Load Saturday preference
+  try {
+    const saved = localStorage.getItem("swashShowSaturday");
+    state.includeSaturday = saved === "1";
+  } catch (_) {
+    state.includeSaturday = false;
+  }
+
+  // Reflect Saturday button state
+  if (elements.toggleSaturday) {
+    elements.toggleSaturday.textContent = state.includeSaturday ? "📆 Hide Saturday" : "📆 Show Saturday";
+    elements.toggleSaturday.setAttribute("aria-pressed", state.includeSaturday ? "true" : "false");
+  }
 
   if (elements.cleanerFilter) {
     populateCleanerSelect(elements.cleanerFilter, {
@@ -2311,6 +3549,17 @@ function getPaymentStatusClass(quote) {
   return "schedule-job--unpaid";
 }
 
+function isJobCompleted(quote) {
+  const status = (quote.status || "").toString();
+  return status.startsWith("Completed");
+}
+
+function getCompletionDisplay(quote) {
+  if (!isJobCompleted(quote)) return null;
+  const status = quote.status || "Completed";
+  return status;
+}
+
 function buildJobDetailsHtml(quote) {
   const safe = (v) => escapeHtml(v ?? "—");
   const telRaw = quote.mobile || quote.phone || quote.contactNumber || "";
@@ -2349,5 +3598,29 @@ function buildJobDetailsHtml(quote) {
         `)
         .join("")}
     </dl>
+    ${getNavigationUrl(quote) ? `
+      <div class="job-details__actions">
+        <a class="btn btn-primary job-nav-btn" href="${getNavigationUrl(quote)}" target="_blank" rel="noopener nofollow">Navigate</a>
+      </div>
+    ` : ''}
   `;
+}
+
+// Build a navigation URL that opens the default maps app on mobile
+function getNavigationUrl(quote) {
+  const lat = Number(quote.customerLatitude);
+  const lng = Number(quote.customerLongitude);
+  const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+  const address = (quote.address || '').trim();
+  if (!hasCoords && !address) return null;
+
+  const dest = hasCoords ? `${lat},${lng}` : encodeURIComponent(address);
+  const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+  const isiOS = /iPad|iPhone|iPod/.test(ua);
+
+  // Apple Maps on iOS, Google Maps elsewhere
+  if (isiOS) {
+    return `http://maps.apple.com/?daddr=${dest}`;
+  }
+  return `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
 }

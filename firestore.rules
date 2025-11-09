@@ -42,26 +42,55 @@ service cloud.firestore {
     }
 
 
-    // --- REP LOGS COLLECTION ---
-    match /repLogs/{logId} {
-      function userDoc() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid));
-      }
-      function isAdmin() {
-        return request.auth != null && userDoc().data.role == "admin";
-      }
-      function isRep() {
-        return request.auth != null && userDoc().data.role == "rep";
-      }
+    // --- REP LOGS HIERARCHY ---
+    // Structure: repLogs/{repId}/dates/{date}/doorLogs/{doorLogId}
+    match /repLogs/{repId} {
+      function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+      function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
+      function isSelf() { return request.auth != null && request.auth.uid == repId; }
 
-      // Everyone authenticated (rep/admin) can read logs
-      allow read: if isAdmin() || isRep();
-
-      // Create allowed for reps and admins
-      allow create: if isAdmin() || isRep();
-
-      // Update and delete restricted to admins only
+      // Allow authenticated reps to create/read under their own repId; admins full access
+      // Do NOT require the users doc to exist for these operational writes.
+      allow read: if isAdmin() || isSelf();
+      allow create: if isAdmin() || isSelf();
       allow update, delete: if isAdmin();
+
+      // dates subcollection
+      match /dates/{date} {
+  allow read: if isAdmin() || isSelf();
+  allow create: if isAdmin() || isSelf();
+  allow update, delete: if isAdmin();
+
+        // doorLogs leaf collection
+        match /doorLogs/{doorLogId} {
+          allow read: if isAdmin() || isSelf();
+          allow create: if isAdmin() || isSelf();
+          allow update, delete: if isAdmin();
+        }
+      }
+    }
+
+    // --- REP SHIFTS COLLECTION ---
+    // Docs keyed by repId_date
+    match /repShifts/{shiftId} {
+      function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+      function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
+      // Extract repId prefix before underscore
+      function shiftRepId() { return shiftId.split('_')[0]; }
+      function isSelf() { return request.auth != null && request.auth.uid == shiftRepId(); }
+      allow read: if isAdmin() || isSelf();
+      allow create: if isAdmin() || isSelf();
+      allow update, delete: if isAdmin();
+    }
+
+    // --- REP LOCATIONS COLLECTION ---
+    match /repLocations/{repId} {
+      function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+      function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
+      function isSelf() { return request.auth != null && request.auth.uid == repId; }
+      allow read: if isAdmin() || isSelf();
+      allow create, update: if isAdmin() || isSelf();
+      allow delete: if isAdmin();
     }
 
 
@@ -169,6 +198,16 @@ service cloud.firestore {
 
       // Delete restricted to admins only
       allow delete: if isAdmin();
+    }
+
+    // --- SYSTEM COLLECTION (shared config docs e.g. system/territories) ---
+    match /system/{docId} {
+      function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+      function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
+      function isRep() { return request.auth != null && userDoc().data.role == "rep"; }
+      // Allow authenticated users to read shared configuration, restrict writes to admins.
+      allow read: if isAdmin() || isRep();
+      allow create, update, delete: if isAdmin();
     }
   }
 }

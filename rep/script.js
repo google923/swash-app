@@ -42,6 +42,10 @@ const firebaseConfig = {
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+// Expose db for dynamic imports used elsewhere in this module
+if (typeof window !== "undefined") {
+  window.db = db;
+}
 
 const selectors = {};
 let latestPricing = null;
@@ -65,6 +69,20 @@ async function bootstrap() {
   await waitForDomReady();
   await authStateReady();
   console.log("[Page] Auth ready, userRole:", window.userRole);
+
+  // If embedded, add an embed class to simplify UI (hide global header/nav)
+  try {
+    if (isEmbedMode) {
+      document.body.classList.add("embed");
+      // Ensure initial height message goes out early
+      setTimeout(() => {
+        try {
+          const h = document.documentElement.scrollHeight || document.body.scrollHeight;
+          parent.postMessage({ type: 'SWASH_IFRAME_HEIGHT', height: h }, '*');
+        } catch(_){}
+      }, 100);
+    }
+  } catch (_) {}
 
   if (!isEmbedMode) {
     const routing = await handlePageRouting("shared");
@@ -511,9 +529,58 @@ async function sendQuoteEmail(
       message_body: message,
       email: recipient,
     });
+    
+    // Log successful send to Firestore if quote has ID
+    if (quote.id && window.db) {
+      try {
+        const { doc, updateDoc, arrayUnion, serverTimestamp } = await import(
+          "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
+        );
+        const sentBy = getRepIdentity();
+        await updateDoc(doc(window.db, "quotes", quote.id), {
+          emailLog: arrayUnion({
+            type: "quote",
+            subject: "Your Swash Window Cleaning Quote",
+            sentAt: Date.now(),
+            sentTo: recipient,
+            success: true,
+            body: message,
+            sentBy,
+          })
+        });
+      } catch (logError) {
+        console.warn("Failed to log email send", logError);
+      }
+    }
+    
     return true;
   } catch (error) {
     console.warn("EmailJS send failed", error);
+    
+    // Log failed send to Firestore if quote has ID
+    if (quote.id && window.db) {
+      try {
+        const { doc, updateDoc, arrayUnion } = await import(
+          "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
+        );
+        const sentBy = getRepIdentity();
+        await updateDoc(doc(window.db, "quotes", quote.id), {
+          emailLog: arrayUnion({
+            type: "quote",
+            subject: "Your Swash Window Cleaning Quote",
+            sentAt: Date.now(),
+            sentTo: recipient,
+            success: false,
+            error: error?.text || error?.message || "Send failed",
+            body: message,
+            sentBy,
+          })
+        });
+      } catch (logError) {
+        console.warn("Failed to log email failure", logError);
+      }
+    }
+    
     if (!silent && statusPanel) {
       const status = error?.status ? `status ${error.status}` : "unknown error";
       const message = error?.text || error?.message || "No additional details";
@@ -523,6 +590,21 @@ async function sendQuoteEmail(
       );
     }
     return false;
+  }
+}
+
+function getRepIdentity() {
+  try {
+    const repCode = selectors?.repCode?.value || undefined;
+    const user = auth?.currentUser || null;
+    return {
+      uid: user?.uid || null,
+      email: user?.email || null,
+      repCode: repCode || null,
+      source: "rep-quote",
+    };
+  } catch (_) {
+    return { source: "rep-quote" };
   }
 }
 
@@ -623,10 +705,14 @@ window.addEventListener("swashQueueSynced", async (event) => {
 
 async function persistQuote(quote) {
   try {
-    await addDoc(collection(db, "quotes"), {
+    const docRef = await addDoc(collection(db, "quotes"), {
       ...quote,
       createdAt: serverTimestamp(),
     });
+    if (docRef?.id) {
+      // Attach Firestore document ID so downstream email logging works
+      quote.id = docRef.id;
+    }
     return true;
   } catch (error) {
     console.error("Firestore write failed", error);

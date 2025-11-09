@@ -2,20 +2,22 @@
   "hosting": [
     {
       "site": "swash-app-436a1",
-      "public": "public",
+      "public": ".",
       "ignore": [
         "firebase.json",
         "**/.*",
-        "**/node_modules/**"
+        "**/node_modules/**",
+        "**/*.md"
       ]
     },
     {
       "site": "swash-app-436a1-live",
-      "public": "public",
+      "public": ".",
       "ignore": [
         "firebase.json",
         "**/.*",
-        "**/node_modules/**"
+        "**/node_modules/**",
+        "**/*.md"
       ]
     }
   ],

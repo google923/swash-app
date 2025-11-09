@@ -39,13 +39,21 @@ async function initLoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      await delay(200);
+      // Give auth state and user doc time to load before routing
+      await delay(800);
       const result = await handlePageRouting("login");
       if (!result.redirected) {
-        els.submitBtn.disabled = false;
-        els.loadingMessage.classList.remove("show");
-        showError("Unable to determine your access level. Please contact administrator.");
+        // Retry once more in case user doc was still loading
+        await delay(700);
+        const retry = await handlePageRouting("login");
+        if (!retry.redirected) {
+          // Still no redirect - legitimate access level issue
+          els.submitBtn.disabled = false;
+          els.loadingMessage.classList.remove("show");
+          showError("Unable to determine your access level. Please contact administrator.");
+        }
       }
+      // If redirected, keep loading message visible during navigation
     } catch (error) {
       els.submitBtn.disabled = false;
       els.loadingMessage.classList.remove("show");

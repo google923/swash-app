@@ -59,10 +59,14 @@ body {
   margin: 0;
   background: var(--bg-page);
   color: var(--text-body);
+  overflow-x: hidden;
 }
 
 /* Full-page background image (faded) applied behind all content */
-html, body { min-height: 100%; }
+html, body { 
+  min-height: 100%; 
+  overflow-x: hidden;
+}
 body::before {
   content: "";
   position: fixed;
@@ -243,9 +247,10 @@ a {
   box-shadow: var(--shadow-soft);
   border: 1px solid var(--border-soft);
   min-width: 220px;
+  max-width: calc(100vw - 16px);
   padding: 8px 0;
   display: none;
-  z-index: 10;
+  z-index: 9999;
 }
 
 .dropdown.show {
@@ -283,18 +288,21 @@ a {
   max-width: 1400px;
   margin: 24px auto 60px;
   padding: 0 16px;
+  overflow-x: hidden;
 }
 
 #schedulerContent {
   max-width: 100%;
   margin: 24px 0 60px;
   padding: 0 16px;
+  overflow-x: hidden;
 }
 
 #schedulerContent .card {
   max-width: 100%;
   margin: 0;
   padding: 28px 16px;
+  overflow-x: hidden;
 }
 
 /* Narrow layout for embedded quote form */
@@ -845,6 +853,8 @@ textarea:focus {
 
 
 .scheduler-controls {
+  display: flex;
+  flex-direction: row;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
@@ -1123,6 +1133,133 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.modal__dialog--route-planner {
+  width: min(1200px, 95vw) !important;
+  max-height: 90vh !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* prevent double scroll bars */
+}
+
+.route-planner-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 16px;
+  flex: 1;
+  min-height: 500px;
+  overflow: hidden; /* remove internal scrollbar */
+}
+
+.route-planner-map-container {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f4f6;
+  height: 100%;
+  min-height: 500px;
+}
+
+.route-planner-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden; /* container itself won't scroll */
+  max-height: 100%;
+}
+
+.route-planner-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.route-planner-controls .modal__field {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.route-planner-controls .modal__field span {
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.route-planner-timeline-list {
+  flex: 1;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  background: #ffffff;
+  overflow-y: auto; /* only this area scrolls */
+  min-height: 200px;
+  max-height: 100%;
+}
+
+.route-timeline-item {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 4px;
+  border-left: 3px solid #0078d7;
+  font-size: 0.85rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.route-timeline-item.break {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.route-timeline-time {
+  font-weight: 600;
+  color: #1f2937;
+  min-width: 50px;
+}
+
+.route-timeline-job {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.route-timeline-job-name {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.route-timeline-duration {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 1024px) {
+  .route-planner-grid {
+    grid-template-columns: 1fr;
+    min-height: 300px;
+    gap: 12px;
+  }
+  
+  .route-planner-map-container {
+    min-height: 300px;
+  }
+  
+  .modal__dialog--route-planner {
+    width: min(95vw, 100%) !important;
+    max-height: 95vh !important;
+  }
 }
 
 #areasModal .modal__dialog {
@@ -1493,12 +1630,13 @@ tbody tr:hover {
    ============================================================ */
 
 .schedule-week {
-  background: #fff;
-  border-radius: 12px;
-  padding: 18px;
-  margin-bottom: 18px;
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-soft);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 32px;
+  margin-bottom: 28px;
+  border: none;
+  box-shadow: none;
   overflow-x: hidden;
   box-sizing: border-box;
 }
@@ -1508,8 +1646,23 @@ tbody tr:hover {
   justify-content: space-between;
   align-items: center;
   font-weight: 600;
-  margin-bottom: 14px;
+  margin-bottom: 48px;
   font-size: 1rem;
+}
+
+.week-header {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 48px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+#schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .week-table {
@@ -1517,6 +1670,7 @@ tbody tr:hover {
   border-collapse: collapse;
   table-layout: fixed;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .week-table th {
@@ -1552,8 +1706,8 @@ tbody tr:hover {
   justify-content: flex-start;
   min-height: 100%;
   width: 100%;
-  padding: 10px 12px 14px;
-  gap: 10px;
+  padding: 12px;
+  gap: 0;
 }
 
 .day-body {
@@ -1561,15 +1715,15 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
+  gap: 0;
 }
 
 .day-footer {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   margin-top: auto;
-  padding-top: 10px;
+  padding-top: 0;
 }
 
 .job {
@@ -1710,6 +1864,19 @@ tbody tr:hover {
   white-space: pre-line;
 }
 
+/* Thin blue borders for Saturday/Areas/Refresh buttons */
+#toggleSaturday,
+#defineAreas,
+#refresh {
+  border: 1px solid var(--swash-blue) !important;
+}
+
+#toggleSaturday:hover,
+#defineAreas:hover,
+#refresh:hover {
+  box-shadow: 0 4px 12px rgba(0, 120, 215, 0.12);
+}
+
 @media (max-width: 768px) {
   .header {
     flex-wrap: nowrap;
@@ -1731,6 +1898,17 @@ tbody tr:hover {
     border-radius: 18px;
     padding: 9px 16px;
   }
+
+  /* Slightly smaller header buttons so Add Customer / Sign out / Menu fit neatly */
+  .header .btn {
+    padding: 7px 12px;
+    font-size: 0.9rem;
+  }
+  .header-left { gap: 8px; }
+  .header-logo { height: 38px; }
+
+  /* Keep dropdown inside the viewport on narrow screens */
+  .dropdown { right: 8px; left: auto; max-width: calc(100vw - 16px); }
 
   .form-grid {
     grid-template-columns: 1fr;
@@ -1777,11 +1955,75 @@ tbody tr:hover {
     align-items: stretch;
   }
 
-  .scheduler-controls .controls-right {
+  /* Scheduler controls mobile layout: structured stack with clear groups */
+  .scheduler-controls {
+    display: flex !important;
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
+    gap: 8px;
+  }
+  .scheduler-controls .controls-left {
+    display: grid;
+    grid-template-columns: 1fr; /* stack groups */
+    gap: 8px;
     width: 100%;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+  .scheduler-controls .controls-left label.control-label { margin-right: 0; }
+  .scheduler-controls .controls-left #startWeek { width: 100%; }
+  .scheduler-controls .controls-left .btn { flex: 1 1 auto; }
+  .scheduler-controls .controls-right { width: 100%; margin-left: 0; }
+
+  .scheduler-controls .controls-left .btn {
+    flex: 0 0 auto;
+    min-width: 100px;
+    font-size: 0.78rem;
+    padding: 6px 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .scheduler-controls .control-label {
+    width: auto;
+    font-size: 0.7rem;
+    margin: 0 2px 0 0;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    letter-spacing: .25px;
+    display: inline-block; /* keep label inline with the date input */
+  }
+
+  /* Inline groups inside the scheduler controls */
+  .scheduler-inline-group { 
+    display: grid; 
+    grid-template-columns: auto 1fr; 
+    align-items: center; 
+    gap: 6px; 
+  }
+  .scheduler-inline-group .control-label { margin: 0; }
+  .actions-cluster { 
+    display: grid; 
+    grid-template-columns: repeat(2, minmax(0, 1fr)); 
+    gap: 8px; 
+  }
+  .actions-cluster .btn { width: 100%; }
+  .filters-cluster { 
+    display: grid; 
+    grid-template-columns: 1fr; 
+    gap: 8px; 
+    width: 100%; 
+    align-items: stretch; 
+  }
+  .spacer { flex: 1 1 auto; }
+
+  /* controls container already overridden above */
+
+  .scheduler-controls .controls-right {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
   }
 
   .scheduler-controls .cleaner-filter {
@@ -1795,7 +2037,14 @@ tbody tr:hover {
 
   .scheduler-controls #scheduleSearch {
     width: 100%;
+    max-width: 280px;
   }
+
+  /* Prevent horizontal scroll originating from card padding + 100% width children */
+  body, html, .page, #schedulerContent, #schedulerContent .card { overflow-x: hidden; }
+  #schedulerContent .card { padding-left: 16px; padding-right: 16px; }
+  .schedule-table, .schedule-row, .jobs-cell { max-width: 100%; }
+  .schedule-row { overflow-x: hidden; }
 
   /* Schedule table responsive - 1 column on mobile, 5 on desktop */
   .week-table tr {
@@ -1812,13 +2061,21 @@ tbody tr:hover {
   }
 
   .schedule-week {
-    padding: 12px;
-    margin-bottom: 12px;
+    padding: 0;
+    margin-top: 24px;
+    margin-bottom: 20px;
   }
 
   .summary {
     font-size: 0.95rem;
   }
+}
+
+/* Ultra-narrow tweaks */
+@media (max-width: 540px) {
+  .actions-cluster { grid-template-columns: 1fr; }
+  .scheduler-inline-group { grid-template-columns: 1fr; }
+  .scheduler-inline-group .control-label { font-size: 0.78rem; }
 }
 
 /* Under Development overlay */
@@ -1835,6 +2092,13 @@ tbody tr:hover {
     animation-duration: 0s !important;
     transition-duration: 0s !important;
   }
+}
+
+/* Extra-small screens: keep header buttons tidy */
+@media (max-width: 480px) {
+  .header { padding: 10px 12px; gap: 8px; }
+  .header .btn { padding: 6px 10px; font-size: 0.86rem; }
+  .header-logo { height: 34px; }
 }
 
 /* Embed mode (for iframe) */
@@ -1859,6 +2123,7 @@ body.embed-mode .banner {
 .day-total {
   margin-top: 0;
   padding-top: 4px;
+  padding-bottom: 0;
   font-weight: 600;
   color: var(--text-muted);
   white-space: pre-line;
@@ -1957,15 +2222,15 @@ body.embed-mode .banner {
 .jobs-cell {
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  gap: 10px;
+  padding: 0;
+  gap: 0;
   background: #fff;
-  min-height: 80px;
+  min-height: auto;
 }
 
 .day-empty {
   text-align: center;
-  padding: 24px 16px;
+  padding: 12px 0;
   color: var(--text-muted);
   font-size: 0.9rem;
 }
@@ -1975,9 +2240,9 @@ body.embed-mode .banner {
   flex-direction: column;
   gap: 4px;
   padding: 14px;
-  border-radius: 8px;
+  border-radius: 0;
   background: #f0f7ff;
-  border: 1px solid rgba(0, 120, 215, 0.16);
+  border: none;
   cursor: grab;
   transition: all 0.2s ease;
 }
@@ -2120,6 +2385,40 @@ body.embed-mode .banner {
   word-break: break-word;
 }
 
+/* Navigation button inside expanded job card */
+.job-details__actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.job-nav-btn {
+  background: var(--swash-blue);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  line-height: 1.2;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.job-nav-btn:hover,
+.job-nav-btn:focus {
+  background: var(--swash-blue-dark);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.job-nav-btn:active {
+  transform: translateY(0);
+}
+
 /* Make contact links clearly clickable and contained */
 .job-details a {
   color: var(--swash-blue);
@@ -2160,10 +2459,10 @@ body.embed-mode .banner {
 }
 
 .job-mark-done {
-  background: #4caf50;
+  background: var(--swash-blue);
   color: white;
-  border: none;
-  padding: 4px 8px;
+  border: 2px solid var(--swash-blue);
+  padding: 6px 12px;
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: 600;
@@ -2174,7 +2473,8 @@ body.embed-mode .banner {
 }
 
 .job-mark-done:hover {
-  background: #45a049;
+  background: #005a9c;
+  border-color: #005a9c;
   transform: scale(1.05);
 }
 
@@ -2184,8 +2484,22 @@ body.embed-mode .banner {
 
 .job-mark-done:disabled {
   background: #ccc;
+  border-color: #ccc;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Status display for completed jobs */
+.job-status-completed {
+  background: #e8f4fd;
+  color: var(--swash-blue);
+  border: 1px solid var(--swash-blue);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  align-self: center;
 }
 
 /* Generic utility */
@@ -2488,7 +2802,9 @@ body.embed-mode .banner {
 
 @media (max-width: 768px) {
   .schedule-week {
-    padding: 16px 12px;
+    padding: 0;
+    margin-top: 24px;
+    margin-bottom: 20px;
     gap: 16px;
     overflow-x: hidden !important;
   }
@@ -2857,8 +3173,12 @@ body.quote-page .slider-row input[type="range"]::-moz-range-thumb {
   align-items: flex-start;
   padding: 16px;
   border-bottom: 1px solid #e5e7eb;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.1s ease;
   cursor: pointer;
+}
+
+.message-log-row:active {
+  transform: scale(0.995);
 }
 
 .message-log-row:hover {
@@ -3082,6 +3402,505 @@ body.quote-page .slider-row input[type="range"]::-moz-range-thumb {
   #messageTypeFilter,
   #messageSearch {
     width: 100%;
+  }
+}
+
+/* ============================================================
+   TRAINING PAGE STYLES
+   ============================================================ */
+
+.section-subtitle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+  margin-bottom: 24px;
+  font-weight: 500;
+}
+
+/* Training Navigation Tabs */
+.training-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border-soft);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.training-nav-btn {
+  padding: 10px 16px;
+  background: var(--bg-card);
+  border: 2px solid var(--border-soft);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-body);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.training-nav-btn:hover {
+  border-color: var(--swash-blue);
+  color: var(--swash-blue);
+  background: rgba(0, 120, 215, 0.05);
+}
+
+.training-nav-btn.active {
+  background: var(--swash-blue);
+  color: white;
+  border-color: var(--swash-blue);
+  box-shadow: 0 4px 12px rgba(0, 120, 215, 0.3);
+}
+
+/* Training Content Container */
+.training-content {
+  width: 100%;
+}
+
+.training-section {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.training-section.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Training Cards */
+.training-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-soft);
+  transition: all 0.2s ease;
+}
+
+.training-card:hover {
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+}
+
+.training-card h3 {
+  font-size: 1.25rem;
+  color: var(--swash-blue);
+  margin-bottom: 16px;
+  margin-top: 0;
+}
+
+.training-card h4 {
+  font-size: 1.05rem;
+  color: var(--text-body);
+  margin-bottom: 12px;
+  margin-top: 0;
+}
+
+.training-card p {
+  line-height: 1.7;
+  margin: 12px 0;
+}
+
+/* Highlight Boxes */
+.highlight-box {
+  background: linear-gradient(135deg, rgba(0, 120, 215, 0.1), rgba(0, 120, 215, 0.05));
+  border-left: 4px solid var(--swash-blue);
+  padding: 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+
+.highlight-box p {
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Checklists */
+.checklist {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+.checklist li {
+  padding: 10px 0;
+  padding-left: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.checklist li:last-child {
+  border-bottom: none;
+}
+
+/* Mindset List */
+.mindset-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+.mindset-list li {
+  padding: 12px;
+  margin-bottom: 10px;
+  background: rgba(28, 156, 93, 0.08);
+  border-left: 3px solid var(--swash-green);
+  border-radius: 4px;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.mindset-list strong {
+  color: var(--text-body);
+}
+
+/* Step-by-step */
+.step-by-step {
+  margin: 16px 0;
+}
+
+.step {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: rgba(0, 120, 215, 0.05);
+  border-radius: 8px;
+  border-left: 3px solid var(--swash-blue);
+}
+
+.step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  background: var(--swash-blue);
+  color: white;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.step strong {
+  color: var(--text-body);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.step p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* Goals Grid */
+.goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.goal-item {
+  text-align: center;
+  padding: 20px 16px;
+  background: linear-gradient(135deg, #0078d7, #005a9e);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 120, 215, 0.2);
+}
+
+.goal-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.goal-item p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Q&A Grid */
+.qa-grid {
+  display: grid;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.qa-item {
+  padding: 16px;
+  background: var(--bg-page);
+  border-radius: 8px;
+  border-left: 3px solid var(--swash-blue);
+}
+
+.qa-item strong {
+  color: var(--text-body);
+}
+
+.qa-item p {
+  margin: 8px 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.qa-item em {
+  color: var(--text-muted);
+}
+
+/* Objection Response */
+.objection-response {
+  background: #fff3cd;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 3px solid #ffc107;
+  margin: 16px 0;
+}
+
+.objection-response p {
+  margin: 8px 0;
+}
+
+/* Objection Table */
+.objection-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  background: var(--bg-card);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.objection-table th {
+  background: linear-gradient(135deg, #0078d7, #005a9e);
+  color: white;
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.objection-table td {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-soft);
+  line-height: 1.6;
+  font-size: 0.93rem;
+}
+
+.objection-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Psychology Grid */
+.psychology-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.psychology-card {
+  background: var(--bg-page);
+  padding: 18px;
+  border-radius: 12px;
+  border: 2px solid var(--border-soft);
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.psychology-card:hover {
+  border-color: var(--swash-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 120, 215, 0.15);
+}
+
+.psychology-card h4 {
+  color: var(--swash-blue);
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+.psychology-card p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* Resilience Techniques */
+.resilience-technique {
+  background: var(--bg-page);
+  padding: 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border-left: 3px solid var(--swash-green);
+}
+
+.resilience-technique h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: var(--text-body);
+}
+
+.resilience-technique p {
+  margin: 6px 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+/* Debrief Checklist */
+.debrief-checklist {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.debrief-item {
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(0, 120, 215, 0.08), rgba(0, 120, 215, 0.03));
+  border-left: 3px solid var(--swash-blue);
+  border-radius: 6px;
+}
+
+.debrief-item strong {
+  color: var(--text-body);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.debrief-item p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* FAQ Items */
+.faq-item {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.faq-item h4 {
+  color: var(--swash-blue);
+  margin-bottom: 10px;
+  font-size: 1.05rem;
+}
+
+.faq-item p {
+  margin: 8px 0;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+/* Core Values Section */
+.core-values {
+  text-align: center;
+}
+
+.core-values h3 {
+  color: white !important;
+  margin-bottom: 20px;
+}
+
+.core-values ul {
+  text-align: left;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.core-values li {
+  font-size: 1rem;
+  margin-bottom: 12px;
+  line-height: 1.8;
+  text-align: left;
+}
+
+.core-values li:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .training-nav {
+    gap: 6px;
+    margin-bottom: 24px;
+  }
+
+  .training-nav-btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  .training-card {
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+
+  .training-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .goals-grid {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 12px;
+  }
+
+  .goal-item {
+    padding: 16px 12px;
+  }
+
+  .goal-number {
+    font-size: 1.5rem;
+  }
+
+  .psychology-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .step {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .step-num {
+    min-width: 32px;
+    height: 32px;
+    font-size: 0.95rem;
+  }
+
+  .objection-table {
+    font-size: 0.85rem;
+  }
+
+  .objection-table th,
+  .objection-table td {
+    padding: 10px 12px;
+  }
+
+  .section-subtitle {
+    font-size: 0.95rem;
   }
 }
 

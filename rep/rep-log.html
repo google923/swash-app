@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Rep Log & Tracking - Swash</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- MarkerCluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <!-- localForage -->
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+  <style>
+    /* Page-specific minimal layout helpers */
+    .rep-grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+    .controls-card { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 16px; box-shadow: var(--shadow-soft); text-align: center; }
+    .map-card { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-soft); }
+    #repMap { height: 68vh; min-height: 420px; width: 100%; }
+    .log-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+    .log-buttons .btn { font-size: 1.05rem; padding: 12px; }
+    /* Requested tints: O = orange @70%, Note = beige @70% */
+    #btnO {
+      background-color: rgba(255, 140, 0, 0.7); /* dark orange @70% */
+      color: #fff;
+      border-color: rgba(255, 140, 0, 0.9);
+    }
+    #btnO:hover:not(:disabled) {
+      background-color: rgba(255, 140, 0, 0.85);
+    }
+    .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; font-weight: 600; }
+    .badge-online { background: rgba(28,156,93,.1); color: var(--swash-green); }
+    .badge-offline { background: #fff3cd; color: #8a6d3b; }
+    .small { font-size: .9rem; color: var(--text-muted); }
+    .stats-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; margin-top: 8px; }
+    .stats-card { background: var(--bg-page); border: 1px solid var(--border-soft); border-radius: 8px; padding: 10px; text-align: center; }
+    .stats-card .num { font-weight: 800; font-size: 1.2rem; color: var(--text-body); }
+  .stats-action { grid-column: 1 / -1; }
+  .stats-action .btn { width: 100%; padding: 12px; font-size: 1.02rem; border-radius: 10px; }
+    .recent-list { max-height: 200px; overflow: auto; border: 1px solid var(--border-soft); border-radius: 8px; padding: 8px; background: var(--bg-page); }
+    .recent-item { display: grid; grid-template-columns: 72px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border-soft); font-size: .92rem; align-items:center; }
+    .recent-item:last-child { border-bottom: 0; }
+    .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .start-row { display:flex; align-items:center; gap:8px; }
+  .icon-btn { width:48px; min-width:48px; height:48px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-size:1.25rem; }
+  /* Larger variant shared by undo / pause / resume */
+  .icon-btn.big { width:54px; min-width:54px; height:54px; font-size:1.35rem; }
+  #startDayBtn { height:54px; display:inline-flex; align-items:center; justify-content:center; padding:0 22px; font-size:1.05rem; }
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+      .rep-grid { grid-template-columns: 1fr; }
+      .controls-card { position: sticky; top: 8px; z-index: 5; }
+      #repMap { height: 55vh; min-height: 300px; }
+      .log-buttons { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .log-buttons .btn { padding: 14px 12px; font-size: 1.08rem; min-height: 48px; border-radius: 10px; }
+      .row .btn { min-height: 44px; padding: 10px 12px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 420px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+  <style>
+    #connectionBadge.connection-pill { background:#fff !important; border:1px solid var(--border-soft); box-shadow: var(--shadow-soft); }
+    #connectionBadge.connection-pill.badge-online { color: var(--swash-green); }
+    #connectionBadge.connection-pill.badge-offline { color: #8a6d3b; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Rep Resources</div>
+          <a id="rep-home-link" href="/rep/rep-home.html">🏠 Home</a>
+          <a href="/admin-tracking.html" id="admin-tracking-link" class="hidden">🛰️ Rep Tracking</a>
+          <a id="admin-dashboard-link" class="hidden" href="/admin.html">Admin Dashboard</a>
+          <a id="stats-link" class="hidden" href="/admin/stats.html">📊 Stats</a>
+          <a id="message-log-link" class="hidden" href="/admin/message-log.html">📧 Message Log</a>
+          <a id="add-customer-link" class="hidden" href="/rep/quote.html">Add Customer</a>
+          <a id="schedule-link" class="hidden" href="/rep/scheduler.html">Schedule</a>
+          <a id="manage-users-link" class="hidden" href="/admin/users.html">Manage Users</a>
+          
+          <a href="./rep-log.html">📝 Rep Log</a>
+          <a href="./training.html">📚 Training</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="content-section">
+  <h1 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">📝 Rep Log & Tracking <span id="connectionBadge" class="status-badge badge-online connection-pill">Online</span></h1>
+      <p class="section-subtitle">Log every door. Works offline with auto-sync.</p>
+
+      <div id="offlineBanner" class="training-card" style="display:none;background:#fff3cd;border-left:3px solid #ffc107;">
+        <strong>Offline Mode:</strong> Saving locally. We'll sync when back online.
+      </div>
+
+      <div class="rep-grid">
+        <!-- Left controls -->
+        <div class="controls-card">
+          <h3>Shift Controls</h3>
+          <div class="start-row">
+            <button id="startDayBtn" class="btn btn-primary">▶️ Start Day</button>
+            <div style="margin-left:auto; display:flex; gap:8px;">
+              <button id="pauseBtn" class="btn btn-secondary icon-btn big" title="Pause" disabled>⏸️</button>
+              <button id="resumeBtn" class="btn btn-secondary icon-btn big" title="Resume" disabled>▶️</button>
+            </div>
+          </div>
+          <p id="shiftStatus" class="small" style="margin-top:8px;">Not started. <span id="paidTimer" style="font-weight:600; margin-left:6px;">00:00</span></p>
+
+          <div class="log-buttons">
+            <button id="btnX" class="btn btn-danger" disabled>X</button>
+            <button id="btnO" class="btn btn-warning" disabled>O</button>
+            <button id="btnSignUp" class="btn btn-success" disabled>Sign Up</button>
+          </div>
+
+          <!-- Moved undo button to bottom-right per request -->
+
+          <div class="stats-grid">
+            <div class="stats-card"><div class="num" id="statTotal">0</div><div>Total</div></div>
+            <div class="stats-card"><div class="num" id="statX">0</div><div>Not interested</div></div>
+            <div class="stats-card"><div class="num" id="statO">0</div><div>Out</div></div>
+            <div class="stats-card"><div class="num" id="statSales">0</div><div>Sales</div></div>
+            <div class="stats-card"><div class="num" id="statConv">0%</div><div>Conversion</div></div>
+            <div class="stats-card"><div class="num" id="statMiles">0.0</div><div>Miles</div></div>
+            <div class="stats-card"><div class="num" id="statDph">0.0</div><div>Doors/hr (60m)</div></div>
+            <div class="stats-action">
+              <button id="submitBtn" class="btn btn-primary" disabled>✅ Submit &amp; End Shift</button>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:6px; justify-content:flex-end;">
+            <button id="undoBtn" class="btn btn-secondary icon-btn big" title="Undo last" disabled>↩️</button>
+          </div>
+
+          <h3 style="margin-top:14px;">Recent</h3>
+          <div id="recentList" class="recent-list"></div>
+        </div>
+
+        <!-- Map -->
+        <div class="map-card">
+          <div id="repMap"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Summary Modal -->
+  <dialog id="summaryModal" style="max-width:720px;width:90%;">
+    <h3>Shift Summary</h3>
+    <div id="summaryContent" class="small"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px;">
+      <button id="summaryClose" class="btn btn-secondary">Close</button>
+    </div>
+  </dialog>
+
+  <!-- Address Modal for X / O / SignUp -->
+  <dialog id="addressModal" style="max-width:520px;width:92%;">
+    <h3>Address Details</h3>
+    <form id="addressForm" method="dialog">
+      <div class="row" style="gap:12px; margin-top:8px;">
+        <div style="flex:0 0 120px;">
+          <label class="small" for="houseNumber">House No.</label>
+          <input id="houseNumber" name="houseNumber" type="text" class="input" placeholder="e.g., 12" required />
+        </div>
+        <div style="flex:1 1 auto;">
+          <label class="small" for="roadName">Road Name</label>
+          <input id="roadName" name="roadName" type="text" class="input" placeholder="e.g., High Street" required />
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <label class="small" for="addrNotes">Notes (optional)</label>
+        <textarea id="addrNotes" name="addrNotes" class="input" rows="3" placeholder="Any extra details"></textarea>
+      </div>
+      <input type="hidden" id="addressStatus" />
+      <div class="row" style="justify-content:flex-end;margin-top:12px;gap:8px;">
+        <button type="button" id="addressCancel" class="btn btn-secondary">Cancel</button>
+        <button type="submit" class="btn btn-primary">Continue</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Sign Up Modal (step 2 after address) -->
+    <dialog id="signupModal" style="max-width:720px;width:100%;padding:0;">
+      <form id="signupForm" method="dialog" style="display:flex;flex-direction:column;gap:0;">
+        <div style="padding:16px 18px 10px 18px;border-bottom:1px solid var(--border-soft);">
+          <h3 style="margin:0;">Sign Up Details</h3>
+        </div>
+        <input type="hidden" id="signupQuoteSummary" />
+        <div id="quoteCalcContainer" style="width:100%;border:0;">
+          <iframe id="quoteCalcFrame" src="./quote.html?embed=true" title="Quote Calculator" loading="lazy" style="width:100%;height:1px;min-height:600px;border:0;background:#fff;overflow:hidden;"></iframe>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border-soft);">
+          <button type="button" id="signupCancel" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-success">Save Sign Up</button>
+        </div>
+      </form>
+    </dialog>
+
+  <script type="module" src="../auth-check.js"></script>
+  <script type="module" src="../nav.js"></script>
+  <script type="module">
+    import { initMenuDropdown } from "./menu.js";
+    initMenuDropdown();
+  </script>
+  <script type="module" src="../firebase-init.js"></script>
+  <script type="module" src="./rep-log.js"></script>
+  <script type="module">
+    import { auth, db } from "../firebase-init.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    const frame = document.getElementById('quoteCalcFrame');
+    const summaryField = document.getElementById('signupQuoteSummary');
+    let repCodeVal = null;
+
+    // Bridge: after iframe load, prefill and capture quote summary
+    function setupIframeBridge() {
+      try {
+        const docInner = frame.contentDocument || frame.contentWindow?.document;
+        if (!docInner) return;
+        // Prefill address from address modal fields
+        const house = document.getElementById('houseNumber')?.value?.trim() || '';
+        const road = document.getElementById('roadName')?.value?.trim() || '';
+        const addressLine = `${house} ${road}`.trim();
+        const addrEl = docInner.getElementById('address');
+        if (addrEl && addressLine && !addrEl.value) {
+          addrEl.value = addressLine;
+          addrEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        // Rep code fallback
+        const repEl = docInner.getElementById('repCode');
+        if (repEl && repCodeVal && !repEl.value) repEl.value = repCodeVal;
+
+        // Ensure pricing renders
+        docInner.getElementById('serviceTier')?.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const resultPanel = docInner.getElementById('result');
+        const refNode = docInner.getElementById('paymentRefValue');
+        const submitBtn = docInner.getElementById('submitBtn');
+
+        function captureSummary() {
+          try {
+            const priceLine = resultPanel?.querySelector('.result-price')?.textContent || '';
+            const upfrontLine = resultPanel?.querySelector('.result-upfront')?.textContent || '';
+            const matchPrice = priceLine.match(/£\s?([0-9]+(?:\.[0-9]{2})?)/i);
+            const matchUpfront = upfrontLine.match(/£\s?([0-9]+(?:\.[0-9]{2})?)/i);
+            const pricePer = matchPrice ? matchPrice[1] : '';
+            const upfront = matchUpfront ? matchUpfront[1] : '';
+            const ref = (refNode?.textContent || '').trim();
+            const planRaw = (docInner.getElementById('serviceTier')?.value || '').toString();
+            const plan = planRaw ? planRaw.charAt(0).toUpperCase() + planRaw.slice(1) : 'Plan';
+            if (ref || pricePer || upfront) {
+              const summary = `Quote: ${plan}${pricePer ? ` @ £${pricePer} / clean` : ''}${upfront ? ` (Upfront £${upfront})` : ''}${ref ? ` Ref ${ref}` : ''}`;
+              if (summaryField) summaryField.value = summary;
+              const saveBtn = document.querySelector('#signupForm .btn-success');
+              if (saveBtn) {
+                saveBtn.classList.add('pulse');
+                setTimeout(() => saveBtn.classList.remove('pulse'), 1800);
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (submitBtn) submitBtn.addEventListener('click', () => setTimeout(captureSummary, 300));
+        if (refNode) {
+          const mo = new MutationObserver(() => setTimeout(captureSummary, 50));
+          mo.observe(refNode, { childList: true, characterData: true, subtree: true });
+        }
+      } catch (_) {}
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const data = snap.exists() ? snap.data() : {};
+        const candidate = data.repName || user.displayName || user.email || 'REP';
+        repCodeVal = String(candidate).toUpperCase().slice(0, 40);
+      } catch (_) { repCodeVal = 'REP'; }
+      // Load already points to quote.html?embed=true; just ensure bridge runs after load
+      if (frame.complete) {
+        setupIframeBridge();
+      } else {
+        frame.addEventListener('load', setupIframeBridge, { once: true });
+      }
+    });
+
+    // Backward compatibility: still handle legacy postMessage events
+    window.addEventListener('message', (event) => {
+      if (!event.data || typeof event.data !== 'object') return;
+      if (event.data.type === 'SWASH_QUOTE_CREATED') {
+        const q = event.data.quote;
+        const summary = `Quote: ${q.plan} @ £${q.pricePerClean} / clean (Upfront £${q.priceUpfront}) Ref ${q.refCode}`;
+        if (summaryField) summaryField.value = summary;
+        const saveBtn = document.querySelector('#signupForm .btn-success');
+        if (saveBtn) {
+          saveBtn.classList.add('pulse');
+          setTimeout(() => saveBtn.classList.remove('pulse'), 1800);
+        }
+      }
+      // Auto-resize the iframe to eliminate inner scrollbars
+      if (event.data.type === 'SWASH_IFRAME_HEIGHT') {
+        const h = Number(event.data.height || 0);
+        if (h > 0) {
+          // Clamp to a reasonable max to avoid huge gaps; allow shrink/grow
+          const max = Math.max(500, Math.min(window.innerHeight * 1.5, 2200));
+          const newH = Math.min(h + 10, max);
+          if (Math.abs(frame.clientHeight - newH) > 6) frame.style.height = newH + 'px';
+        }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -23,11 +23,29 @@ const bothRoles = ["add-customer-link"];
 // Visible to reps only
 const repOnly = ["rep-home-link"];
 // Visible to admins only
-const adminOnly = ["admin-dashboard-link", "stats-link", "schedule-link", "quotes-link", "manage-users-link"];
+const adminOnly = [
+  "admin-dashboard-link",
+  "stats-link",
+  "schedule-link",
+  "quotes-link",
+  "manage-users-link",
+  "message-log-link",
+  "admin-tracking-link"
+];
 const loginLink = "login-link";
 
 console.log("[Auth] auth-check.js module loaded");
 console.log("[Auth] Initialising");
+
+// Detect embed mode (iframe or explicit query string) to suppress redirects inside modals/embeds
+const IS_EMBED = (() => {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    return params.get("embed") === "true" || (window.self !== window.top);
+  } catch (_) {
+    return false;
+  }
+})();
 
 const REDIRECT_DELAY_MS = 200;
 
@@ -218,6 +236,12 @@ export async function handlePageRouting(pageType = "login") {
   const status = { user, role, redirected: false };
   const loginUrl = "/index.html";
 
+  // In embed mode, never redirect — embedded pages should render in-place.
+  if (IS_EMBED) {
+    console.log("[Auth] Embed mode active — skipping routing/redirects");
+    return status;
+  }
+
   if (pageType === "login") {
     if (!user) return status;
     if (role === "admin") {
@@ -295,14 +319,17 @@ onAuthStateChanged(auth, async (user) => {
     window.userRole = undefined;
     hideAllMenuItems();
 
-    const overlay = document.getElementById("authOverlay");
-    if (overlay) {
-      overlay.hidden = false;
-      overlay.style.display = "flex";
+    // In embed mode, do not surface full-screen overlays or redirect away
+    if (!IS_EMBED) {
+      const overlay = document.getElementById("authOverlay");
+      if (overlay) {
+        overlay.hidden = false;
+        overlay.style.display = "flex";
+      }
     }
 
     authStateManager.resolveReady(null, "unauthorised");
-    if (PAGE_TYPE && PAGE_TYPE !== "login") {
+    if (!IS_EMBED && PAGE_TYPE && PAGE_TYPE !== "login") {
       await handlePageRouting(PAGE_TYPE);
     }
     return;
@@ -341,7 +368,7 @@ onAuthStateChanged(auth, async (user) => {
 
   authStateManager.resolveReady(user, role);
 
-  if (PAGE_TYPE) {
+  if (!IS_EMBED && PAGE_TYPE) {
     await handlePageRouting(PAGE_TYPE);
   }
 });

@@ -6,7 +6,7 @@
 
 import { app, auth, db } from "./firebase-init.js";
 import { authStateReady, handlePageRouting } from "./auth-check.js";
-import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 const EMAIL_SERVICE = window.EMAIL_SERVICE_ID ?? "service_cdy739m";
 const EMAIL_TEMPLATE = window.EMAIL_TEMPLATE_ID ?? "template_d8tlf1p";
@@ -2514,10 +2514,24 @@ async function sendBookingEmails() {
         await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE, templateParams);
       }
 
+      const bookingEmailBody = `Clean scheduled at ${quote.address || "Unknown address"} on ${firstCleanStr}. Second: ${secondCleanStr}. Third: ${thirdCleanStr}.`;
+      const sentByMeta = (function(){
+        const u = (typeof auth !== 'undefined' && auth && auth.currentUser) ? auth.currentUser : null;
+        return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: "admin" };
+      })();
       const payload = {
         status: `Booked - ${firstCleanStr}`,
         bookedDate: firstClean.toISOString(),
         nextCleanDates: schedulePlan.nextCleanDates,
+        emailLog: arrayUnion({
+          type: "booking",
+          subject: `Booking confirmation for ${quote.customerName}`,
+          sentAt: Date.now(),
+          sentTo: recipientEmail,
+          success: true,
+          body: bookingEmailBody,
+          sentBy: sentByMeta,
+        })
       };
       if (cleanerUpdate.shouldUpdate) {
         payload.assignedCleaner = cleanerUpdate.value;
@@ -2534,7 +2548,47 @@ async function sendBookingEmails() {
     } catch (error) {
 
       console.error("Failed to send booking email", quote.id, error);
+      
+      // Log failed email
+      try {
+        await updateDoc(doc(db, "quotes", quote.id), {
+          emailLog: arrayUnion({
+            type: "booking",
+            subject: `Booking confirmation for ${quote.customerName}`,
+            sentAt: Date.now(),
+            sentTo: quote.email || quote.customerEmail || "",
+            success: false,
+            error: error?.message || "Send failed",
+            sentBy: (function(){
+              const u = (typeof auth !== 'undefined' && auth && auth.currentUser) ? auth.currentUser : null;
+              return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: "admin" };
+            })(),
+          })
+        });
+      } catch (logError) {
+        console.warn("Failed to log email failure", logError);
+      }
 
+      const failBody = `Failed booking for ${quote.customerName || "Unknown"} intended for ${firstCleanStr}`;
+      try {
+        await updateDoc(doc(db, "quotes", quote.id), {
+          emailLog: arrayUnion({
+            type: "booking",
+            subject: `Booking confirmation for ${quote.customerName}`,
+            sentAt: Date.now(),
+            sentTo: quote.email || quote.customerEmail || "",
+            success: false,
+            error: error?.message || "Send failed",
+            body: failBody,
+            sentBy: (function(){
+              const u = (typeof auth !== 'undefined' && auth && auth.currentUser) ? auth.currentUser : null;
+              return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: "admin" };
+            })(),
+          })
+        });
+      } catch (logError) {
+        console.warn("Failed to log booking failure body", logError);
+      }
       results.push({ id: quote.id, success: false });
 
     }

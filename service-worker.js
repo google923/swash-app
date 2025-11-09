@@ -1,7 +1,6 @@
 // Swash Service Worker
 // Provides offline caching and forwards sync events to the app shell.
-
-const CACHE_NAME = "swash-cache-v18";
+const CACHE_NAME = 'swash-cache-v43';
 const OFFLINE_URLS = [
   "/index.html",
   "/admin.html",
@@ -9,7 +8,7 @@ const OFFLINE_URLS = [
   "/admin/message-log.html",
   "/add-log.html",
   "/rep/rep-home.html",
-  "/rep/rep-dashboard.html",
+  // Legacy dashboard removed from primary nav; keep out of offline cache
   "/rep/quote.html",
   "/rep/scheduler.html",
   "/rep/chat.html",
@@ -27,6 +26,10 @@ const OFFLINE_URLS = [
   "/rep/script.js",
   "/rep/scheduler.js",
   "/rep/chat.js",
+  "/rep/rep-log.html",
+  "/rep/rep-log.js",
+  "/admin-tracking.html",
+  "/admin-tracking.js",
   "/rep/index-login.js",
   "/manifest.json",
   "/assets/favicon-192.png",
@@ -102,6 +105,9 @@ self.addEventListener("sync", async (event) => {
   if (event.tag === "sync-quotes") {
     event.waitUntil(syncOfflineQuotes());
   }
+  if (event.tag === "sync-rep-logs") {
+    event.waitUntil(syncRepLogs());
+  }
 });
 
 self.addEventListener("message", (event) => {
@@ -120,6 +126,15 @@ async function syncOfflineQuotes() {
     );
   } catch (err) {
     console.error("Sync failed:", err);
+  }
+}
+
+async function syncRepLogs() {
+  try {
+    const clientsList = await self.clients.matchAll({ includeUncontrolled: true });
+    clientsList.forEach((client) => client.postMessage({ type: "SYNC_REP_LOGS" }));
+  } catch (err) {
+    console.error("Rep logs sync failed:", err);
   }
 }
 

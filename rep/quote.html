@@ -10,6 +10,13 @@
   <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
   <link rel="stylesheet" href="../style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+  <style>
+    /* Embed mode: show only the quote form content inside modals/iframes */
+    body.embed .header { display: none !important; }
+    body.embed .page { padding-top: 0 !important; }
+    body.embed { background: transparent; }
+    body.embed html, body.embed { overflow: visible !important; }
+  </style>
 </head>
 <body class="quote-page">
   <header class="header">
@@ -24,7 +31,7 @@
           <div class="dropdown-title">Rep Resources</div>
           <a id="rep-home-link" class="hidden" href="./rep-home.html">🏠 Home</a>
           <a id="add-customer-link" class="hidden" href="./quote.html">➕ Add Customer</a>
-          <a href="https://app.swashcleaning.co.uk/rep/rep-dashboard.html">📝 Log</a>
+          <a href="/rep/rep-log.html">📝 Log</a>
           <a href="./chat.html">💬 Rep Chat</a>
           <a href="./policy.html">📘 Policy Handbook</a>
           <a href="./holiday.html">📅 Book Holiday</a>
@@ -241,5 +248,38 @@
   <script type="module" src="../nav.js"></script>
   <script type="module" src="../auth-check.js"></script>
   <script type="module" src="./script.js"></script>
+  <script>
+    // Post height to parent for dynamic iframe resizing
+    (function(){
+      function computeContentHeight(){
+        try {
+          const card = document.querySelector('main.page .card') || document.getElementById('quoteForm') || document.body;
+          const rect = card.getBoundingClientRect();
+          // Add a small buffer for margins/padding
+          const h = Math.ceil(rect.height + 24);
+          // Sanity clamp to avoid accidental huge values
+          return Math.max(300, Math.min(h, 2000));
+        } catch (_) {
+          return Math.max(300, Math.min(document.body.scrollHeight || 600, 2000));
+        }
+      }
+      function postHeight() {
+        try {
+          const h = computeContentHeight();
+          parent.postMessage({ type: 'SWASH_IFRAME_HEIGHT', height: h }, '*');
+        } catch (_) {}
+      }
+      if (window.self !== window.top) {
+        const ro = new ResizeObserver(() => postHeight());
+        ro.observe(document.documentElement);
+        window.addEventListener('load', postHeight);
+        setTimeout(postHeight, 400);
+        setTimeout(postHeight, 1200);
+        // Avoid long periodic growth – recalc only on orientation/resize
+        window.addEventListener('orientationchange', () => setTimeout(postHeight, 300));
+        window.addEventListener('resize', () => setTimeout(postHeight, 200));
+      }
+    })();
+  </script>
 </body>
 </html>

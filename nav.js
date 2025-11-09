@@ -43,8 +43,8 @@ function applyRepViewFlag(enabled) {
   if (enabled) body.setAttribute("data-rep-view", "true");
   else body.removeAttribute("data-rep-view");
 
-  // Hide/show common admin menu items when in rep view
-  const adminLinkIds = ["admin-dashboard-link", "schedule-link", "manage-users-link", "message-log-link"];
+  // Hide/show admin menu items when in rep view
+  const adminLinkIds = ["admin-dashboard-link", "scheduler-link", "rep-tracker-link", "stats-link", "user-settings-link"];
   adminLinkIds.forEach((id) => {
     const a = qs(id);
     if (!a) return;
@@ -149,13 +149,77 @@ function initModalHandlers() {
   });
 }
 
+function updateMenuVisibility() {
+  const role = window.userRole;
+  const isRepPage = location.pathname.includes("/rep/rep-home") || 
+                    location.pathname.includes("/rep/rep-log") ||
+                    location.pathname.includes("/rep/map") ||
+                    location.pathname.includes("/rep/chat") ||
+                    location.pathname.includes("/rep/competitions") ||
+                    location.pathname.includes("/rep/performance") ||
+                    location.pathname.includes("/rep/commission") ||
+                    location.pathname.includes("/rep/holiday") ||
+                    location.pathname.includes("/rep/sickness") ||
+                    location.pathname.includes("/rep/training") ||
+                    location.pathname.includes("/rep/feedback") ||
+                    location.pathname.includes("/rep/contract") ||
+                    location.pathname.includes("/rep/policy");
+
+  // Admin menu items - hide for reps, show for admins
+  const adminLinks = ["admin-dashboard-link", "scheduler-link", "rep-tracker-link", "stats-link", "user-settings-link"];
+  adminLinks.forEach(id => {
+    const link = qs(id);
+    if (link) link.classList.toggle("hidden", role !== "admin");
+  });
+
+  // Rep menu items - show for reps always, show for admins only on rep pages
+  const repLinks = ["rep-log-link", "areas-map-link", "rep-chat-link", "competitions-link", 
+                    "performance-link", "commission-link", "holiday-link", "sickness-link", 
+                    "training-link", "feedback-link", "contract-link", "policy-link"];
+  const showRepMenu = role === "rep" || (role === "admin" && isRepPage);
+  repLinks.forEach(id => {
+    const link = qs(id);
+    if (link) link.classList.toggle("hidden", !showRepMenu);
+  });
+
+  // Dividers
+  const divider1 = qs("rep-divider-1");
+  const divider2 = qs("rep-divider-2");
+  if (divider1) divider1.classList.toggle("hidden", !showRepMenu);
+  if (divider2) divider2.classList.toggle("hidden", !showRepMenu);
+
+  // Status indicator
+  const statusIndicator = qs("statusIndicator");
+  if (statusIndicator && navigator.onLine !== undefined) {
+    statusIndicator.textContent = navigator.onLine ? "● Online" : "● Offline";
+    statusIndicator.style.background = navigator.onLine ? "#10b981" : "#64748b";
+  }
+}
+
 function initNav() {
   initMenuDropdown();
   initModalHandlers();
   initRepViewToggle();
+  
+  // Update menu visibility based on role
+  if (window.userRole) {
+    updateMenuVisibility();
+  }
+  
+  // Re-check when user role is set (after auth loads)
+  const checkInterval = setInterval(() => {
+    if (window.userRole) {
+      updateMenuVisibility();
+      clearInterval(checkInterval);
+    }
+  }, 100);
+  
+  // Update status indicator on network change
+  window.addEventListener('online', updateMenuVisibility);
+  window.addEventListener('offline', updateMenuVisibility);
 }
 
 document.addEventListener("DOMContentLoaded", initNav);
 
-export { initNav, initMenuDropdown, initRepViewToggle };
+export { initNav, initMenuDropdown, initRepViewToggle, updateMenuVisibility };
 export default initNav;

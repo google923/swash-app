@@ -34,27 +34,33 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 12px;">
           <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
             <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Total Miles</p>
-            <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;">[To be calculated]</p>
+            <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;" id="c_monthMiles">--</p>
           </div>
           <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
             <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Commission Earned</p>
-            <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;">[To be calculated]</p>
+            <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;" id="c_monthCommission">--</p>
           </div>
           <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
             <p style="margin: 0; color: #64748b; font-size: 0.85rem;">New Customers</p>
-            <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;">[To be calculated]</p>
+            <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;" id="c_monthSignups">--</p>
           </div>
         </div>
 
         <h3 style="margin-top: 32px; color: #0078d7;">Recent Logs</h3>
-        <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px;">
-          <p style="margin: 0; color: #64748b;">Your mileage logs will appear here automatically based on submitted daily logs.</p>
-        </div>
+        <div id="c_recentLogs" style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px;"></div>
 
         <h3 style="margin-top: 32px; color: #0078d7;">Commission Breakdown</h3>
-        <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px;">
-          <p style="margin: 0; color: #64748b;">Commission details will be calculated based on quotes you've generated that convert to bookings.</p>
-        </div>
+        <div id="c_breakdown" style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px;">Loading…</div>
+
+        <h3 style="margin-top: 32px; color: #0078d7;">How These Numbers Are Calculated</h3>
+        <ul style="margin:12px 0 0 18px; color:#374151; line-height:1.5;">
+          <li><strong>Miles</strong> = sum of daily shift mileage across this calendar month.</li>
+          <li><strong>Pay (hourly)</strong> = active time × your hourly base rate.</li>
+          <li><strong>Mileage expense</strong> = miles × £0.45 (reimbursement).</li>
+          <li><strong>Total owed</strong> = base pay + mileage expense (commission may be paid separately).</li>
+          <li><strong>Commission (estimate)</strong> = £5 × number of sign ups (placeholder until policy finalised).</li>
+          <li><strong>Sign ups</strong> count comes from door logs you mark as SignUp.</li>
+        </ul>
 
         <p style="margin-top: 24px; padding: 16px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px;">
           <strong>Note:</strong> This page will pull data from your submitted logs (repLogs collection) and quotes assigned to your rep code. Commission calculations will follow company policy rules.
@@ -65,5 +71,6 @@
 
   <script type="module" src="../auth-check.js"></script>
   <script type="module" src="../under-dev.js"></script>
+  <script type="module" src="./commission.js"></script>
 </body>
 </html>
