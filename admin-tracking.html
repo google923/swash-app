@@ -23,8 +23,10 @@
     .stat-row { display:grid; grid-template-columns: repeat(3,1fr); gap:8px; }
     .stats-card { background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; }
     .stats-card .num { font-size:1.25rem; font-weight:800; color:#0b63b5; }
-    .recent-list .recent-item { display:grid; grid-template-columns: 1fr auto; gap:6px; padding:8px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; cursor:pointer; }
+  .recent-list .recent-item { position:relative; display:grid; grid-template-columns: 1fr auto; gap:6px; padding:8px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; cursor:pointer; }
     .recent-list .recent-item:hover { background:#f8fbff; }
+  .recent-list .shift-del { position:absolute; top:6px; right:6px; width:22px; height:22px; border-radius:50%; border:1px solid #e5e7eb; background:#fff; color:#64748b; font-weight:800; display:flex; align-items:center; justify-content:center; line-height:1; cursor:pointer; }
+  .recent-list .shift-del:hover { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }
     details.filters { border:1px solid var(--border-soft); border-radius:12px; padding:8px 12px; background:#f6faff; }
     details.filters > summary { cursor:pointer; font-weight:700; color:#0b63b5; outline:none; list-style:none; }
     details.filters[open] { padding-bottom:12px; }

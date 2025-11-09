@@ -6,7 +6,7 @@
    - territories: used for overlays
 */
 import { auth, db } from "./firebase-init.js";
-import { collection, doc, getDocs, getDoc, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, doc, getDocs, getDoc, onSnapshot, query, where, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const state = {
   map: null,
@@ -329,9 +329,47 @@ function renderShiftHistory() {
         if (nameSpan) nameSpan.textContent = name;
       });
     }
+    // Delete button (small X)
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'shift-del';
+    delBtn.textContent = '×';
+    delBtn.title = 'Delete shift';
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      confirmDeleteShift(s);
+    });
+    div.appendChild(delBtn);
     div.addEventListener('click', () => openShiftSummary(s));
     shiftHistoryEl.appendChild(div);
   });
+}
+
+async function confirmDeleteShift(shift) {
+  try {
+    const repName = await getRepName(shift.repId);
+    const ok = window.confirm(`Are you sure you want to delete this shift for "${repName}" (${shift.date})?`);
+    if (!ok) return;
+    // Delete repShifts summary doc
+    await deleteDoc(doc(db, 'repShifts', `${shift.repId}_${shift.date}`));
+    // Optionally delete per-log doorLogs entries (leave historical raw data unless required)
+    // If full purge needed uncomment below block.
+    // const doorLogsSnap = await getDocs(query(collection(db,'repLogs', shift.repId, 'dates', shift.date, 'doorLogs')));
+    // const batchDeletes = [];
+    // doorLogsSnap.forEach(d => batchDeletes.push(deleteDoc(d.ref)));
+    // await Promise.all(batchDeletes);
+    // Remove from local state and re-render
+    state.shifts = state.shifts.filter(s => !(s.repId === shift.repId && s.date === shift.date));
+    renderShiftHistory();
+    // If currently showing stats for that single day, refresh counters
+    if (state.filters.rep === shift.repId && state.filters.dateStart === shift.date && !state.filters.dateEnd) {
+      refreshStats();
+    } else if (!state.filters.rep && state.filters.dateStart && state.filters.dateEnd) {
+      refreshStatsRangeAll();
+    }
+  } catch (err) {
+    alert('Failed to delete shift: ' + err.message);
+  }
 }
 
 function replayShift(shift) {
