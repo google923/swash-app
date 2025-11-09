@@ -387,24 +387,31 @@ function replayShift(shift) {
 function openShiftSummary(shift) {
   getDocs(query(collection(db, 'repLogs', shift.repId, 'dates', shift.date, 'doorLogs'))).then(snap => {
     const logs = []; snap.forEach(d => logs.push(d.data()));
-    logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
+    // CRITICAL: Filter logs to only include those from the specific date (in case of stale/cross-date data)
+    const datePrefix = shift.date; // "2025-11-09"
+    const filteredLogs = logs.filter(l => {
+      if (!l.timestamp) return false;
+      const logDate = new Date(l.timestamp).toISOString().substring(0,10);
+      return logDate === datePrefix;
+    });
+    filteredLogs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
     // Always recalculate from today's logs to ensure accuracy for live shifts
-    const totalDoors = logs.length;
-    const x = logs.filter(l=>l.status==='X').length;
-    const o = logs.filter(l=>l.status==='O').length;
-    const sales = logs.filter(l=>l.status==='SignUp').length;
+    const totalDoors = filteredLogs.length;
+    const x = filteredLogs.filter(l=>l.status==='X').length;
+    const o = filteredLogs.filter(l=>l.status==='O').length;
+    const sales = filteredLogs.filter(l=>l.status==='SignUp').length;
     const conv = totalDoors ? ((sales/totalDoors)*100).toFixed(1) : '0.0';
     // Recalculate miles from logs for live accuracy
     let miles = 0;
-    if (logs.length > 1) {
-      let prev = { lat: logs[0].gpsLat, lng: logs[0].gpsLng };
-      for (let i = 1; i < logs.length; i++) {
-        const cur = { lat: logs[i].gpsLat, lng: logs[i].gpsLng };
+    if (filteredLogs.length > 1) {
+      let prev = { lat: filteredLogs[0].gpsLat, lng: filteredLogs[0].gpsLng };
+      for (let i = 1; i < filteredLogs.length; i++) {
+        const cur = { lat: filteredLogs[i].gpsLat, lng: filteredLogs[i].gpsLng };
         miles += haversineMiles(prev, cur);
         prev = cur;
       }
     }
-    const startMs = shift.startTime ? new Date(shift.startTime).getTime() : (logs[0]? new Date(logs[0].timestamp).getTime() : 0);
+    const startMs = shift.startTime ? new Date(shift.startTime).getTime() : (filteredLogs[0]? new Date(filteredLogs[0].timestamp).getTime() : 0);
     const endMs = shift.endTime ? new Date(shift.endTime).getTime() : Date.now();
     const totalSpanMs = Math.max(0, endMs - startMs);
     const activeMinutes = shift.activeMinutes ?? 0;

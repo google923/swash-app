@@ -27,14 +27,14 @@
     .recent-list .recent-item:hover { background:#f8fbff; }
   .recent-list .shift-del { position:absolute; top:6px; right:6px; width:22px; height:22px; border-radius:50%; border:1px solid #e5e7eb; background:#fff; color:#64748b; font-weight:800; display:flex; align-items:center; justify-content:center; line-height:1; cursor:pointer; }
     .recent-list .shift-del:hover { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }
-    details.filters { border:1px solid var(--border-soft); border-radius:12px; padding:8px 12px; background:#f6faff; overflow:hidden; }
-    details.filters > summary { cursor:pointer; font-weight:700; color:#0b63b5; outline:none; list-style:none; }
-    details.filters[open] { padding-bottom:12px; }
-    .filters-grid { display:grid; grid-template-columns: 1fr; gap:8px; margin-top:8px; }
-    .filters-row { display:flex; gap:8px; }
-    .filters-row > label { flex:1; display:flex; flex-direction:column; gap:6px; font-weight:600; color:var(--text-muted); font-size:0.875rem; }
-    .filters-row > label > select, .filters-row > label > input { width:100%; max-width:100%; box-sizing:border-box; }
-    .filters-actions { display:flex; gap:8px; margin-top:8px; }
+    details.filters { border:1px solid var(--border-soft); border-radius:12px; padding:12px; background:#f6faff; }
+    details.filters > summary { cursor:pointer; font-weight:700; color:#0b63b5; outline:none; list-style:none; margin-bottom:0; }
+    details.filters[open] > summary { margin-bottom:12px; }
+    .filters-grid { display:flex; flex-direction:column; gap:10px; }
+    .filters-row { display:flex; gap:8px; width:100%; }
+    .filters-row > label { flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; font-weight:600; color:var(--text-muted); font-size:0.875rem; }
+    .filters-row > label > select, .filters-row > label > input { width:100%; box-sizing:border-box; min-width:0; }
+    .filters-actions { display:flex; gap:8px; }
     .summary-table { width:100%; border-collapse:collapse; }
     .summary-table td { padding:6px 8px; border-bottom:1px solid #eef2f7; }
     .pause-list { margin:6px 0 0 18px; }
