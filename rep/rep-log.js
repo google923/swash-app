@@ -434,9 +434,10 @@ function computePausedByInactivity(shift, endMs) {
 }
 
 function sumManualPausesMs(shift, endMs) {
+  // Count ONLY explicit manual pauses to avoid double-counting inactivity
   let paused = 0;
   (shift.pauses || []).forEach(p => {
-    if (!p.start) return;
+    if (!p || p.reason !== 'manual' || !p.start) return;
     const ps = new Date(p.start).getTime();
     const pe = p.end ? new Date(p.end).getTime() : endMs;
     if (!isNaN(ps) && !isNaN(pe)) paused += Math.max(0, pe - ps);
@@ -604,6 +605,8 @@ submitBtn.addEventListener("click", async () => {
     }, { merge: true });
   } catch (e) { console.error("Shift summary write failed", e); }
   renderSummary({ pay, mileageExpense, totalOwed, activeMinutes });
+  // Clear the saved shift from IndexedDB since it's now submitted and synced
+  await localforage.removeItem(OFFLINE_SHIFT_KEY);
   // Lock editing
   [btnX, btnO, btnSign, undoBtn, submitBtn, pauseBtn, resumeBtn].forEach(b => b && (b.disabled = true));
   startBtn.disabled = true; shiftStatusEl.textContent = "Submitted.";
