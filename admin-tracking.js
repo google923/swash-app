@@ -460,6 +460,18 @@ function getRepColor(repId) {
   return repColors[hash % repColors.length];
 }
 
+// Small util to estimate miles from a sequence of lat/lng points
+function haversineMiles(a, b) {
+  const toRad = d => (d * Math.PI) / 180;
+  const R = 6371e3; // meters
+  const φ1 = toRad(a.lat), φ2 = toRad(b.lat);
+  const Δφ = toRad(b.lat - a.lat);
+  const Δλ = toRad(b.lng - a.lng);
+  const s = Math.sin(Δφ/2)**2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2)**2;
+  const d = 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+  return (R * d) / 1609.34;
+}
+
 async function getRepName(repId) {
   try {
     if (state.repNames[repId]) return state.repNames[repId];
@@ -847,8 +859,21 @@ onSnapshot(collection(db, 'repLocations'), snap => {
         existing.setIcon(icon);
       } else {
         const marker = L.marker([data.gpsLat, data.gpsLng], { icon }).addTo(state.map);
-        marker.bindPopup(`<strong>${repName}</strong><br>ID: ${repId}<br>Last Update: ${new Date(data.timestamp).toLocaleString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}<br><button onclick="window._adminTrackingState.filters.rep='${repId}';document.getElementById('filterRep').value='${repId}';document.getElementById('applyFilters').click();">View Logs</button>`);
-        marker.on('click', () => marker.openPopup());
+        marker.bindPopup(`<strong>${repName}</strong><br>ID: ${repId}<br>Last Update: ${new Date(data.timestamp).toLocaleString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}<br><button class="btn btn-secondary view-logs-btn" data-rep="${repId}">View Logs</button>`);
+        marker.on('popupopen', (ev) => {
+          const root = ev.popup?.getElement?.() || document.querySelector('.leaflet-popup-content');
+          const btn = root?.querySelector('.view-logs-btn');
+          if (btn) {
+            btn.addEventListener('click', (e) => {
+              e.preventDefault(); e.stopPropagation();
+              const id = btn.getAttribute('data-rep');
+              if (id) {
+                state.filters.rep = id; repSel.value = id; applyFilters();
+              }
+              try { ev.popup?.remove?.(); } catch(_) {}
+            }, { once: true });
+          }
+        });
         state.repMarkers.set(repId, marker);
       }
       updatedMarkers.push(repId);
@@ -857,7 +882,7 @@ onSnapshot(collection(db, 'repLocations'), snap => {
     // Build from full snapshot
     const docs = snap.docs || [];
     const promises = docs.map(addOrUpdate);
-    Promise.all(promises).then(() => {
+    Promise.all(promises).then(async () => {
       // Remove markers for reps no longer present
       Array.from(state.repMarkers.keys()).forEach(repId => {
         if (!seen.has(repId)) {
@@ -866,6 +891,9 @@ onSnapshot(collection(db, 'repLocations'), snap => {
           state.repMarkers.delete(repId);
         }
       });
+      // Ensure a live "in-progress" shift appears in the sidebar for reps seen today
+      const today = new Date().toISOString().substring(0,10);
+      for (const repId of seen) { await ensureLiveShift(repId, today); }
       // Fit if we have live reps
       if (state.repMarkers.size) {
         const group = L.featureGroup(Array.from(state.repMarkers.values()));
@@ -886,3 +914,39 @@ onSnapshot(collection(db, 'repLocations'), snap => {
       updateMapOverlay();
   });
 }); // close onSnapshot listener
+
+async function ensureLiveShift(repId, dateStr) {
+  // If a shift summary for today already exists, skip
+  if (state.shifts.some(s => s.repId === repId && s.date === dateStr)) return;
+  try {
+    const snap = await getDocs(query(collection(db, 'repLogs', repId, 'dates', dateStr, 'doorLogs')));
+    const logs = []; snap.forEach(d => logs.push(d.data()));
+    logs.sort((a,b) => a.timestamp < b.timestamp ? -1 : 1);
+    if (!logs.length) {
+      // No doors yet; synthesize placeholder live shift with unknown start
+      state.shifts.unshift({ repId, date: dateStr, startTime: null, endTime: null, totals:{doors:0,x:0,o:0,sales:0}, miles: 0 });
+      renderShiftHistory();
+      return;
+    }
+    const first = logs[0]; const last = logs[logs.length-1];
+    let x=0,o=0,sales=0; let miles=0;
+    let prev = { lat:first.gpsLat, lng:first.gpsLng };
+    logs.forEach(l => {
+      if (l.status==='X') x++; else if (l.status==='O') o++; else if (l.status==='SignUp') sales++;
+      const cur = { lat:l.gpsLat, lng:l.gpsLng }; miles += haversineMiles(prev, cur); prev = cur;
+    });
+    const shift = {
+      repId,
+      date: dateStr,
+      startTime: first.timestamp,
+      endTime: null,
+      totals: { doors: logs.length, x, o, sales },
+      miles,
+    };
+    state.shifts.unshift(shift);
+    renderShiftHistory();
+  } catch (err) {
+    // Ignore failures; sidebar can remain empty until logs sync
+    console.warn('ensureLiveShift failed', err);
+  }
+}
