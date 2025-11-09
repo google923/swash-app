@@ -127,6 +127,8 @@
             <label class="text-muted" for="statusFilter">Status</label>
             <select id="statusFilter">
               <option value="ALL">All statuses</option>
+            <option value="PENDING_PAYMENT">Pending payment</option>
+            <option value="PAID">Paid</option>
             <option value="NEEDS_BOOKING">Needs booking</option>
             <option value="BOOKED">Booked</option>
             <option value="CANCELLED">Cancelled</option>
@@ -162,6 +164,7 @@
                 <span class="actions-toggle__icon" aria-hidden="true">&#9662;</span>
               </button>
               <ul id="actionsMenu" class="actions-menu" role="menu" aria-hidden="true">
+                <li role="menuitem"><button type="button" id="markPaidMenu" data-action="markPaid">Mark as paid</button></li>
                 <li role="menuitem"><button type="button" id="sendEmailMenu" data-action="sendEmails">Send booking emails</button></li>
                 <li role="menuitem"><button type="button" id="addToScheduleMenu" data-action="schedule">Add to schedule</button></li>
                 <li role="menuitem"><button type="button" id="archiveMenu" data-action="archive">Archive selected</button></li>
@@ -329,6 +332,36 @@
 
 
   <script type="module" src="./firebase-init.js"></script>
+  <!-- Mark as Paid Modal -->
+  <div id="markPaidModal" class="modal" hidden>
+    <div class="modal__dialog">
+      <h3>Mark Quotes as Paid</h3>
+      <p>Mark the selected quotes as paid. Optionally enter transaction details for record keeping.</p>
+      <ul id="markPaidCustomerList" class="modal__list" aria-live="polite"></ul>
+      <label class="modal__field">
+        <span>Transaction ID (optional)</span>
+        <input id="markPaidTransactionId" type="text" placeholder="e.g., REV-ABC123" />
+      </label>
+      <label class="modal__field">
+        <span>Payment Amount (optional)</span>
+        <input id="markPaidAmount" type="number" step="0.01" min="0" placeholder="150.00" />
+      </label>
+      <label class="modal__field">
+        <span>Currency</span>
+        <select id="markPaidCurrency">
+          <option value="GBP" selected>GBP (£)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="USD">USD ($)</option>
+        </select>
+      </label>
+      <p id="markPaidStatus" class="modal__progress" aria-live="polite"></p>
+      <div class="modal__actions">
+        <button type="button" class="btn btn-secondary" id="markPaidCancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="markPaidConfirm">Mark as Paid</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="./auth-check.js"></script>
   <script type="module" src="./nav.js"></script>
   <script type="module" src="./admin.js"></script>

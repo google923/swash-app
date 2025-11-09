@@ -545,8 +545,12 @@ function resolvePricePerClean(quote) {
 
 function resolveStatusCategory(quote) {
   const statusText = String(quote.status || "").toLowerCase();
+  const paymentStatus = String(quote.paymentStatus || "").toLowerCase();
+  
   if (statusText.includes("cancel") || statusText.includes("archiv")) return "CANCELLED";
+  if (paymentStatus === "paid" || statusText.includes("paid")) return "PAID";
   if (statusText.includes("booked")) return "BOOKED";
+  if (statusText.includes("pending payment")) return "PENDING_PAYMENT";
   return "NEEDS_BOOKING";
 }
 
@@ -952,6 +956,123 @@ async function handleImportConfirm() {
   }
 }
 
+function openMarkPaidModal() {
+  const selected = getSelectedQuotes();
+  if (!selected.length) {
+    alert("Select at least one quote to mark as paid.");
+    return;
+  }
+
+  const markPaidModal = document.getElementById("markPaidModal");
+  const markPaidCustomerList = document.getElementById("markPaidCustomerList");
+  const markPaidTransactionId = document.getElementById("markPaidTransactionId");
+  const markPaidAmount = document.getElementById("markPaidAmount");
+  const markPaidStatus = document.getElementById("markPaidStatus");
+
+  if (!markPaidModal || !markPaidCustomerList) return;
+
+  // Clear previous values
+  if (markPaidTransactionId) markPaidTransactionId.value = "";
+  if (markPaidAmount) markPaidAmount.value = "";
+  if (markPaidStatus) markPaidStatus.textContent = "";
+
+  // Populate customer list
+  markPaidCustomerList.innerHTML = selected
+    .map((quote) => {
+      const name = escapeHtml(quote.customerName || "Unknown");
+      const ref = escapeHtml(quote.refCode || "—");
+      const isPaid = quote.paymentStatus === "Paid";
+      const statusBadge = isPaid ? ' <span style="color: var(--swash-blue);">✓ Already paid</span>' : "";
+      return `<li>${name} (Ref: ${ref})${statusBadge}</li>`;
+    })
+    .join("");
+
+  markPaidModal.hidden = false;
+  markPaidModal.style.display = "flex";
+}
+
+function closeMarkPaidModal() {
+  const markPaidModal = document.getElementById("markPaidModal");
+  if (!markPaidModal) return;
+  markPaidModal.hidden = true;
+  markPaidModal.style.display = "none";
+}
+
+async function handleMarkPaidConfirm() {
+  const markPaidTransactionId = document.getElementById("markPaidTransactionId");
+  const markPaidAmount = document.getElementById("markPaidAmount");
+  const markPaidCurrency = document.getElementById("markPaidCurrency");
+  const markPaidStatus = document.getElementById("markPaidStatus");
+  const markPaidConfirm = document.getElementById("markPaidConfirm");
+
+  if (!markPaidStatus || !markPaidConfirm) return;
+
+  const selected = getSelectedQuotes();
+  if (!selected.length) {
+    markPaidStatus.textContent = "No quotes selected.";
+    markPaidStatus.style.color = "var(--swash-red)";
+    return;
+  }
+
+  const transactionId = markPaidTransactionId?.value?.trim() || "MANUAL";
+  const amount = markPaidAmount?.value ? parseFloat(markPaidAmount.value) : null;
+  const currency = markPaidCurrency?.value || "GBP";
+
+  try {
+    markPaidConfirm.disabled = true;
+    markPaidStatus.textContent = `Marking ${selected.length} quote(s) as paid...`;
+    markPaidStatus.style.color = "var(--text-muted)";
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const quote of selected) {
+      try {
+        const updateData = {
+          paymentStatus: "Paid",
+          paidDate: serverTimestamp(),
+          transactionId: transactionId,
+          manualReconciliation: true,
+          status: "Paid - Awaiting Booking",
+          updatedAt: serverTimestamp(),
+        };
+
+        if (amount !== null) {
+          updateData.paymentAmount = amount;
+          updateData.paymentCurrency = currency;
+        }
+
+        await updateDoc(doc(db, "quotes", quote.id), updateData);
+        successCount++;
+      } catch (error) {
+        console.error(`Failed to mark quote ${quote.id} as paid:`, error);
+        errorCount++;
+      }
+    }
+
+    if (errorCount === 0) {
+      markPaidStatus.textContent = `✓ Successfully marked ${successCount} quote(s) as paid`;
+      markPaidStatus.style.color = "var(--swash-green)";
+      
+      // Reload quotes and close modal after short delay
+      setTimeout(() => {
+        closeMarkPaidModal();
+        loadQuotes();
+        notifyQuotesUpdated();
+      }, 1500);
+    } else {
+      markPaidStatus.textContent = `Completed with errors: ${successCount} succeeded, ${errorCount} failed`;
+      markPaidStatus.style.color = "var(--swash-red)";
+    }
+  } catch (error) {
+    console.error("Error marking quotes as paid:", error);
+    markPaidStatus.textContent = `Error: ${error.message}`;
+    markPaidStatus.style.color = "var(--swash-red)";
+  } finally {
+    markPaidConfirm.disabled = false;
+  }
+}
+
 function openScheduleModal() {
   const selected = state.selectedForEmail.length ? state.selectedForEmail : getSelectedQuotes();
   if (!selected.length) {
@@ -1227,6 +1348,10 @@ function filterQuotes() {
 
       if (statusSelection === "NEEDS_BOOKING" && category !== "NEEDS_BOOKING") return false;
 
+      if (statusSelection === "PENDING_PAYMENT" && category !== "PENDING_PAYMENT") return false;
+
+      if (statusSelection === "PAID" && category !== "PAID") return false;
+
     }
 
     return true;
@@ -1402,9 +1527,13 @@ function renderTable(list) {
     const statusCategory = resolveStatusCategory(quote);
     if (statusCategory === "CANCELLED") {
       row.classList.add("status-cancelled");
+    } else if (statusCategory === "PAID") {
+      row.classList.add("status-paid");
     } else if (statusCategory === "BOOKED") {
       row.classList.add("status-booked");
       row.classList.add("booked");
+    } else if (statusCategory === "PENDING_PAYMENT") {
+      row.classList.add("status-pending-payment");
     } else if (statusCategory === "NEEDS_BOOKING") {
       row.classList.add("status-pending");
     }
@@ -1641,9 +1770,13 @@ function renderCards(list) {
           ? "quote-card--booked"
           : statusCategory === "CANCELLED"
             ? "quote-card--cancelled"
-            : statusCategory === "NEEDS_BOOKING"
-              ? "quote-card--needs-booking"
-              : "";
+            : statusCategory === "PAID"
+              ? "quote-card--paid"
+              : statusCategory === "PENDING_PAYMENT"
+                ? "quote-card--pending-payment"
+                : statusCategory === "NEEDS_BOOKING"
+                  ? "quote-card--needs-booking"
+                  : "";
       const contactBlock = [
         phone
           ? `<a href="tel:${phone}" class="quote-card__contact">${phone}</a>`
@@ -1657,7 +1790,11 @@ function renderCards(list) {
           ? "quote-card__status-pill--booked"
           : statusCategory === "CANCELLED"
             ? "quote-card__status-pill--cancelled"
-            : "quote-card__status-pill--needs-booking";
+            : statusCategory === "PAID"
+              ? "quote-card__status-pill--paid"
+              : statusCategory === "PENDING_PAYMENT"
+                ? "quote-card__status-pill--pending-payment"
+                : "quote-card__status-pill--needs-booking";
       return `
         <article class="quote-card ${cardClass}" data-id="${quote.id}">
           <div class="quote-card__header">
@@ -2014,6 +2151,44 @@ function buildDetailsRow(quote, columnCount) {
     quote.price !== undefined && quote.price !== null
       ? escapeHtml(Number(quote.price).toFixed(2))
       : "";
+  
+  // Payment information
+  const paymentStatus = quote.paymentStatus || "";
+  const isPaid = paymentStatus === "Paid";
+  const paidDateDisplay = isPaid && quote.paidDate 
+    ? formatDate(quote.paidDate) 
+    : "—";
+  const transactionIdDisplay = isPaid && quote.transactionId 
+    ? escapeHtml(quote.transactionId) 
+    : "—";
+  const paymentAmountDisplay = isPaid && quote.paymentAmount
+    ? `${formatCurrency(quote.paymentAmount)} ${escapeHtml(quote.paymentCurrency || "GBP")}`
+    : "—";
+  const paymentInfoSection = isPaid 
+    ? `
+      <div class="payment-info-section">
+        <h4 class="payment-info-title">💳 Payment Information</h4>
+        <div class="payment-info-grid">
+          <div class="payment-info-field">
+            <span class="payment-info-label">Status:</span>
+            <span class="payment-info-value payment-info-value--paid">✓ Paid</span>
+          </div>
+          <div class="payment-info-field">
+            <span class="payment-info-label">Paid Date:</span>
+            <span class="payment-info-value">${paidDateDisplay}</span>
+          </div>
+          <div class="payment-info-field">
+            <span class="payment-info-label">Amount:</span>
+            <span class="payment-info-value">${paymentAmountDisplay}</span>
+          </div>
+          <div class="payment-info-field">
+            <span class="payment-info-label">Transaction ID:</span>
+            <span class="payment-info-value payment-info-value--mono">${transactionIdDisplay}</span>
+          </div>
+        </div>
+      </div>
+    `
+    : "";
 
   const standardSizes = ["2 bed", "3 bed", "4 bed", "5 bed", "6 bed", "Other"];
 
@@ -2066,6 +2241,9 @@ function buildDetailsRow(quote, columnCount) {
             <span>Notes</span>
             <textarea name="notes" rows="3" placeholder="Add notes for this customer">${notesValue}</textarea>
           </label>
+        </div>
+        ${paymentInfoSection}
+        <div class="details-grid">
           <label class="details-field">
             <span>House type</span>
             <input type="text" name="houseType" value="${houseTypeValue}" />
@@ -2868,6 +3046,9 @@ function handleActionsKeydown(event) {
 
 function runAction(action) {
   switch (action) {
+    case "markPaid":
+      openMarkPaidModal();
+      break;
     case "sendEmails":
       prepareSendEmailAction();
       break;
@@ -3099,6 +3280,14 @@ function attachEvents(){
   document.getElementById("refreshPreview")?.addEventListener("click", () => updatePreview());
   document.getElementById("closeModal")?.addEventListener("click", closeModal);
   document.getElementById("closeModalSecondary")?.addEventListener("click", closeModal);
+  
+  // Mark as Paid modal listeners
+  document.getElementById("markPaidCancel")?.addEventListener("click", closeMarkPaidModal);
+  document.getElementById("markPaidConfirm")?.addEventListener("click", handleMarkPaidConfirm);
+  
+  // Import modal listeners
+  elements.importCancel?.addEventListener("click", closeImportModal);
+  elements.importConfirm?.addEventListener("click", handleImportConfirm);
 }
 
 // ===== CUSTOMER LOCATION MODAL =====
