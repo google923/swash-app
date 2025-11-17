@@ -1,5 +1,16 @@
 /* Rep Home Page Styles */
 
+/* Prevent any horizontal scrolling on this page */
+html, body { overflow-x: hidden; }
+
+/* Constrain page width and add safe padding to avoid overflow */
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
 .welcome-banner {
   background: rgba(0, 120, 215, 0.9) !important; /* Force 90% opacity Swash blue */
   color: white;
@@ -24,29 +35,29 @@
 
 /* Quick Actions Grid */
 .quick-actions {
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
 .quick-actions h2 {
   color: #0078d7;
   font-size: 1.5rem;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   font-weight: 600;
   text-align: center;
 }
 
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 8px;
   margin-bottom: 16px;
 }
 
 .action-card {
   background: white;
   border: 2px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 12px;
+  border-radius: 12px;
+  padding: 8px 6px;
   text-align: center;
   transition: all 0.2s ease;
   cursor: pointer;
@@ -56,7 +67,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
   aspect-ratio: 1 / 1; /* make tiles square */
 }
 
@@ -67,13 +78,13 @@
 }
 
 .action-card__icon { 
-  width: 50px;
-  height: 50px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
 }
 
 .action-card__title {
-  font-size: 0.9rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: #1e293b;
   margin: 0;
@@ -94,6 +105,21 @@
   margin-bottom: 20px;
   font-weight: 600;
   text-align: center;
+}
+
+/* Period nav inside performance snapshot */
+.performance-period-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -8px 0 10px 0;
+}
+.performance-period-nav #prevPeriodBtn {
+  align-self: flex-start;
+}
+.performance-period-nav .period-label {
+  color: #64748b;
+  font-size: 0.9rem;
 }
 
 .performance-grid {
@@ -140,6 +166,178 @@
 
 .performance-card__trend--neutral {
   color: #64748b;
+}
+
+/* Todos/Tasks Panel */
+.todos-panel {
+  margin-bottom: 40px;
+}
+
+.todos-panel h2 {
+  color: #0078d7;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.todos-list {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.todos-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.todo-item {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.todo-item:last-child {
+  border-bottom: none;
+}
+
+.todo-item:hover {
+  background: #f9fafb;
+}
+
+.todo-item--completed {
+  opacity: 0.6;
+}
+
+.todo-item--completed .todo-title {
+  text-decoration: line-through;
+  color: #64748b;
+}
+
+.todo-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.todo-checkbox input[type="checkbox"] {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.todo-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.todo-title {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.95rem;
+  flex: 1;
+}
+
+.todo-desc {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-left: 30px;
+  line-height: 1.4;
+}
+
+.todo-link {
+  margin-left: 30px;
+  font-size: 0.85rem;
+  color: #0078d7;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.todo-link:hover {
+  text-decoration: underline;
+}
+
+/* Admin Todo Tools */
+.admin-todo-tools {
+  margin-bottom: 40px;
+  padding: 24px;
+  background: #fef3c7;
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+}
+
+.admin-todo-tools h2 {
+  color: #92400e;
+  font-size: 1.3rem;
+  margin: 0 0 16px 0;
+  font-weight: 600;
+}
+
+.todo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.todo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.todo-field span {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.todo-field input,
+.todo-field textarea,
+.todo-field select {
+  padding: 10px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.todo-field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.todo-field select {
+  padding: 8px 12px;
+}
+
+.todo-field small {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: -2px;
+}
+
+.todo-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.todo-actions button {
+  flex: 1;
 }
 
 /* Announcements Panel */
@@ -325,7 +523,7 @@
 .rep-home-calendar { 
   margin: 8px 0 32px; 
   width: 100%;
-  overflow: hidden;
+  overflow-x: hidden; /* hard-stop horizontal scroll from calendar */
 }
 .cal-center { 
   display: flex; 
@@ -382,30 +580,50 @@
 .rep-home-calendar .rep-day__date { 
   font-size: 0.7rem; 
 }
+.rep-home-calendar .rep-calendar { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.rep-home-calendar .rep-day { overflow: hidden; }
+
+/* Make calendar fully visible on mobile by slightly reducing spacing */
+@media (max-width: 480px) {
+  .rep-home-calendar .rep-calendar { gap: 4px; }
+  .rep-home-calendar .rep-day { min-height: 56px; padding: 4px; }
+}
 .dashboard-wrap {
   background: rgba(255, 255, 255, 0.6) !important; /* Force 60% white opacity */
   border: 1px solid rgba(0, 120, 215, 0.28);
   border-radius: 18px;
   padding: 20px;
   box-shadow: 0 14px 36px rgba(15, 23, 42, 0.14);
+  overflow: hidden; /* keep inner elements from causing horizontal scroll */
 }
 
+
+/* Base layout: single column to avoid crowding; calendar gets its own full row */
 .dashboard {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1fr;
   grid-template-areas:
-    "welcome welcome"
-    "quick   calendar"
-    "announcements calendar"
-    "performance performance";
+    "welcome"
+    "quick"
+    "todos"
+    "adminEventTools"
+    "adminTodoTools"
+    "announcements"
+    "calendar"
+    "performance"
+    "motivation";
   gap: 20px;
 }
 
 .welcome-banner { grid-area: welcome; }
 .quick-actions { grid-area: quick; }
+.todos-panel { grid-area: todos; }
+.admin-event-tools { grid-area: adminEventTools; }
+.admin-todo-tools { grid-area: adminTodoTools; }
 .rep-home-calendar { grid-area: calendar; }
-.performance-snapshot { grid-area: performance; }
 .announcements-panel { grid-area: announcements; }
+.performance-snapshot { grid-area: performance; }
+.motivational-quotes { grid-area: motivation; }
 
 /* Section separators (thin blue lines) */
 .welcome-banner,
@@ -427,34 +645,64 @@
 .rep-home-calendar .rep-day__date { font-size: 0.85rem; }
 
 /* Admin Event Tools */
-.admin-event-tools { grid-area: calendar; border: 2px solid rgba(0,120,215,0.30); border-radius: 12px; padding: 12px; background: rgba(255,255,255,0.06); box-shadow: 0 6px 16px rgba(15,23,42,0.12); }
+.admin-event-tools { 
+  border: 2px solid rgba(251, 191, 36, 0.5); 
+  border-radius: 12px; 
+  padding: 16px; 
+  background: rgba(254, 243, 199, 0.3); 
+  box-shadow: 0 6px 16px rgba(15,23,42,0.12); 
+  margin-bottom: 20px;
+}
 .event-form { display: flex; flex-direction: column; gap: 12px; }
 .event-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .event-field { display: flex; flex-direction: column; gap: 6px; }
 .event-field input, .event-field textarea, .event-field select { border: 1px solid rgba(15, 23, 42, 0.18); border-radius: 8px; padding: 10px 12px; font-size: 0.95rem; }
 .event-actions { display: flex; justify-content: flex-end; }
 
+/* Shift summary in calendar */
+.shift-summary {
+  display: block;
+  margin: 4px 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0, 120, 215, 0.08);
+  border: 1px solid rgba(0, 120, 215, 0.25);
+  color: #1e293b;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
 /* Event badges in the calendar */
 .event-badge { display:inline-block; margin: 2px 0 0; padding: 2px 6px; border-radius: 10px; background: rgba(0,120,215,0.12); color: #0b3b77; border: 1px solid rgba(0,120,215,0.3); font-size: 0.68rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .event-badge--completed { background: rgba(28,156,93,0.12); border-color: rgba(28,156,93,0.3); color: #11633f; }
 
-/* Event Modal styles (reuse log modal layout) */
-#eventModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,0.4);z-index:60;padding:20px}
-#eventModal:not([hidden]){display:flex}
-#eventModal .modal__dialog{background:#fff;padding:24px;border-radius:16px;max-width:640px;width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04)}
-#eventModal .modal__body{display:flex;flex-direction:column;gap:10px}
-
-/* Responsive layout adjustments */
-@media (max-width: 1024px) {
+/* Centered Event Modal for calendar */
+#eventModal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(15,23,42,0.45); z-index: 200; padding: 24px; }
+#eventModal:not([hidden]) { display: flex; }
+#eventModal .modal__dialog { background: #fff; padding: 22px; border-radius: 14px; max-width: 520px; width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 16px 36px rgba(0,0,0,0.25); }
+#eventModal .modal__body { display: flex; flex-direction: column; gap: 10px; }
+#eventModal h3 { margin: 0 0 8px 0; font-size: 1.25rem; color: #0b3b77; }
+#eventModal .modal__footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
+/* Wide screens: show Tasks and Announcements side by side; calendar full width */
+@media (min-width: 1024px) {
   .dashboard {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     grid-template-areas:
-      "welcome"
-      "quick"
-      "calendar"
-      "announcements"
-      "performance";
+      "welcome welcome"
+      "quick   quick"
+      "todos   announcements"
+      "adminEventTools adminEventTools"
+      "adminTodoTools  adminTodoTools"
+      "calendar calendar"
+      "performance performance"
+      "motivation motivation";
   }
+}
+
+/* Larger calendar day size on wide screens */
+@media (min-width: 1024px) {
+  .rep-home-calendar .rep-day { min-height: 90px; }
 }
 
 @media (max-width: 768px) {

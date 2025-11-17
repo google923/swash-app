@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subscriber Users</title>
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .page { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden; }
+    .card-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #eef2f7; }
+    .card-header h2 { margin:0; font-size:20px; }
+    .card-header .text-muted { color:#64748b; margin:4px 0 0 0; font-size:13px; }
+    .card-body { padding: 16px 20px; }
+    .users-grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 16px; }
+    .user-card { border:1px solid #e5e7eb; border-radius:10px; padding:14px; }
+    .user-name { font-weight:600; font-size:16px; }
+    .user-email { color:#64748b; font-size:13px; margin-top:4px; word-break: break-all; }
+    .user-actions { display:flex; gap:8px; margin-top:12px; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; border-radius:8px; border:1px solid transparent; padding:8px 12px; cursor:pointer; }
+    .btn-primary { background:#0078d7; color:#fff; }
+    .btn-secondary { background:#f8fafc; color:#0f172a; border-color:#e5e7eb; }
+    .btn-danger { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
+    .auth-overlay { display:flex; align-items:center; justify-content:center; position:fixed; inset:0; background:#f8fafc; z-index:30; }
+    .auth-card { background:#fff; padding:24px; border:1px solid #e5e7eb; border-radius:12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+    .modal { position:fixed; inset:0; background:rgba(15,23,42,.5); display:none; align-items:center; justify-content:center; z-index:40; }
+    .modal.show { display:flex; }
+    .modal-content { background:#fff; width:100%; max-width:480px; border-radius:12px; overflow:hidden; }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #eef2f7; }
+    .modal-body { padding:16px 20px; }
+    .form-group { margin-bottom:12px; }
+    label { display:block; margin-bottom:6px; font-weight:600; }
+    input[type=email] { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; }
+  </style>
+</head>
+<body>
+  <header class="menu-box" style="border-bottom:1px solid #e5e7eb;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;">
+    <a href="./subscriber-dashboard.html" class="logo" style="text-decoration:none;color:#0f172a;font-weight:700;">Swash</a>
+    <nav>
+      <a href="./subscriber-dashboard.html" class="btn btn-secondary">Dashboard</a>
+      <a href="./subscriber-customers.html" class="btn btn-secondary">Customers</a>
+      <a href="./subscriber-quotes.html" class="btn btn-secondary">Quotes</a>
+      <a href="./rep/scheduler.html" class="btn btn-secondary">Schedule</a>
+      <a href="./subscriber-cleaners.html" class="btn btn-secondary">Cleaners</a>
+      <a href="./subscriber-territories.html" class="btn btn-secondary">Territories</a>
+      <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+    </nav>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we verify your account.</p>
+    </div>
+  </section>
+
+  <main id="usersContent" class="page" style="display:none;">
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2>Subscriber Users</h2>
+          <p class="text-muted">Link your reps to this subscriber to grant access</p>
+        </div>
+        <div>
+          <button id="linkRepBtn" class="btn btn-primary">+ Link Rep</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="usersGrid" class="users-grid">
+          <div style="text-align:center;padding:40px;color:#64748b;grid-column:1/-1;">Loading linked reps...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="linkModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Link Rep by Email</h3>
+        <button id="closeModal" class="btn btn-secondary">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="repEmail">Rep Email</label>
+          <input type="email" id="repEmail" placeholder="rep@example.com" required />
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button id="cancelLink" class="btn btn-secondary">Cancel</button>
+          <button id="confirmLink" class="btn btn-primary">Link Rep</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './firebase-init.js';
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import {
+      collection,
+      query,
+      where,
+      getDocs,
+      doc,
+      getDoc,
+      updateDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    let subscriberId = null;
+    let linkedReps = [];
+
+    const authOverlay = document.getElementById('authOverlay');
+    const usersContent = document.getElementById('usersContent');
+    const usersGrid = document.getElementById('usersGrid');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const linkRepBtn = document.getElementById('linkRepBtn');
+    const linkModal = document.getElementById('linkModal');
+    const closeModal = document.getElementById('closeModal');
+    const cancelLink = document.getElementById('cancelLink');
+    const confirmLink = document.getElementById('confirmLink');
+    const repEmailInput = document.getElementById('repEmail');
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './subscriber-login.html';
+        return;
+      }
+
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewingUid = urlParams.get('uid');
+
+        const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!currentUserDoc.exists()) throw new Error('User not found');
+        const currentUserData = currentUserDoc.data();
+
+        if (viewingUid && currentUserData.role === 'admin') {
+          subscriberId = viewingUid;
+        } else {
+          if (currentUserData.role !== 'subscriber') throw new Error('Access denied');
+          if (!currentUserData.billingCompleted) {
+            window.location.href = './subscriber-billing.html';
+            return;
+          }
+          subscriberId = user.uid;
+        }
+
+        authOverlay.style.display = 'none';
+        usersContent.style.display = 'block';
+
+        await loadLinkedReps();
+      } catch (error) {
+        console.error('Auth error:', error);
+        alert(error.message);
+        await signOut(auth);
+        window.location.href = './subscriber-login.html';
+      }
+    });
+
+    async function loadLinkedReps() {
+      try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('subscriberId', '==', subscriberId), where('role', '==', 'rep'));
+        const snap = await getDocs(q);
+        linkedReps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderUsers();
+      } catch (e) {
+        console.error('Failed to load reps', e);
+        usersGrid.innerHTML = '<div style="text-align:center;padding:40px;color:#dc2626;grid-column:1/-1;">Failed to load linked reps</div>';
+      }
+    }
+
+    function renderUsers() {
+      if (!linkedReps.length) {
+        usersGrid.innerHTML = '<div style="text-align:center;padding:40px;color:#64748b;grid-column:1/-1;">No linked reps yet. Use \'Link Rep\' to add one.</div>';
+        return;
+      }
+      usersGrid.innerHTML = linkedReps.map(u => `
+        <div class="user-card">
+          <div class="user-name">${escapeHtml(u.displayName || u.repName || u.name || 'Unnamed Rep')}</div>
+          <div class="user-email">${escapeHtml(u.email || '')}</div>
+          <div class="user-actions">
+            <button class="btn btn-danger" onclick="window.unlinkRep('${u.id}')">Unlink</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    window.unlinkRep = async (repUid) => {
+      if (!confirm('Unlink this rep from your subscriber account?')) return;
+      try {
+        await updateDoc(doc(db, 'users', repUid), {
+          subscriberId: null,
+          updatedAt: serverTimestamp(),
+          updatedBy: subscriberId,
+        });
+        await loadLinkedReps();
+      } catch (e) {
+        console.error('Failed to unlink rep', e);
+        alert('Failed to unlink rep: ' + e.message);
+      }
+    };
+
+    function openModal() {
+      repEmailInput.value = '';
+      linkModal.classList.add('show');
+      setTimeout(() => repEmailInput.focus(), 50);
+    }
+    function closeModalFn() { linkModal.classList.remove('show'); }
+
+    linkRepBtn.addEventListener('click', openModal);
+    closeModal.addEventListener('click', closeModalFn);
+    cancelLink.addEventListener('click', closeModalFn);
+
+    confirmLink.addEventListener('click', async () => {
+      const email = repEmailInput.value.trim().toLowerCase();
+      if (!email) {
+        alert('Please enter a rep email');
+        return;
+      }
+      try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('email','==', email), where('role','==','rep'));
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          alert('No rep user found with that email. Ask them to sign in once to create a profile.');
+          return;
+        }
+        const repDoc = snap.docs[0];
+        await updateDoc(doc(db, 'users', repDoc.id), {
+          subscriberId,
+          updatedAt: serverTimestamp(),
+          updatedBy: subscriberId,
+        });
+        closeModalFn();
+        await loadLinkedReps();
+      } catch (e) {
+        console.error('Failed to link rep', e);
+        alert('Failed to link rep: ' + e.message);
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = './subscriber-login.html';
+    });
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

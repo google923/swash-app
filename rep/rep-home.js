@@ -11,6 +11,7 @@ const state = {
   reps: [],
   monthEvents: new Map(), // key = YYYY-MM-DD -> [events]
   currentEvent: null,
+  payPeriodOffset: 0,
 };
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -78,6 +79,9 @@ const avgTrendEl = document.getElementById("avgTrend");
 const announcementsListEl = document.getElementById("announcementsList");
 const quoteTextEl = document.getElementById("quoteText");
 const quoteAuthorEl = document.getElementById("quoteAuthor");
+// Performance period navigation elements (added for previous period view)
+const prevPeriodBtn = document.getElementById("prevPeriodBtn");
+const periodLabelEl = document.getElementById("periodLabel");
 
 // Calendar elements (minimal calendar on Rep Home)
 const calEls = {
@@ -111,6 +115,17 @@ const eventUI = {
   saveBtn: document.getElementById("eventSaveBtn"),
   completeBtn: document.getElementById("eventCompleteBtn"),
   deleteBtn: document.getElementById("eventDeleteBtn"),
+};
+
+// Todo UI elements
+const todoUI = {
+  tools: document.getElementById("adminTodoTools"),
+  form: document.getElementById("todoForm"),
+  title: document.getElementById("todoTitle"),
+  desc: document.getElementById("todoDesc"),
+  assignees: document.getElementById("todoAssignees"),
+  createBtn: document.getElementById("createTodoBtn"),
+  list: document.getElementById("todosList"),
 };
 
 // Menu buttons
@@ -158,10 +173,32 @@ async function initRepPage() {
     displayCurrentDate();
     displayRandomQuote();
     loadPerformancePlaceholder();
+    // Bind previous period navigation
+    if (prevPeriodBtn){
+      prevPeriodBtn.addEventListener('click', () => {
+        state.payPeriodOffset -= 1;
+        loadPerformanceStats();
+      });
+    }
+    initCalendarControls();
+
+    // Load identity first, then role-gated data to avoid permission errors
+    await Promise.all([loadRepName(), checkRole()]);
+
+    // Admin-only resources (user list and event/todo tools)
+    if (state.isAdmin) {
+      await loadReps().catch((e) => console.warn('[Rep] loadReps failed (admin-only)', e));
+      bindEventForm();
+      bindTodoForm();
+      showAdminTools(true);
+    } else {
+      showAdminTools(false);
+    }
+
+    // Remaining widgets
     await Promise.all([
-      loadRepName(),
-      checkRole(),
-      loadReps(),
+      loadPersonalTodos(),
+      loadPerformanceStats(),
       loadAnnouncements(),
       loadCalendar(),
       loadAgendaForCurrentUser(),
@@ -218,19 +255,29 @@ async function checkRole() {
 }
 
 async function loadReps(){
+  // Only admins can list all reps per Firestore rules
+  if (!state.isAdmin) return;
   try{
     const snap = await getDocs(query(collection(db,'users'), where('role','==','rep')));
     state.reps = snap.docs.map(d=>({ id:d.id, ...(d.data()||{}) }));
-    // Populate multi-select
+    // Populate multi-selects for events and todos
     if (eventUI.assignees){
       eventUI.assignees.innerHTML = state.reps
+        .map(r=>`<option value="${r.id}">${escapeHtml(r.name||r.email||r.id)}</option>`) 
+        .join('');
+    }
+    if (todoUI.assignees){
+      todoUI.assignees.innerHTML = state.reps
         .map(r=>`<option value="${r.id}">${escapeHtml(r.name||r.email||r.id)}</option>`) 
         .join('');
     }
   }catch(err){ console.error('Failed to load reps', err); }
 }
 
-function showAdminTools(show){ if (eventUI.tools) { if (show) eventUI.tools.hidden = false; else eventUI.tools.hidden = true; } }
+function showAdminTools(show){ 
+  if (eventUI.tools) { if (show) eventUI.tools.hidden = false; else eventUI.tools.hidden = true; } 
+  if (todoUI.tools) { if (show) todoUI.tools.hidden = false; else todoUI.tools.hidden = true; }
+}
 
 function bindEventForm(){
   if (!eventUI.form) return;
@@ -255,6 +302,30 @@ function bindEventForm(){
   });
 }
 
+function bindTodoForm(){
+  if (!todoUI.form) return;
+  todoUI.form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const title = todoUI.title.value.trim();
+    const desc = todoUI.desc.value.trim();
+    const assignedRepIds = Array.from(todoUI.assignees.selectedOptions).map(o=>o.value);
+    if (!title){ alert('Please provide a task title'); return; }
+    if (!assignedRepIds.length){ alert('Please select at least one rep'); return; }
+    try{
+      await addDoc(collection(db,'todos'),{
+        title, description: desc, assignedRepIds, completed: false, deleted: false,
+        createdAt: new Date().toISOString(), createdBy: state.currentUser.uid
+      });
+      todoUI.form.reset();
+      alert('Task created for selected reps');
+      // Reload todos if current user is also a rep (edge case: admin viewing their own rep todos)
+      if (state.reps.some(r=>r.id===state.currentUser.uid)){
+        await loadPersonalTodos();
+      }
+    }catch(err){ console.error('Create todo failed', err); alert('Failed to create task'); }
+  });
+}
+
 // Display current date
 function displayCurrentDate() {
   const options = {
@@ -274,20 +345,162 @@ function displayRandomQuote() {
   quoteAuthorEl.textContent = `— ${randomQuote.author}`;
 }
 
-// Load performance placeholder data
+// Load performance placeholder data (called during init, replaced by loadPerformanceStats)
 function loadPerformancePlaceholder() {
-  // Placeholder values - will be replaced with real data later
-  weeklySignupsEl.textContent = "12";
-  weeklyTrendEl.textContent = "↑ +3 from last week";
-  weeklyTrendEl.className = "performance-card__trend performance-card__trend--up";
-
-  monthlyMileageEl.textContent = "487";
-  mileageTrendEl.textContent = "↑ +52 miles";
-  mileageTrendEl.className = "performance-card__trend performance-card__trend--up";
-
-  avgDailySignupsEl.textContent = "2.4";
-  avgTrendEl.textContent = "On track";
+  weeklySignupsEl.textContent = "--";
+  weeklyTrendEl.textContent = "Loading...";
+  weeklyTrendEl.className = "performance-card__trend performance-card__trend--neutral";
+  monthlyMileageEl.textContent = "--";
+  mileageTrendEl.textContent = "Loading...";
+  mileageTrendEl.className = "performance-card__trend performance-card__trend--neutral";
+  avgDailySignupsEl.textContent = "--";
+  avgTrendEl.textContent = "Loading...";
   avgTrendEl.className = "performance-card__trend performance-card__trend--neutral";
+}
+
+// Calculate current pay period (20th to 20th)
+function getCurrentPayPeriod(){
+  const now = new Date();
+  const day = now.getDate();
+  let start, end;
+  if (day >= 20){
+    // Current period: 20th of this month to 20th of next month
+    start = new Date(now.getFullYear(), now.getMonth(), 20, 0,0,0,0);
+    end = new Date(now.getFullYear(), now.getMonth()+1, 20, 0,0,0,0);
+  } else {
+    // Current period: 20th of last month to 20th of this month
+    start = new Date(now.getFullYear(), now.getMonth()-1, 20, 0,0,0,0);
+    end = new Date(now.getFullYear(), now.getMonth(), 20, 0,0,0,0);
+  }
+  return { start, end, startISO: start.toISOString().slice(0,10), endISO: end.toISOString().slice(0,10) };
+}
+
+// Generic pay period with offset: 0 = current, -1 = previous, +1 = next
+function getPayPeriod(offset = 0){
+  let base = getCurrentPayPeriod();
+  let { start, end } = base;
+  if (offset !== 0){
+    const steps = Math.abs(offset);
+    for (let i=0;i<steps;i++){
+      if (offset < 0){
+        end = start; // move window backward
+        start = new Date(start.getFullYear(), start.getMonth()-1, 20, 0,0,0,0);
+      } else {
+        start = end; // move window forward
+        end = new Date(end.getFullYear(), end.getMonth()+1, 20, 0,0,0,0);
+      }
+    }
+  }
+  return { start, end, startISO: start.toISOString().slice(0,10), endISO: end.toISOString().slice(0,10) };
+}
+
+function formatPeriodBoundary(d){
+  return d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+}
+
+function updatePeriodLabel(period){
+  if (!periodLabelEl) return;
+  periodLabelEl.textContent = `${formatPeriodBoundary(period.start)} – ${formatPeriodBoundary(period.end)}`;
+}
+
+// Load real performance stats for signed-in rep
+async function loadPerformanceStats(){
+  if (!state.currentUser){
+    loadPerformancePlaceholder();
+    return;
+  }
+  try {
+  const period = getPayPeriod(state.payPeriodOffset || 0);
+    const repUid = state.currentUser.uid;
+    // Resolve rep display name once for quote matching
+    let repNameForMatch = state.repName;
+    if (!repNameForMatch) {
+      try {
+        const repDoc = await getDoc(doc(db,'users', repUid));
+        repNameForMatch = repDoc.exists() ? (repDoc.data().name || repDoc.data().repName || '') : '';
+      } catch(_) { repNameForMatch = ''; }
+    }
+    
+    // Fetch all shifts for this rep in the pay period (doc-by-id per day to avoid composite index requirements)
+    const shiftsMap = new Map();
+    const cursor = new Date(period.start);
+    const tasks = [];
+    while (cursor < period.end){
+      const iso = cursor.toISOString().slice(0,10);
+      const shiftId = `${repUid}_${iso}`;
+      tasks.push(getDoc(doc(db,'repShifts', shiftId)).then(snap=>{
+        if (snap.exists()){
+          shiftsMap.set(iso, snap.data());
+        }
+      }).catch(()=>{}));
+      cursor.setDate(cursor.getDate()+1);
+    }
+    await Promise.all(tasks);
+    
+    // Calculate totals (miles and working days still from shifts)
+    let totalSales = 0; // will be computed from quotes below
+    let totalMiles = 0;
+    let workingDays = 0;
+    shiftsMap.forEach(shift=>{
+      totalMiles += (shift.miles || 0);
+      if ((shift.activeMinutes||0) > 0) workingDays++;
+    });
+    
+    // Fetch this rep's signups from quotes in current pay period and compute verified subset
+    // Total signups: quotes created in period with repCode == rep name
+    // Verified: those with bookedDate within period
+    let verifiedCount = 0;
+    try {
+      let total = 0;
+      if (repNameForMatch) {
+        const snap = await getDocs(query(collection(db,'quotes'), where('repCode','==', repNameForMatch)));
+        snap.forEach(ds => {
+          const q = ds.data() || {};
+          if (q.deleted) return;
+          // Determine creation time
+          let created = null;
+          if (q.createdAt?.toDate) { created = q.createdAt.toDate(); }
+          else if (q.date) { try { created = new Date(q.date); } catch(_) {} }
+          if (!created) return;
+          if (created >= period.start && created < period.end) {
+            total++;
+            // Verified if bookedDate present and within period window
+            if (q.bookedDate) {
+              try {
+                const bd = new Date(q.bookedDate);
+                if (bd >= period.start && bd < period.end) {
+                  verifiedCount++;
+                }
+              } catch(_) {}
+            }
+          }
+        });
+      }
+      totalSales = total;
+    } catch(err){ console.warn('Failed to count quotes for period', err); }
+    
+    // Update UI
+    weeklySignupsEl.textContent = `${verifiedCount}/${totalSales}`;
+    weeklyTrendEl.textContent = `${verifiedCount} verified`;
+    weeklyTrendEl.className = verifiedCount >= totalSales*0.5 ? "performance-card__trend performance-card__trend--up" : "performance-card__trend performance-card__trend--neutral";
+    
+    monthlyMileageEl.textContent = totalMiles.toString();
+    mileageTrendEl.textContent = `${workingDays} working days`;
+    mileageTrendEl.className = "performance-card__trend performance-card__trend--neutral";
+    
+    const avgDaily = workingDays > 0 ? (verifiedCount / workingDays).toFixed(1) : '0.0';
+    avgDailySignupsEl.textContent = avgDaily;
+    const target = 4.0;
+    const onTrack = parseFloat(avgDaily) >= target;
+    avgTrendEl.textContent = onTrack ? 'On track' : `Target: ${target}/day`;
+  avgTrendEl.className = onTrack ? "performance-card__trend performance-card__trend--up" : "performance-card__trend performance-card__trend--neutral";
+  // Update label to reflect the currently viewed period
+  updatePeriodLabel(period);
+    
+  } catch(err){
+    console.error('Failed to load performance stats', err);
+    loadPerformancePlaceholder();
+  }
 }
 
 // Load announcements from Firestore
@@ -396,6 +609,223 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// --------- Personal Todos ---------
+async function loadPersonalTodos(){
+  if (!state.currentUser) {
+    console.warn('[Todos] No current user');
+    return;
+  }
+  if (!todoUI.list) {
+    console.warn('[Todos] todoUI.list element not found');
+    return;
+  }
+  
+  console.log('[Todos] Loading personal todos for:', state.currentUser.uid);
+  const todos = [];
+  
+  // Get user's contract type from their user document
+  let userContractType = 'freelance'; // default
+  try {
+    const userSnap = await getDoc(doc(db, 'users', state.currentUser.uid));
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      userContractType = userData.contractType || 'freelance';
+      console.log('[Todos] User contract type:', userContractType, 'Raw data:', userData.contractType);
+    } else {
+      console.warn('[Todos] User document does not exist');
+    }
+  } catch(err) { 
+    console.error('[Todos] Failed to load user contract type:', err); 
+  }
+  
+  const contractTypeDisplay = userContractType === 'paye' ? 'PAYE' : 'Freelance';
+  
+  // Skip contract and policy todos for admins
+  if (!state.isAdmin) {
+    // 1. Check contract status (reps only)
+    try{
+      const contractSnap = await getDoc(doc(db,'contracts', state.currentUser.uid));
+      const contract = contractSnap.exists() ? contractSnap.data() : null;
+      const contractorSigned = !!(contract && contract.contractorSignedAt);
+      const adminSigned = !!(contract && contract.adminSignedAt);
+      
+      console.log('[Todos] Contract status - exists:', contractSnap.exists(), 'contractorSigned:', contractorSigned, 'adminSigned:', adminSigned);
+      
+      // Auto contract status todos
+      if (!contractorSigned){
+      const todo = {
+        id: 'contract-sign',
+        title: `Complete ${contractTypeDisplay} contract`,
+        description: 'Sign your employment contract to proceed.',
+        completed: false,
+        isSystem: true,
+        action: '/rep/contract.html'
+      };
+      console.log('[Todos] Adding contract sign todo:', todo);
+      todos.push(todo);
+    } else if (!adminSigned){
+      const todo = {
+        id: 'contract-admin',
+        title: `Awaiting admin signature for ${contractTypeDisplay} contract`,
+        description: 'Your contract is pending admin approval.',
+        completed: false,
+        isSystem: true,
+        action: null
+      };
+      console.log('[Todos] Adding admin signature wait todo:', todo);
+      todos.push(todo);
+    } else {
+      // Both signed: show completed checkmark
+      const todo = {
+        id: 'contract-complete',
+        title: `${contractTypeDisplay} contract fully signed`,
+        description: 'Your contract is complete and countersigned.',
+        completed: true,
+        isSystem: true,
+        action: null
+      };
+      console.log('[Todos] Adding completed contract todo:', todo);
+      todos.push(todo);
+    }
+  }catch(err){ 
+    console.error('[Todos] Failed to load contract status:', err); 
+    // Fallback: treat as unsigned so rep still sees contract todo
+    const fallbackTodo = {
+      id: 'contract-sign',
+      title: `Complete ${contractTypeDisplay} contract`,
+      description: 'Sign your employment contract to proceed.',
+      completed: false,
+      isSystem: true,
+      action: '/rep/contract.html'
+    };
+    todos.push(fallbackTodo);
+    console.log('[Todos] Fallback added contract-sign todo due to error');
+  }
+  
+  // 2. Check Policy Handbook acknowledgment (reps only)
+  try {
+    const userSnap = await getDoc(doc(db, 'users', state.currentUser.uid));
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      const policyAcknowledged = !!userData.policyAcknowledgedAt;
+      
+      if (!policyAcknowledged) {
+        todos.push({
+          id: 'policy-acknowledge',
+          title: 'Acknowledge Policy Handbook',
+          description: 'Read and acknowledge the company policy handbook.',
+          completed: false,
+          isSystem: true,
+          action: '/rep/policy.html'
+        });
+      } else {
+        // Show completed acknowledgment
+        todos.push({
+          id: 'policy-acknowledged',
+          title: 'Policy Handbook acknowledged',
+          description: `Acknowledged on ${new Date(userData.policyAcknowledgedAt).toLocaleDateString('en-GB')}`,
+          completed: true,
+          isSystem: true,
+          action: null
+        });
+      }
+    }
+  } catch(err) {
+    console.error('[Todos] Failed to check policy acknowledgment:', err);
+  }
+  } // End of !state.isAdmin block
+  
+  // 3. Fetch admin-created todos assigned to this rep (or all if admin)
+  try{
+    let snap;
+    if (state.isAdmin) {
+      // Admin sees ALL todos across all reps
+      console.log('[Todos] Admin mode - fetching ALL todos');
+      snap = await getDocs(query(collection(db,'todos')));
+      console.log('[Todos] Found', snap.size, 'total todos in database');
+    } else {
+      // Reps see only their assigned todos
+      snap = await getDocs(query(
+        collection(db,'todos'),
+        where('assignedRepIds','array-contains', state.currentUser.uid)
+      ));
+    }
+    
+    snap.forEach(ds=>{
+      const t = ds.data();
+      console.log('[Todos] Processing todo:', ds.id, t);
+      if (t.deleted) {
+        console.log('[Todos] Skipping deleted todo:', ds.id);
+        return;
+      }
+      
+      // For admin, show which reps are assigned
+      let assignedInfo = '';
+      if (state.isAdmin && t.assignedRepIds?.length) {
+        const repNames = t.assignedRepIds.map(repId => {
+          const rep = state.reps.find(r => r.id === repId);
+          return rep?.name || repId;
+        }).join(', ');
+        assignedInfo = ` (${repNames})`;
+      }
+      
+      todos.push({
+        id: ds.id,
+        title: (t.title || 'Task') + assignedInfo,
+        description: t.description || '',
+        completed: !!t.completed,
+        isSystem: false,
+        action: null
+      });
+    });
+    console.log('[Todos] Loaded', snap.size, 'admin-created todos');
+  }catch(err){ 
+    console.error('[Todos] Failed to load admin todos:', err); 
+  }
+  
+  console.log('[Todos] Total todos to render:', todos.length, todos);
+  renderTodos(todos);
+}
+
+function renderTodos(todos){
+  if (!todoUI.list) return;
+  if (!todos.length){
+    todoUI.list.innerHTML = '<div class="todos-empty">All done! ✓</div>';
+    return;
+  }
+  todoUI.list.innerHTML = todos.map(t=>{
+    const checkId = `todo-${t.id}`;
+    const checked = t.completed ? 'checked' : '';
+    const disabled = t.isSystem ? 'disabled' : ''; // System todos (contract) not manually toggleable by rep
+    const linkHtml = t.action ? `<a href="${t.action}" class="todo-link">Complete →</a>` : '';
+    return `
+      <div class="todo-item ${t.completed?'todo-item--completed':''}">
+        <label class="todo-checkbox">
+          <input type="checkbox" id="${checkId}" data-todo-id="${t.id}" data-is-system="${t.isSystem}" ${checked} ${disabled} onchange="window.toggleTodo('${t.id}', this.checked, ${t.isSystem})" />
+          <span class="todo-title">${escapeHtml(t.title)}</span>
+        </label>
+        ${t.description?`<div class="todo-desc">${escapeHtml(t.description)}</div>`:''}
+        ${linkHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+// Toggle todo completion (only for admin-created, not system/contract todos)
+window.toggleTodo = async function(todoId, completed, isSystem){
+  if (isSystem) return; // No manual toggle for contract status
+  if (!state.currentUser) return;
+  try{
+    await updateDoc(doc(db,'todos', todoId), { completed, updatedAt: new Date().toISOString(), updatedBy: state.currentUser.uid });
+    // Reload to reflect change
+    await loadPersonalTodos();
+  }catch(err){
+    console.error('Failed to update todo', err);
+    alert('Failed to update task');
+    await loadPersonalTodos(); // Revert UI
+  }
+};
+
 // Start the app
 init();
 
@@ -442,37 +872,61 @@ async function loadCalendar() {
   const startISO = start.toISOString().slice(0,10);
   const endISO = end.toISOString().slice(0,10);
 
-  // Fetch all reps' logs for the month range
-  let byDate = new Map();
-  try {
-    const constraints = [where('dateISO','>=',startISO), where('dateISO','<=',endISO), orderBy('dateISO')];
-    const snap = await getDocs(query(collection(db,'repLogs'), ...constraints));
-    snap.forEach(docSnap => {
-      const data = docSnap.data();
-      if (!byDate.has(data.dateISO)) byDate.set(data.dateISO, []);
-      byDate.get(data.dateISO).push({ id: docSnap.id, ...data });
-    });
-  } catch (err) {
-    console.error('Failed to load rep logs', err);
+  // Fetch shift summaries for the current user only (doc-by-id to avoid query rule/index issues)
+  let shiftsByDate = new Map();
+  if (state.currentUser) {
+    try {
+      const tasks = [];
+      const cursor = new Date(start);
+      while (cursor <= end) {
+        const iso = cursor.toISOString().slice(0,10);
+        const id = `${state.currentUser.uid}_${iso}`;
+        tasks.push(getDoc(doc(db, 'repShifts', id)).then(snap => {
+          if (snap.exists()) {
+            const data = snap.data();
+            shiftsByDate.set(iso, { id: snap.id, ...data });
+          }
+        }).catch(() => {}));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      await Promise.all(tasks);
+    } catch (err) {
+      console.warn('Shift summaries not available', err?.message || err);
+    }
   }
 
-  // Fetch events for the month range
+  // For now, skip querying individual door logs on Rep Home to reduce load and avoid rules/index issues.
+  // We already show per-day shift summaries for the current user.
+  let byDate = new Map();
+
+  // Fetch events for the month range (avoid composite indexes by filtering client-side)
   state.monthEvents = new Map();
   try{
     const evSnap = await getDocs(query(
       collection(db,'events'),
       where('dateISO','>=',startISO),
-      where('dateISO','<=',endISO),
-      where('deleted','==', false)
+      where('dateISO','<=',endISO)
     ));
     evSnap.forEach(ds=>{
       const ev = { id: ds.id, ...(ds.data()||{}) };
-      if (!state.monthEvents.has(ev.dateISO)) state.monthEvents.set(ev.dateISO, []);
-      state.monthEvents.get(ev.dateISO).push(ev);
+      if (ev.deleted) return; // client-side filter to avoid composite index
+      
+      // Admin sees ALL events; reps see only events assigned to them
+      if (state.isAdmin) {
+        // Show all events for admin
+        if (!state.monthEvents.has(ev.dateISO)) state.monthEvents.set(ev.dateISO, []);
+        state.monthEvents.get(ev.dateISO).push(ev);
+      } else {
+        // Only include events assigned to this rep (private to them)
+        const assigned = Array.isArray(ev.assignedRepIds) ? ev.assignedRepIds.includes(state.currentUser.uid) : false;
+        if (!assigned) return;
+        if (!state.monthEvents.has(ev.dateISO)) state.monthEvents.set(ev.dateISO, []);
+        state.monthEvents.get(ev.dateISO).push(ev);
+      }
     });
   }catch(err){ console.error('Failed to load events', err); }
 
-  // Render grid with day boxes + rep badges (clickable)
+  // Render grid with day boxes + shift summaries for current user
   calEls.calendar.innerHTML = '';
   const pad = (start.getDay() + 6) % 7; // Monday-first
   for (let i=0;i<pad;i++){ const d=document.createElement('div'); d.className='rep-day empty'; calEls.calendar.appendChild(d); }
@@ -483,31 +937,49 @@ async function loadCalendar() {
     const cell = document.createElement('div');
     cell.className = 'rep-day';
     cell.dataset.date = iso;
-  const logs = byDate.get(iso) || [];
-  const events = state.monthEvents.get(iso) || [];
+    const logs = byDate.get(iso) || [];
+    const events = state.monthEvents.get(iso) || [];
+    const shift = shiftsByDate.get(iso);
+    
     let badgesHtml = '';
-    if (logs.length){
-      const repGroups = new Map();
-      logs.forEach(l=>{ const name = l.rep || 'Unknown'; if(!repGroups.has(name)) repGroups.set(name,[]); repGroups.get(name).push(l); });
-      badgesHtml = Array.from(repGroups.entries()).map(([name, arr]) => {
-        const count = arr.length > 1 ? ` (${arr.length})` : '';
-        return `<div class=\"rep-badge\" data-date=\"${iso}\" data-rep=\"${name}\">${name}${count}</div>`;
-      }).join('');
+    
+    // Show shift summary for current user if exists
+    if (shift && shift.repId === state.currentUser.uid) {
+      const totals = shift.totals || {};
+      const sales = totals.sales || 0;
+      const doors = totals.doors || 0;
+      const hours = shift.activeMinutes ? (shift.activeMinutes / 60).toFixed(1) : '0';
+      const miles = shift.miles || 0;
+      
+      badgesHtml += `<div class="shift-summary" title="Your shift on ${iso}">
+        📊 ${sales} sales • ${doors} doors<br/>
+        ⏱️ ${hours}h • 🚗 ${miles}mi
+      </div>`;
     }
-    const eventBadges = events.map(e=>
-      `<button class=\"event-badge ${e.completed?'event-badge--completed':''}\" data-event-id=\"${e.id}\" title=\"${escapeHtml(e.title||'Event')}\">${escapeHtml((e.time?e.time+' ':'') + (e.title||'Event'))}</button>`
-    ).join('');
+    
+    // Door log badges omitted on Home to reduce noise and queries
+    
+    const eventBadges = events.map(e=> {
+      const isContract = (e.title||'').toLowerCase().includes('contract');
+      const icon = isContract ? '📄 ' : '';
+      
+      // For admin, show which reps are assigned to this event
+      let repInfo = '';
+      if (state.isAdmin && e.assignedRepIds?.length) {
+        const repNames = e.assignedRepIds.map(repId => {
+          const rep = state.reps.find(r => r.id === repId);
+          return rep?.name || repId.substring(0, 8);
+        }).join(', ');
+        repInfo = ` [${repNames}]`;
+      }
+      
+      const displayText = (e.time ? e.time + ' ' : '') + (e.title || 'Event') + repInfo;
+      return `<button class=\"event-badge ${e.completed?'event-badge--completed':''} ${isContract?'event-badge--contract':''}\" data-event-id=\"${e.id}\" title=\"${escapeHtml(e.title||'Event')}\">${icon}${escapeHtml(displayText)}</button>`;
+    }).join('');
     cell.innerHTML = `<div class=\"rep-day__date\">${day}</div><div class=\"rep-day__badges\">${badgesHtml}${eventBadges}</div>`;
 
     // Click on a rep badge opens that rep's log for the day (first if multiple)
-    cell.querySelectorAll('.rep-badge').forEach(badge => {
-      badge.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const repName = badge.dataset.rep;
-        const repLogs = logs.filter(l => (l.rep || 'Unknown') === repName);
-        if (repLogs.length) openLogModal(repLogs[0]);
-      });
-    });
+    // No rep-badge handlers (omitted)
     calEls.calendar.appendChild(cell);
     // Wire event click handlers
     cell.querySelectorAll('.event-badge').forEach(btn=>{
@@ -616,28 +1088,55 @@ async function loadAgendaForCurrentUser(){
   if (!state.currentUser) return;
   const todayISO = new Date().toISOString().slice(0,10);
   try{
-    const snap = await getDocs(query(
-      collection(db,'events'),
-      where('assignedRepIds','array-contains', state.currentUser.uid),
-      where('dateISO','>=', todayISO),
-      where('deleted','==', false)
-    ));
-    const items = snap.docs.map(d=>({ id:d.id, ...(d.data()||{}) }));
-    renderAgenda(items.sort((a,b)=>a.dateISO.localeCompare(b.dateISO)));
+    let snap;
+    if (state.isAdmin) {
+      // Admin sees ALL upcoming events across all reps
+      snap = await getDocs(query(collection(db,'events')));
+    } else {
+      // Use a single array-contains filter and apply date/deleted filters client-side to avoid composite index
+      snap = await getDocs(query(
+        collection(db,'events'),
+        where('assignedRepIds','array-contains', state.currentUser.uid)
+      ));
+    }
+    
+    const items = snap.docs
+      .map(d=>({ id:d.id, ...(d.data()||{}) }))
+      .filter(ev => !ev.deleted && String(ev.dateISO||'') >= todayISO)
+      .sort((a,b)=> String(a.dateISO||'').localeCompare(String(b.dateISO||'')));
+    renderAgenda(items);
   }catch(err){ console.error('Failed to load agenda', err); }
 }
 
 function renderAgenda(items){
   if (!announcementsListEl) return;
   if (!items?.length) return; // no-op
+  
+  const title = state.isAdmin ? 'All Upcoming Events' : 'Your Upcoming Events';
+  
   const html = `
     <div class="announcement-item">
       <div class="announcement-item__header">
-        <h4 class="announcement-item__title">Your Upcoming Events</h4>
+        <h4 class="announcement-item__title">${title}</h4>
         <span class="announcement-item__date">${new Date().toLocaleDateString('en-GB')}</span>
       </div>
       <ul class="modal__list">
-        ${items.map(ev=>`<li><strong>${escapeHtml(ev.dateISO)}${ev.time?(' '+escapeHtml(ev.time)) : ''} — ${escapeHtml(ev.title||'Event')}</strong>${ev.description?`<div>${escapeHtml(ev.description)}</div>`:''}</li>`).join('')}
+        ${items.map(ev=>{
+          const isContract = (ev.title||'').toLowerCase().includes('contract');
+          const icon = isContract ? '📄 ' : '';
+          
+          // For admin, show which reps are assigned
+          let repInfo = '';
+          if (state.isAdmin && ev.assignedRepIds?.length) {
+            const repNames = ev.assignedRepIds.map(repId => {
+              const rep = state.reps.find(r => r.id === repId);
+              return rep?.name || repId.substring(0, 8);
+            }).join(', ');
+            repInfo = ` <span style="color: #64748b;">[${repNames}]</span>`;
+          }
+          
+          return `<li><strong>${icon}${escapeHtml(ev.dateISO)}${ev.time?(' '+escapeHtml(ev.time)) : ''} — ${escapeHtml(ev.title||'Event')}${repInfo}</strong>${ev.description?`<div>${escapeHtml(ev.description)}</div>`:''}</li>`;
+        }).join('')}
       </ul>
     </div>`;
   announcementsListEl.insertAdjacentHTML('afterbegin', html);

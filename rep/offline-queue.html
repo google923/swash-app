@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Offline Payment Queue – Swash</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="rep-dashboard.css" />
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 0; background:#f8fafc; }
+    header { background:#0f172a; color:#fff; padding:14px 18px; }
+    h1 { margin:0; font-size:1.15rem; }
+    .wrap { padding:16px; }
+    table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+    th, td { padding:6px 8px; border:1px solid #e2e8f0; text-align:left; }
+    th { background:#f1f5f9; font-weight:600; }
+    tr.yellow { background:#fef9c3; }
+    tr.green { background:#dcfce7; }
+    tr.red { background:#fee2e2; }
+    .badge { display:inline-block; padding:2px 6px; border-radius:6px; font-size:0.65rem; font-weight:600; }
+    .controls { margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap; }
+    button { cursor:pointer; border:1px solid #0f172a; background:#0f172a; color:#fff; padding:6px 10px; border-radius:6px; font-size:0.75rem; }
+    button.secondary { background:#fff; color:#0f172a; }
+    #toast { position:fixed; bottom:14px; right:14px; z-index:2000; }
+    #toast .item { background:#fff; border:1px solid #cbd5e1; padding:8px 12px; margin-top:8px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-size:0.75rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Offline Payment Queue</h1>
+  </header>
+  <div class="wrap">
+    <div class="controls">
+      <button id="refreshBtn" class="secondary">Manual Refresh</button>
+    </div>
+    <table id="queueTable">
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Email</th>
+          <th>Amount</th>
+          <th>Tier</th>
+          <th>Rep</th>
+          <th>Created</th>
+          <th>Status</th>
+          <th>Retry</th>
+          <th>Resend</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div id="toast"></div>
+  <script type="module" src="../firebase-init.js"></script>
+  <script type="module" src="offline-queue.js"></script>
+</body>
+</html>

@@ -124,6 +124,9 @@
       font-weight: 700;
       margin-bottom: 20px;
       color: #0078d7;
+      cursor: move;
+      user-select: none;
+      touch-action: none;
     }
     .form-group {
       margin-bottom: 20px;
@@ -253,6 +256,13 @@
     }
     .territory-actions .delete-btn:hover {
       background: #dc2626;
+    }
+    .territory-actions .set-days-btn {
+      background: #10b981;
+      color: white;
+    }
+    .territory-actions .set-days-btn:hover {
+      background: #0aa173;
     }
 
     /* Rep Tags */
@@ -419,6 +429,13 @@
         font-size: 0.9rem;
       }
     }
+    /* Booking Days Display */
+    .booking-days-container { margin-top:10px; background:rgba(0,120,215,0.06); border:1px solid #0078d7; border-radius:8px; padding:10px 12px; }
+    .booking-days-container h4 { margin:0 0 8px 0; font-size:0.8rem; letter-spacing:0.5px; text-transform:uppercase; color:#0078d7; font-weight:700; display:flex; align-items:center; gap:6px; }
+    .booking-day-pills { display:flex; flex-wrap:wrap; gap:6px; }
+    .booking-day-pill { background:#fff; border:1px solid #0078d7; border-radius:18px; padding:4px 10px; font-size:0.7rem; font-weight:600; color:#0a4f80; display:inline-flex; align-items:center; gap:4px; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+    .booking-day-pill .week-label { background:#0078d7; color:#fff; padding:2px 6px; border-radius:12px; font-size:0.65rem; font-weight:700; }
+    .booking-days-empty { font-size:0.7rem; color:#64748b; font-style:italic; }
   </style>
 </head>
 <body>
@@ -448,6 +465,12 @@
           <option value="roadmap">Normal Map</option>
           <option value="terrain">Terrain</option>
         </select>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#334155;">
+          <input id="toggleAllPinsTerritory" type="checkbox" checked />
+          <span>Show pins (last 6 months)</span>
+        </label>
+        <span id="territoryPinsHint" class="small" style="color:#64748b;">Preparing…</span>
+        <span id="territoryPinsLoading" class="small" style="display:none;color:#64748b;">Loading pins…</span>
       </div>
 
       <!-- Territory Creation Modal -->
@@ -474,17 +497,6 @@
               <p style="font-size: 0.8rem; color: #64748b;">Click to toggle reps. Selected reps turn solid.</p>
             </div>
 
-            <div class="form-group">
-              <label for="territoryFocusFromDate">Focus Period - From Date</label>
-              <input type="date" id="territoryFocusFromDate" name="focusFromDate">
-            </div>
-
-            <div class="form-group">
-              <label for="territoryFocusToDate">Focus Period - To Date</label>
-              <input type="date" id="territoryFocusToDate" name="focusToDate">
-              <p style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">Date range for reps to focus on this territory</p>
-            </div>
-
             <div class="modal-actions">
               <button type="submit" class="primary" id="territorySubmitBtn">✓ Create Territory</button>
               <button type="button" class="secondary" id="closeTerritoryModal">Cancel</button>
@@ -504,8 +516,8 @@
         </div>
       </div>
 
-      <!-- Map Info Box -->
-      <div class="map-info" id="territoryLegend">
+      <!-- Map Info Box - Hidden since info is displayed in "Your Territories" section -->
+      <div class="map-info" id="territoryLegend" style="display: none;">
         <!-- Dynamic legend renders here (territory name, focus dates, stats, reps) -->
         <p id="drawingStatus" style="color: #0078d7; font-weight: 600; display: none;">Click on the map to draw your territory polygon. Double-click to finish.</p>
       </div>
@@ -513,23 +525,7 @@
       <!-- Google Map -->
       <div id="territoryMap"></div>
 
-      <!-- Territory Stats -->
-      <div class="territory-stats">
-        <div class="stat-card">
-          <p>Territory Area</p>
-          <div class="value" id="areaValue">--</div>
-          <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">sq miles</p>
-        </div>
-        <div class="stat-card">
-          <p>Polygon Vertices</p>
-          <div class="value" id="verticesValue">0</div>
-        </div>
-        <div class="stat-card">
-          <p>Last Saved</p>
-          <div class="value" id="lastSavedValue">Never</div>
-          <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Check browser storage</p>
-        </div>
-      </div>
+      <!-- Territory Stats removed per request -->
 
       <!-- Saved Territories -->
       <div class="territories-section">
@@ -537,11 +533,14 @@
         <div id="territoriesList" class="territories-list">
           <p style="color: #94a3b8; font-size: 0.95rem; padding: 16px; text-align: center; background: #f8fafc; border-radius: 8px;">No territories created yet. Draw and save one to get started.</p>
         </div>
+        <!-- Hidden legacy stat elements kept so existing code (updateStats/clearPolygon) doesn't throw -->
+        <div style="display:none;">
+          <span id="verticesValue">0</span>
+          <span id="areaValue">--</span>
+        </div>
       </div>
 
-      <p id="howToUse" style="margin-top: 24px; padding: 16px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px; color: #1e293b;">
-        <strong>💡 How to use:</strong> Click "Draw Territory" to start creating your territory polygon. Click on the map to add points. Double-click to finish. The territory will be saved to your browser storage.
-      </p>
+      
     </div>
   </main>
 
@@ -561,7 +560,9 @@
   <script type="module" src="../auth-check.js"></script>
 
   <!-- Google Maps API -->
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=drawing,geometry"></script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=drawing,geometry&loading=async"></script>
+  <!-- Google Maps Marker Clusterer -->
+  <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
 
   <!-- Firebase -->
   <script type="module">
@@ -596,13 +597,19 @@
     let polygonPath = [];
     let territories = []; // Array of territory objects
     let currentPolygonBeingSaved = null;
+  let editingTerritoryId = null;
+  let editingOriginalGeometry = null;
+    const modalDragState = { dragging: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0 };
   const territoryOverlays = {}; // Map territory IDs to their map overlays
   let territorySource = 'none'; // Track source: collection | system | localStorage | none
     let selectedReps = []; // Track selected reps for new territory
     let availableReps = []; // Cached list of rep users for selection
-    let repLogs = []; // Array of rep logs
-    const logPins = {}; // Map log IDs to marker objects
+  let repLogs = []; // Array of rep logs (six-month set)
+  let pinMarkers = []; // Google Maps Marker instances
+  let pinCluster = null; // MarkerClusterer instance
     const repColors = {}; // Map rep names to colors for pins
+  let allPinsLoaded = false;
+  let allPinsVisible = false;
 
     // Role-based access
     let currentUser = null;
@@ -632,113 +639,120 @@
       };
     }
 
-    // Load logs from Firestore (collection group over doorLogs)
-    async function loadLogs() {
+    // Load six months of pins from doorsknocked collection in monthly batches
+    async function loadSixMonthPins() {
       try {
         const db = window.firebaseDb;
         if (!db) return;
 
         const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js");
-        const { getDocs, collectionGroup, query, where, limit } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const { getDocs, collection, query, where, orderBy } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         const auth = getAuth();
 
-        // Wait for auth to be ready
+        // Require auth (reps/admins can read doorsknocked per rules)
         if (!auth.currentUser) {
-          console.log('Not authenticated, skipping log load');
+          console.log('Not authenticated, skipping pins load');
           return;
         }
 
+        // Build monthly windows across the last 6 months
         repLogs = [];
-        if (userRole == null) {
-          console.log('[logs] user role not resolved yet, skipping');
-          return;
+        const hint = document.getElementById('territoryPinsHint');
+        const today = new Date();
+        const start = new Date(); start.setMonth(start.getMonth() - 6);
+        const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+        const endCursor = new Date(today.getFullYear(), today.getMonth(), 1);
+        const months = [];
+        while (cursor <= endCursor) {
+          const mStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1).toISOString().slice(0,10);
+          const mEnd = new Date(cursor.getFullYear(), cursor.getMonth()+1, 0).toISOString().slice(0,10);
+          months.push({ start: mStart, end: mEnd, label: mStart.slice(0,7) });
+          cursor.setMonth(cursor.getMonth()+1);
         }
-        if (userRole === 'admin') {
-          // Use collection group for admins (broad view capped to 1000)
-          let q = query(collectionGroup(db, 'doorLogs'), limit(1000));
-          const snap = await getDocs(q);
-          snap.forEach(d => {
-            const data = d.data();
-            if (typeof data.gpsLat === 'number' && typeof data.gpsLng === 'number') {
-              repLogs.push({
-                id: d.id,
-                repId: data.repId || 'unknown',
-                timestamp: data.timestamp,
-                status: data.status,
-                gpsLat: data.gpsLat,
-                gpsLng: data.gpsLng,
-                note: data.note || '',
-                territoryId: data.territoryId || null,
-              });
-            }
-          });
-        } else if (userRole === 'rep') {
-          // Load last 7 days of doorLogs for this rep without collectionGroup to avoid rule edge cases
-          const repId = auth.currentUser.uid;
-          const today = new Date();
-          for (let i = 0; i < 7; i++) {
-            const d = new Date(today.getTime() - i * 86400000);
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const dateKey = `${y}-${m}-${day}`;
-            try {
-              const daySnap = await getDocs(collection(db, 'repLogs', repId, 'dates', dateKey, 'doorLogs'));
-              daySnap.forEach(docSnap => {
-                const data = docSnap.data();
-                if (typeof data.gpsLat === 'number' && typeof data.gpsLng === 'number') {
-                  repLogs.push({
-                    id: docSnap.id,
-                    repId: data.repId || repId,
-                    timestamp: data.timestamp,
-                    status: data.status,
-                    gpsLat: data.gpsLat,
-                    gpsLng: data.gpsLng,
-                    note: data.note || '',
-                    territoryId: data.territoryId || null,
-                  });
-                }
-              });
-            } catch (innerErr) {
-              // Ignore missing day collections silently
-            }
+        for (let i=0;i<months.length;i++) {
+          const w = months[i];
+          if (hint) hint.textContent = `Loading ${w.label}… (${i+1}/${months.length})`;
+          try {
+            const qWin = query(collection(db, 'doorsknocked'), where('date','>=', w.start), where('date','<=', w.end), orderBy('date'));
+            const snap = await getDocs(qWin);
+            snap.forEach(docSnap => {
+              const d = docSnap.data();
+              if (typeof d.gpsLat === 'number' && typeof d.gpsLng === 'number') {
+                repLogs.push({
+                  id: docSnap.id,
+                  repId: d.repId || 'unknown',
+                  timestamp: d.timestamp || (d.date ? `${d.date}T00:00:00.000Z` : null),
+                  status: d.status,
+                  gpsLat: d.gpsLat,
+                  gpsLng: d.gpsLng,
+                  note: d.notes || '',
+                  territoryId: d.territoryId || null,
+                  houseNumber: d.houseNumber || '',
+                  roadName: d.roadName || ''
+                });
+              }
+            });
+          } catch(e) {
+            console.warn('[doorsknocked] month load failed', w, e);
           }
+          await new Promise(r=>setTimeout(r,25));
         }
-
-        renderLogPins();
+        allPinsLoaded = true;
         updateLegendWithStats();
       } catch (err) {
         if (err && (err.code === 'permission-denied' || (''+err).includes('Missing or insufficient permissions'))) {
-          console.warn('[logs] permission denied, hiding logs for this user');
+          console.warn('[pins] permission denied, hiding pins for this user');
           return;
         }
-        console.error("Error loading logs:", err);
+        console.error("Error loading six-month pins:", err);
       }
     }
 
-    // Render log pins on map
+    // Render pins on map with clustering
     function renderLogPins() {
-      // Clear existing pins
-      Object.values(logPins).forEach(marker => marker.setMap(null));
-      Object.keys(logPins).forEach(key => delete logPins[key]);
+      // Clear previous markers & cluster
+      if (pinCluster) { pinCluster.setMap(null); pinCluster = null; }
+      pinMarkers.forEach(m => m.setMap(null));
+      pinMarkers = [];
 
-      // Add new pins
-      repLogs.forEach((log) => {
+      const markers = repLogs.map(log => {
         const color = log.status === 'X' ? '#c43131' : log.status === 'O' ? '#f59e0b' : log.status === 'SignUp' ? '#1c9c5d' : '#f5deb3';
         const marker = new google.maps.Marker({
           position: { lat: log.gpsLat, lng: log.gpsLng },
-          map: map,
           icon: createMarkerIcon(color),
-          title: `${log.status} - ${new Date(log.timestamp).toLocaleString('en-GB')}`,
-          optimized: false,
+          title: `${log.status} - ${log.timestamp ? new Date(log.timestamp).toLocaleString('en-GB') : ''}`,
+          optimized: true
         });
-
         marker.addListener('click', () => {
-          showLogDetailModal(log);
+          const addr = [log.houseNumber, log.roadName].filter(Boolean).join(' ');
+          const ts = log.timestamp ? new Date(log.timestamp).toLocaleString('en-GB',{ day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
+          const repLine = log.repName || log.repId || 'Unknown';
+          const noteLine = log.notes ? `<br>${log.notes}` : '';
+          const html = `<div style='font-size:12px;line-height:1.4;'><strong>${log.status==='SignUp'?'Sale':log.status}</strong><br>${ts}${addr?`<br>${addr}`:''}<br><span style='color:#475569'>Rep: ${repLine}</span>${noteLine}</div>`;
+          showLogDetailModal(log, html);
         });
-
-        logPins[log.id] = marker;
+        return marker;
       });
+      pinMarkers = markers;
+      // Cluster with default algorithm; chunking handled internally by Maps
+      if (window.markerClusterer && window.markerClusterer.MarkerClusterer) {
+        pinCluster = new window.markerClusterer.MarkerClusterer({ map, markers, onClusterClick: undefined });
+      } else {
+        // Fallback: add directly (less ideal for 90k)
+        markers.forEach(m => m.setMap(map));
+      }
+    }
+
+    function showAllPins() {
+      if (pinCluster) { pinCluster.setMap(map); return; }
+      // If cluster not created yet, render and attach
+      renderLogPins();
+      allPinsVisible = true;
+    }
+
+    function hideAllPins() {
+      if (pinCluster) { pinCluster.setMap(null); }
+      allPinsVisible = false;
     }
 
     // Show log detail modal
@@ -822,7 +836,8 @@
       const saveBtn = document.getElementById('savePolygonBtn');
       const territoryList = document.querySelector('.territories-section');
       const mapControls = document.querySelector('.map-controls');
-      const howTo = document.getElementById('howToUse');
+  // howTo box removed from DOM; keep reference null-safe
+  const howTo = null;
 
       if (userRole === 'admin') {
         // Admin: Show all controls
@@ -830,14 +845,14 @@
         if (clearBtn) clearBtn.style.display = 'block';
         if (saveBtn) saveBtn.style.display = 'block';
         if (territoryList) territoryList.style.display = 'block';
-        if (howTo) howTo.style.display = 'block';
+  // howTo removed
       } else {
         // Rep or unknown: Hide territory creation controls by default
         if (drawBtn) drawBtn.style.display = 'none';
         if (clearBtn) clearBtn.style.display = 'none';
         if (saveBtn) saveBtn.style.display = 'none';
         if (territoryList) territoryList.style.display = 'block'; // show assigned list
-        if (howTo) howTo.style.display = 'none';
+  // howTo removed
 
         // Reps can view ALL territories (no filtering). Keep logs as-is.
         // filterLogsForRep(); // optional: currently logs already show broad view
@@ -868,20 +883,22 @@
 
       container.innerHTML = displayTerritories.map(territory => {
         const repBadges = Array.isArray(territory.reps) && territory.reps.length > 0
-          ? territory.reps.map(rep => `<span style="display:inline-block;padding:4px 10px;background:#0078d7;color:#fff;border-radius:12px;font-size:0.85rem;margin-right:4px;margin-bottom:4px;">${escapeHtml(rep)}</span>`).join('')
-          : '<span style="color:#94a3b8;font-size:0.85rem;">No reps assigned</span>';
+          ? territory.reps.map(rep => `<span style=\"display:inline-block;padding:4px 10px;background:#0078d7;color:#fff;border-radius:12px;font-size:0.85rem;margin-right:4px;margin-bottom:4px;\">${escapeHtml(rep)}</span>`).join('')
+          : '<span style=\"color:#94a3b8;font-size:0.85rem;\">No reps assigned</span>';
+        const bookingDaysHtml = buildBookingDaysHtml(territory);
         return `
-        <div class="territory-item">
-          <div class="territory-color" style="background-color: ${territory.color};"></div>
-          <div class="territory-info">
-            <div class="territory-name">${escapeHtml(territory.name)}</div>
-            <div class="territory-meta">
+        <div class=\"territory-item\">
+          <div class=\"territory-color\" style=\"background-color: ${territory.color};\"></div>
+          <div class=\"territory-info\">
+            <div class=\"territory-name\">${escapeHtml(territory.name)}</div>
+            <div class=\"territory-meta\">
               📐 ${(territory.area ? territory.area.toFixed(2) : '--')} sq mi
               ${territory.focusFromDate && territory.focusToDate ? ` | 📅 ${territory.focusFromDate} to ${territory.focusToDate}` : territory.focusFromDate ? ` | 📅 From ${territory.focusFromDate}` : territory.focusToDate ? ` | 📅 Until ${territory.focusToDate}` : ''}
             </div>
-            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+            <div style=\"display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;\">
               ${repBadges}
             </div>
+            ${bookingDaysHtml}
           </div>
         </div>
       `;}).join('');
@@ -990,21 +1007,60 @@
         fitMapToTerritories();
       }
 
-  // Load logs from Firestore
-  await loadLogs();
+  // Wire toggle for all pins
+  const toggleAllPinsEl = document.getElementById('toggleAllPinsTerritory');
+  const pinsLoadingEl = document.getElementById('territoryPinsLoading');
+  if (toggleAllPinsEl) {
+    // Auto-load by default since it's checked
+    const autoLoad = async () => {
+      if (!allPinsLoaded) {
+        if (pinsLoadingEl) pinsLoadingEl.style.display = 'inline';
+        await loadSixMonthPins();
+        if (pinsLoadingEl) pinsLoadingEl.style.display = 'none';
+        renderLogPins();
+      }
+      showAllPins();
+    };
+    if (toggleAllPinsEl.checked) { autoLoad(); }
+    toggleAllPinsEl.addEventListener('change', async (e) => {
+      if (e.target.checked) {
+        await autoLoad();
+      } else {
+        hideAllPins();
+      }
+    });
+  }
 
       // Map type selector
       document.getElementById('mapTypeSelect').addEventListener('change', (e) => {
         map.setMapTypeId(e.target.value);
       });
 
-      // Draw polygon button
-      document.getElementById('drawPolygonBtn').addEventListener('click', toggleDrawing);
-      document.getElementById('clearPolygonBtn').addEventListener('click', clearPolygon);
-      document.getElementById('savePolygonBtn').addEventListener('click', startTerritoryCreation);
+      // Draw polygon button - with null checks
+      const drawBtn = document.getElementById('drawPolygonBtn');
+      const clearBtn = document.getElementById('clearPolygonBtn');
+      const saveBtn = document.getElementById('savePolygonBtn');
+      
+      if (drawBtn) {
+        drawBtn.addEventListener('click', toggleDrawing);
+      } else {
+        console.warn('[map] drawPolygonBtn not found in DOM');
+      }
+      
+      if (clearBtn) {
+        clearBtn.addEventListener('click', clearPolygon);
+      } else {
+        console.warn('[map] clearPolygonBtn not found in DOM');
+      }
+      
+      if (saveBtn) {
+        saveBtn.addEventListener('click', startTerritoryCreation);
+      } else {
+        console.warn('[map] savePolygonBtn not found in DOM');
+      }
 
       // Modal handlers
-      document.getElementById('closeTerritoryModal').addEventListener('click', closeTerritoryModal);
+      document.getElementById('closeTerritoryModal').addEventListener('click', () => closeTerritoryModal({ revertIfEditing: true }));
       document.getElementById('territoryForm').addEventListener('submit', handleTerritoryFormSubmit);
 
       // Load rep selection buttons only for admins
@@ -1014,13 +1070,92 @@
 
       // Close modal when clicking outside
       document.getElementById('territoryModal').addEventListener('click', (e) => {
-        if (e.target.id === 'territoryModal') closeTerritoryModal();
+        if (e.target.id === 'territoryModal') closeTerritoryModal({ revertIfEditing: true });
       });
+    }
+
+    function ensureDrawingStatusElement() {
+      let statusEl = document.getElementById('drawingStatus');
+      if (statusEl) {
+        return statusEl;
+      }
+
+      const legend = document.getElementById('territoryLegend');
+      const host = legend || document.querySelector('.map-controls') || document.querySelector('.map-container') || document.body;
+      if (!host) {
+        return null;
+      }
+
+      statusEl = document.createElement('p');
+      statusEl.id = 'drawingStatus';
+      statusEl.textContent = 'Click on the map to draw your territory polygon. Double-click to finish.';
+      statusEl.style.color = '#0078d7';
+      statusEl.style.fontWeight = '600';
+      statusEl.style.display = 'none';
+      host.appendChild(statusEl);
+      return statusEl;
+    }
+
+    function resetModalDragState() {
+      modalDragState.dragging = false;
+      modalDragState.startX = 0;
+      modalDragState.startY = 0;
+      modalDragState.offsetX = 0;
+      modalDragState.offsetY = 0;
+      const modal = document.getElementById('territoryModal');
+      if (!modal) return;
+      const content = modal.querySelector('.modal-content');
+      if (content) content.style.transform = 'translate(0px, 0px)';
+    }
+
+    function setupTerritoryModalDrag() {
+      const modal = document.getElementById('territoryModal');
+      if (!modal) return;
+      const content = modal.querySelector('.modal-content');
+      const header = modal.querySelector('.modal-header');
+      if (!content || !header) return;
+
+      const onPointerDown = (event) => {
+        if (!modal.classList.contains('show')) return;
+        modalDragState.dragging = true;
+        modalDragState.startX = event.clientX;
+        modalDragState.startY = event.clientY;
+        if (header.setPointerCapture) header.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      };
+
+      const onPointerMove = (event) => {
+        if (!modalDragState.dragging) return;
+        const dx = event.clientX - modalDragState.startX;
+        const dy = event.clientY - modalDragState.startY;
+        modalDragState.offsetX += dx;
+        modalDragState.offsetY += dy;
+        content.style.transform = `translate(${modalDragState.offsetX}px, ${modalDragState.offsetY}px)`;
+        modalDragState.startX = event.clientX;
+        modalDragState.startY = event.clientY;
+      };
+
+      const finishDrag = (event) => {
+        if (!modalDragState.dragging) return;
+        modalDragState.dragging = false;
+        if (header.releasePointerCapture) header.releasePointerCapture(event.pointerId);
+      };
+
+      header.addEventListener('pointerdown', onPointerDown);
+      header.addEventListener('pointermove', onPointerMove);
+      header.addEventListener('pointerup', finishDrag);
+      header.addEventListener('pointercancel', finishDrag);
+      header.addEventListener('pointerleave', finishDrag);
     }
 
     function toggleDrawing() {
       const btn = document.getElementById('drawPolygonBtn');
-      const status = document.getElementById('drawingStatus');
+      const status = ensureDrawingStatusElement();
+      
+      if (!btn || !status) {
+        console.error('[map] toggleDrawing: button or status element not found');
+        return;
+      }
       
       if (drawingManager.getDrawingMode() === null) {
         // Start drawing
@@ -1051,8 +1186,10 @@
         circle = null;
       }
       polygonPath = [];
-      document.getElementById('verticesValue').textContent = '0';
-      document.getElementById('areaValue').textContent = '--';
+      const vEl = document.getElementById('verticesValue');
+      const aEl = document.getElementById('areaValue');
+      if (vEl) vEl.textContent = '0';
+      if (aEl) aEl.textContent = '--';
       currentPolygonBeingSaved = null;
     }
 
@@ -1063,21 +1200,82 @@
     function updateStats() {
       if (polygon) {
         const path = polygon.getPath();
-        document.getElementById('verticesValue').textContent = path.length;
+        const vEl = document.getElementById('verticesValue');
+        if (vEl) vEl.textContent = path.length;
         
         if (path.length >= 3) {
           const area = calculatePolygonArea(path);
-          document.getElementById('areaValue').textContent = area.toFixed(2);
+          const aEl = document.getElementById('areaValue');
+          if (aEl) aEl.textContent = area.toFixed(2);
         } else {
-          document.getElementById('areaValue').textContent = '--';
+          const aEl = document.getElementById('areaValue');
+          if (aEl) aEl.textContent = '--';
         }
       } else if (circle) {
         const radius = circle.getRadius();
         const radiusMiles = radius / 1609.34;
         const area = Math.PI * radiusMiles * radiusMiles;
-        document.getElementById('areaValue').textContent = area.toFixed(2);
-        document.getElementById('verticesValue').textContent = 'Circle';
+        const aEl = document.getElementById('areaValue');
+        const vEl = document.getElementById('verticesValue');
+        if (aEl) aEl.textContent = area.toFixed(2);
+        if (vEl) vEl.textContent = 'Circle';
       }
+    }
+
+    function snapshotOverlayGeometry(overlay) {
+      if (!overlay) return null;
+      if (overlay instanceof google.maps.Polygon) {
+        const path = overlay.getPath();
+        const coords = [];
+        path.forEach(point => coords.push({ lat: point.lat(), lng: point.lng() }));
+        return { type: 'polygon', path: coords };
+      }
+      if (overlay instanceof google.maps.Circle) {
+        const center = overlay.getCenter();
+        return {
+          type: 'circle',
+          center: { lat: center.lat(), lng: center.lng() },
+          radius: overlay.getRadius()
+        };
+      }
+      return null;
+    }
+
+    function restoreOverlayGeometry(overlay, snapshot) {
+      if (!overlay || !snapshot) return;
+      if (snapshot.type === 'polygon' && overlay instanceof google.maps.Polygon) {
+        if (!overlay.getMap() && map) overlay.setMap(map);
+        overlay.setPath(snapshot.path.map(p => ({ lat: p.lat, lng: p.lng })));
+      } else if (snapshot.type === 'circle' && overlay instanceof google.maps.Circle) {
+        if (!overlay.getMap() && map) overlay.setMap(map);
+        overlay.setCenter(snapshot.center);
+        overlay.setRadius(snapshot.radius);
+      }
+    }
+
+    function exitEditingMode() {
+      if (!editingTerritoryId) {
+        currentPolygonBeingSaved = null;
+        return;
+      }
+      const overlay = territoryOverlays[editingTerritoryId];
+      if (overlay) {
+        if (overlay instanceof google.maps.Polygon || overlay instanceof google.maps.Circle) {
+          overlay.setEditable(false);
+          if (typeof overlay.setDraggable === 'function') overlay.setDraggable(false);
+        }
+      }
+      if (overlay === polygon) polygon = null;
+      if (overlay === circle) circle = null;
+      editingTerritoryId = null;
+      editingOriginalGeometry = null;
+      currentPolygonBeingSaved = null;
+      const status = document.getElementById('drawingStatus');
+      if (status) {
+        status.style.display = 'none';
+        status.textContent = 'Click on the map to draw your territory polygon. Double-click to finish.';
+      }
+      resetModalDragState();
     }
 
     function startTerritoryCreation() {
@@ -1093,6 +1291,7 @@
       const modal = document.getElementById('territoryModal');
       const header = document.getElementById('territoryModalHeader');
       const submitBtn = document.getElementById('territorySubmitBtn');
+      const content = modal ? modal.querySelector('.modal-content') : null;
       
       if (isEditMode) {
         header.textContent = 'Edit Territory';
@@ -1101,18 +1300,32 @@
         header.textContent = 'Create Territory';
         submitBtn.textContent = '✓ Create Territory';
       }
+      if (content) {
+        content.style.transform = 'translate(0px, 0px)';
+      }
       
       modal.classList.add('show');
     }
 
-    function closeTerritoryModal() {
-      document.getElementById('territoryModal').classList.remove('show');
-      document.getElementById('territoryForm').reset();
+    function closeTerritoryModal(options = {}) {
+      const { revertIfEditing = false } = options;
+      const modal = document.getElementById('territoryModal');
+      if (modal) modal.classList.remove('show');
+      const form = document.getElementById('territoryForm');
+      if (form) form.reset();
+      const content = modal ? modal.querySelector('.modal-content') : null;
+      if (content) content.style.transform = 'translate(0px, 0px)';
+
+      if (editingTerritoryId && revertIfEditing && editingOriginalGeometry) {
+        const overlay = territoryOverlays[editingTerritoryId];
+        restoreOverlayGeometry(overlay, editingOriginalGeometry);
+      }
+
+      exitEditingMode();
       selectedReps = [];
       updateRepSelectionHidden();
-      // Reset to create mode
-      document.getElementById('territoryForm').onsubmit = handleTerritoryFormSubmit;
-      // leave buttons rendered for next open
+      syncRepSelectionUI();
+      resetModalDragState();
     }
 
     async function loadReps() {
@@ -1153,6 +1366,21 @@
       }
     }
 
+    function syncRepSelectionUI() {
+      const container = document.getElementById('repSelectionContainer');
+      if (!container) return;
+      const buttons = container.querySelectorAll('.rep-pill');
+      if (!buttons || buttons.length === 0) return;
+      const selectedSet = new Set(selectedReps);
+      buttons.forEach(btn => {
+        const name = btn.getAttribute('data-rep');
+        const isSel = selectedSet.has(name);
+        btn.style.background = isSel ? '#0078d7' : '#fff';
+        btn.style.color = isSel ? '#fff' : '#0078d7';
+        btn.style.borderColor = '#0078d7';
+      });
+    }
+
     function renderRepSelection(reps) {
       const container = document.getElementById('repSelectionContainer');
       if (!reps || reps.length === 0) {
@@ -1172,13 +1400,10 @@
           const idx = selectedReps.indexOf(name);
           if (idx >= 0) selectedReps.splice(idx,1); else selectedReps.push(name);
           updateRepSelectionHidden();
-          // toggle style
-          const isSel = selectedReps.includes(name);
-          btn.style.background = isSel ? '#0078d7' : '#fff';
-          btn.style.color = isSel ? '#fff' : '#0078d7';
-          btn.style.borderColor = '#0078d7';
+          syncRepSelectionUI();
         });
       });
+      syncRepSelectionUI();
     }
 
     function updateRepSelectionHidden() {
@@ -1190,87 +1415,119 @@
 
       const name = document.getElementById('territoryName').value;
       const color = document.getElementById('territoryColor').value;
-      const focusFromDate = document.getElementById('territoryFocusFromDate').value;
-      const focusToDate = document.getElementById('territoryFocusToDate').value;
 
       if (!name || selectedReps.length === 0) {
         alert('Please fill in territory name and add at least one rep.');
         return;
       }
+      if (editingTerritoryId) {
+        updateExistingTerritory({ name, color });
+      } else {
+        createNewTerritory({ name, color });
+      }
+    }
 
-      // Build territory object
-      let territoryData = {
+    function createNewTerritory({ name, color }) {
+      const activeShape = currentPolygonBeingSaved || polygon || circle;
+      if (!(activeShape instanceof google.maps.Polygon) && !(activeShape instanceof google.maps.Circle)) {
+        alert('Please draw a territory (polygon or circle) before saving.');
+        return;
+      }
+
+      const territoryData = {
         id: Date.now().toString(),
-        name: name,
-        color: color,
+        name,
+        color,
         reps: [...selectedReps],
-        focusFromDate: focusFromDate || null,
-        focusToDate: focusToDate || null,
         createdAt: new Date().toISOString(),
       };
 
-      // Add polygon/circle data
-      if (currentPolygonBeingSaved) {
-        if (currentPolygonBeingSaved instanceof google.maps.Polygon) {
-          const path = currentPolygonBeingSaved.getPath();
-          territoryData.type = 'polygon';
-          territoryData.path = [];
-          path.forEach(point => {
-            territoryData.path.push({
-              lat: point.lat(),
-              lng: point.lng(),
-            });
-          });
-          const area = calculatePolygonArea(path);
-          territoryData.area = area;
-        } else if (currentPolygonBeingSaved instanceof google.maps.Circle) {
-          const center = currentPolygonBeingSaved.getCenter();
-          territoryData.type = 'circle';
-          territoryData.center = {
-            lat: center.lat(),
-            lng: center.lng(),
-          };
-          territoryData.radius = currentPolygonBeingSaved.getRadius();
-          const radiusMiles = territoryData.radius / 1609.34;
-          const area = Math.PI * radiusMiles * radiusMiles;
-          territoryData.area = area;
-        }
+      if (activeShape instanceof google.maps.Polygon) {
+        const path = activeShape.getPath();
+        const coords = [];
+        path.forEach(point => {
+          coords.push({ lat: point.lat(), lng: point.lng() });
+        });
+        territoryData.type = 'polygon';
+        territoryData.path = coords;
+        territoryData.area = calculatePolygonArea(path);
+      } else if (activeShape instanceof google.maps.Circle) {
+        const center = activeShape.getCenter();
+        territoryData.type = 'circle';
+        territoryData.center = { lat: center.lat(), lng: center.lng() };
+        territoryData.radius = activeShape.getRadius();
+        const radiusMiles = territoryData.radius / 1609.34;
+        territoryData.area = Math.PI * radiusMiles * radiusMiles;
       }
 
-      // Add to territories array and persist
       territories.push(territoryData);
       saveTerritories();
 
-      // Update map
       renderTerritory(territoryData);
       renderTerritoriesList();
-      // Center on the newly created territory
+
       try {
-        const b = new google.maps.LatLngBounds();
+        const bounds = new google.maps.LatLngBounds();
         if (territoryData.type === 'polygon' && Array.isArray(territoryData.path)) {
-          territoryData.path.forEach(p => b.extend(new google.maps.LatLng(p.lat, p.lng)));
+          territoryData.path.forEach(p => bounds.extend(new google.maps.LatLng(p.lat, p.lng)));
         } else if (territoryData.type === 'circle' && territoryData.center) {
-          b.extend(new google.maps.LatLng(territoryData.center.lat, territoryData.center.lng));
+          bounds.extend(new google.maps.LatLng(territoryData.center.lat, territoryData.center.lng));
         }
-        if (!b.isEmpty()) map.fitBounds(b);
+        if (!bounds.isEmpty()) map.fitBounds(bounds);
       } catch (_) {}
 
-      // Clear drawing
-      if (polygon) {
-        polygon.setMap(null);
-        polygon = null;
+      if (activeShape) {
+        activeShape.setMap(null);
       }
-      if (circle) {
-        circle.setMap(null);
-        circle = null;
-      }
-      currentPolygonBeingSaved = null;
-      selectedReps = [];
-  clearPolygon();
+      clearPolygon();
 
-      // Close modal
-      closeTerritoryModal();
+      closeTerritoryModal({ revertIfEditing: false });
       alert(`✓ Territory "${name}" created successfully!`);
+      updateLegendWithStats();
+    }
+
+    function updateExistingTerritory({ name, color }) {
+      const territory = territories.find(t => t.id === editingTerritoryId);
+      if (!territory) {
+        console.warn('[territories] edit requested for missing id', editingTerritoryId);
+        return;
+      }
+
+      territory.name = name;
+      territory.color = color;
+      territory.reps = [...selectedReps];
+
+      const overlay = territoryOverlays[editingTerritoryId];
+      const activeShape = currentPolygonBeingSaved || overlay;
+      if (overlay && !overlay.getMap() && map) overlay.setMap(map);
+
+      if (activeShape instanceof google.maps.Polygon) {
+        const path = activeShape.getPath();
+        const coords = [];
+        path.forEach(point => coords.push({ lat: point.lat(), lng: point.lng() }));
+        if (coords.length >= 3) {
+          territory.type = 'polygon';
+          territory.path = coords;
+          territory.area = calculatePolygonArea(path);
+        }
+        activeShape.setOptions({ strokeColor: color, fillColor: color });
+      } else if (activeShape instanceof google.maps.Circle) {
+        const center = activeShape.getCenter();
+        territory.type = 'circle';
+        territory.center = { lat: center.lat(), lng: center.lng() };
+        territory.radius = activeShape.getRadius();
+        const radiusMiles = territory.radius / 1609.34;
+        territory.area = Math.PI * radiusMiles * radiusMiles;
+        activeShape.setOptions({ strokeColor: color, fillColor: color });
+      }
+
+      saveTerritories();
+      renderTerritoriesList();
+      updateLegendWithStats();
+
+      closeTerritoryModal({ revertIfEditing: false });
+      alert(`✓ Territory "${name}" updated successfully!`);
+      resetModalDragState();
     }
 
     function renderTerritory(territory) {
@@ -1346,6 +1603,7 @@
         const repBadges = Array.isArray(territory.reps) && territory.reps.length > 0
           ? territory.reps.map(rep => `<span style="display:inline-block;padding:4px 10px;background:#0078d7;color:#fff;border-radius:12px;font-size:0.85rem;margin-right:4px;margin-bottom:4px;">${escapeHtml(rep)}</span>`).join('')
           : '<span style="color:#94a3b8;font-size:0.85rem;">No reps assigned</span>';
+        const bookingDaysHtml = buildBookingDaysHtml(territory);
         
         return `
         <div class="territory-item">
@@ -1359,14 +1617,17 @@
             <div style="display:flex;flex-wrap:wrap;gap:4px;">
               ${repBadges}
             </div>
+            ${bookingDaysHtml}
           </div>
           <div class="territory-actions">
+            ${userRole === 'admin' ? `<button class="set-days-btn" onclick="goToSetCleaningDays('${territory.id}')">Set Cleaning Days</button>` : ''}
             ${userRole === 'admin' ? `<button class="edit-btn" onclick="editTerritory('${territory.id}')">Edit</button>` : ''}
             ${userRole === 'admin' ? `<button class="delete-btn" onclick="deleteTerritory('${territory.id}')">Delete</button>` : ''}
           </div>
         </div>
       `;
       }).join('');
+      console.log('[territories] list rendered; userRole=', userRole);
     }
 
     function fitMapToTerritories() {
@@ -1445,6 +1706,7 @@
     function deleteTerritory(id) {
       if (!confirm('Are you sure you want to delete this territory?')) return;
 
+      const deletedTerritory = territories.find(t => t.id === id);
       territories = territories.filter(t => t.id !== id);
       
       // Remove from map
@@ -1454,81 +1716,129 @@
       }
 
       saveTerritories();
+      
       // Delete Firestore doc if admin
       (async () => {
         try {
           if (userRole === 'admin') {
             const db = window.firebaseDb;
-            const { deleteDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-            await deleteDoc(doc(db, 'territories', id));
-            console.log('[territories] deleted Firestore doc', id);
+            const { deleteDoc, doc, getDoc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            
+            // Delete from territories collection
+            try {
+              await deleteDoc(doc(db, 'territories', id));
+              console.log('[territories] deleted from territories collection:', id);
+            } catch (e) {
+              console.warn('[territories] failed to delete from collection:', id, e);
+            }
+            
+            // Also remove from system/territories doc
+            try {
+              const sysRef = doc(db, 'system', 'territories');
+              const sysSnap = await getDoc(sysRef);
+              if (sysSnap.exists() && Array.isArray(sysSnap.data().data)) {
+                const updated = sysSnap.data().data.filter(t => (t.id || t.territoryId || t.name) !== id && t.name !== (deletedTerritory ? deletedTerritory.name : ''));
+                await setDoc(sysRef, { 
+                  data: updated,
+                  updatedAt: new Date().toISOString(),
+                  updatedBy: currentUser.uid,
+                }, { merge: true });
+                console.log('[territories] removed from system doc:', id);
+              }
+            } catch (e) {
+              console.warn('[territories] failed to update system doc:', e);
+            }
           }
         } catch (e) {
           console.warn('Failed to delete territory doc', id, e);
         }
       })();
       renderTerritoriesList();
+      alert('✓ Territory deleted');
     }
 
     function editTerritory(id) {
       const territory = territories.find(t => t.id === id);
       if (!territory) return;
 
-      document.getElementById('territoryName').value = territory.name;
-      document.getElementById('territoryColor').value = territory.color;
-      document.getElementById('territoryFocusFromDate').value = territory.focusFromDate || '';
-      document.getElementById('territoryFocusToDate').value = territory.focusToDate || '';
-      
-      // Set reps selection
-      selectedReps = [...territory.reps];
+      editingTerritoryId = id;
+
+      const nameInput = document.getElementById('territoryName');
+      const colorInput = document.getElementById('territoryColor');
+      if (nameInput) nameInput.value = territory.name || '';
+      if (colorInput) colorInput.value = territory.color || '#0078d7';
+
+      selectedReps = Array.isArray(territory.reps) ? [...territory.reps] : [];
       updateRepSelectionHidden();
+      syncRepSelectionUI();
 
-      // Update rep button styles to reflect current selection
-      setTimeout(() => {
-        const container = document.getElementById('repSelectionContainer');
-        Array.from(container.querySelectorAll('.rep-pill')).forEach(btn => {
-          const name = btn.getAttribute('data-rep');
-          const isSel = selectedReps.includes(name);
-          btn.style.background = isSel ? '#0078d7' : '#fff';
-          btn.style.color = isSel ? '#fff' : '#0078d7';
-          btn.style.borderColor = '#0078d7';
-        });
-      }, 100);
-
-      // Show modal in edit mode
-      currentPolygonBeingSaved = territoryOverlays[id];
-      showTerritoryModal(true);
-
-      // Change form submission to update instead
-      const form = document.getElementById('territoryForm');
-      form.onsubmit = (e) => {
-        e.preventDefault();
-        
-        territory.name = document.getElementById('territoryName').value;
-        territory.color = document.getElementById('territoryColor').value;
-        territory.reps = [...selectedReps];
-        territory.focusFromDate = document.getElementById('territoryFocusFromDate').value || null;
-        territory.focusToDate = document.getElementById('territoryFocusToDate').value || null;
-
-        // Update overlay color
-        if (territoryOverlays[id]) {
-          if (territoryOverlays[id] instanceof google.maps.Polygon) {
-            territoryOverlays[id].setOptions({ strokeColor: territory.color, fillColor: territory.color });
-          } else if (territoryOverlays[id] instanceof google.maps.Circle) {
-            territoryOverlays[id].setOptions({ strokeColor: territory.color, fillColor: territory.color });
-          }
+      const overlay = territoryOverlays[id];
+      if (overlay && (overlay instanceof google.maps.Polygon || overlay instanceof google.maps.Circle)) {
+        editingOriginalGeometry = snapshotOverlayGeometry(overlay);
+        overlay.setEditable(true);
+        if (typeof overlay.setDraggable === 'function') overlay.setDraggable(true);
+        currentPolygonBeingSaved = overlay;
+        if (overlay instanceof google.maps.Polygon) {
+          polygon = overlay;
+          circle = null;
+        } else if (overlay instanceof google.maps.Circle) {
+          circle = overlay;
+          polygon = null;
         }
+        const status = ensureDrawingStatusElement();
+        if (status) {
+          status.textContent = 'Edit mode: drag the territory on the map, then click Save Changes.';
+          status.style.display = 'block';
+        }
+        try {
+          const bounds = new google.maps.LatLngBounds();
+          if (territory.type === 'polygon' && Array.isArray(territory.path)) {
+            territory.path.forEach(p => bounds.extend(new google.maps.LatLng(p.lat, p.lng)));
+          } else if (territory.type === 'circle' && territory.center) {
+            bounds.extend(new google.maps.LatLng(territory.center.lat, territory.center.lng));
+          }
+          if (!bounds.isEmpty()) map.fitBounds(bounds);
+        } catch (_) {}
+      } else {
+        editingOriginalGeometry = null;
+        currentPolygonBeingSaved = null;
+        polygon = null;
+        circle = null;
+      }
 
-        saveTerritories();
-        renderTerritoriesList();
-        updateLegendWithStats();
-        closeTerritoryModal();
-        alert(`✓ Territory "${territory.name}" updated successfully!`);
-      };
+      showTerritoryModal(true);
     }
 
     function saveTerritories() {
-      localStorage.setItem('territories', JSON.stringify(territories));
+      // Defensive in-memory de-duplication prior to persistence
+      const byIdLocal = new Map();
+      const byNameLocal = new Map();
+      for (const t of territories) {
+        const idKey = t.id || t.name;
+        const nameKey = String(t.name || '').trim().toLowerCase();
+        if (!byIdLocal.has(idKey)) byIdLocal.set(idKey, t);
+        if (!byNameLocal.has(nameKey)) byNameLocal.set(nameKey, t);
+      }
+      // Prefer ID-based uniqueness but also collapse same-name entries
+      const unique = [];
+      const seenNames = new Set();
+      for (const item of byIdLocal.values()) {
+        const nkey = String(item.name || '').trim().toLowerCase();
+        if (nkey && seenNames.has(nkey)) continue;
+        seenNames.add(nkey);
+        unique.push(item);
+      }
+      territories = unique;
+      console.log('[territories] saveTerritories called, persisting', territories.length, 'territories');
+      
+      // ALWAYS save to localStorage for all users (admins + reps)
+      try {
+        localStorage.setItem('territories', JSON.stringify(territories));
+        console.log('[territories] ✓ saved to localStorage:', territories.map(t => t.name).join(', '));
+      } catch (e) {
+        console.error('[territories] ERROR saving to localStorage:', e);
+      }
+      
       // Also save to Firestore if admin
       saveTerritoriesFirestore();
     }
@@ -1538,82 +1848,84 @@
       if (saved) {
         try {
           territories = JSON.parse(saved);
+          console.log('[territories] ✓ loaded from localStorage:', territories.map(t => t.name).join(', '));
         } catch (e) {
-          console.error('Error loading territories:', e);
+          console.error('[territories] ERROR parsing localStorage:', e);
           territories = [];
         }
+      } else {
+        console.log('[territories] no localStorage data found');
       }
     }
 
     // Save territories to Firestore
     async function saveTerritoriesFirestore() {
-      if (userRole !== 'admin') return; // Only admins can save territories
+      // All users can save their territories - admins to collection, reps to localStorage
+      if (userRole !== 'admin') {
+        console.log('[territories] non-admin user, Firestore save skipped (using localStorage only)');
+        return;
+      }
+
+      // Check if currentUser is available
+      if (!currentUser || !currentUser.uid) {
+        console.warn('[territories] ERROR: currentUser not available, cannot save to Firestore');
+        return;
+      }
 
       try {
         const db = window.firebaseDb;
-        const { setDoc, doc, getDocs, collection, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        if (!db) {
+          console.warn('[territories] ERROR: firebaseDb not initialized');
+          return;
+        }
+        const { setDoc, getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
 
-        const territoriesDoc = doc(db, "system", "territories");
-        await setDoc(territoriesDoc, { 
-          data: territories,
-          updatedAt: new Date().toISOString(),
-          updatedBy: currentUser.uid,
-        });
+        // Skip system/territories backup - save directly to territories collection instead
+        console.log('[territories] saving', territories.length, 'territories to collection...');
 
         // Also persist each territory into the dedicated collection with geoBoundary for reliable loading
         for (const t of territories) {
           try {
             const ref = doc(db, 'territories', t.id);
-            let geoBoundary = [];
-            if (t.type === 'polygon' && Array.isArray(t.path)) {
-              geoBoundary = t.path.map(p => [p.lat, p.lng]);
-            } else if (t.type === 'circle' && t.center && t.radius) {
-              // Store circle as center + radius; loader will handle
-              await setDoc(ref, {
-                type: 'circle',
-                name: t.name,
-                color: t.color,
-                reps: Array.isArray(t.reps) ? t.reps : [],
-                center: t.center,
-                radius: t.radius,
-                focusPeriodStart: t.focusFromDate || null,
-                focusPeriodEnd: t.focusToDate || null,
-                updatedAt: new Date().toISOString(),
-                updatedBy: currentUser.uid,
-              }, { merge: true });
-              continue;
-            }
-            await setDoc(ref, {
-              type: 'polygon',
+            console.log('[territories] saving to Firestore:', { id: t.id, name: t.name, type: t.type, hasPath: !!t.path, pathLength: Array.isArray(t.path) ? t.path.length : 0 });
+            
+            // Build document based on territory type
+            let docData = {
               name: t.name,
-              color: t.color,
+              color: t.color || '#0078d7',
               reps: Array.isArray(t.reps) ? t.reps : [],
-              geoBoundary,
               focusPeriodStart: t.focusFromDate || null,
               focusPeriodEnd: t.focusToDate || null,
               updatedAt: new Date().toISOString(),
               updatedBy: currentUser.uid,
-            }, { merge: true });
-          } catch(e) {
-            console.warn('Failed saving territory doc', t.id, e);
-          }
-        }
-        // Cleanup stale docs no longer in territories array
-        try {
-          const snap = await getDocs(collection(db, 'territories'));
-          const keep = new Set(territories.map(t => t.id));
-          const toDelete = [];
-          snap.forEach(d => { if (!keep.has(d.id)) toDelete.push(d.id); });
-          if (toDelete.length) {
-            console.log('[territories] deleting stale docs:', toDelete);
-            for (const id of toDelete) {
-              await deleteDoc(doc(db, 'territories', id));
+            };
+
+            if (t.type === 'polygon' && Array.isArray(t.path) && t.path.length > 0) {
+              // Store geoBoundary as JSON string instead of nested array (Firestore doesn't support nested arrays)
+              const geoBoundary = t.path.map(p => [Number(p.lat), Number(p.lng)]);
+              docData.type = 'polygon';
+              docData.geoBoundaryJSON = JSON.stringify(geoBoundary); // Store as string, not array
+              console.log('[territories] saving polygon:', { id: t.id, points: geoBoundary.length });
+            } else if (t.type === 'circle' && t.center && t.radius) {
+              docData.type = 'circle';
+              docData.center = { lat: Number(t.center.lat), lng: Number(t.center.lng) };
+              docData.radius = Number(t.radius);
+              console.log('[territories] saving circle:', { id: t.id, radius: t.radius });
+            } else {
+              // Reference territory with no geometry
+              docData.type = 'reference';
+              console.log('[territories] saving reference territory:', { id: t.id, name: t.name });
             }
+
+            await setDoc(ref, docData, { merge: true });
+            console.log('[territories] ✓ saved to Firestore:', t.id);
+          } catch(e) {
+            console.error('[territories] ERROR saving territory doc', t.id, ':', e.message, e.code);
+            throw e; // Re-throw so we can catch overall save failure
           }
-        } catch (cleanupErr) {
-          console.warn('Territory cleanup failed:', cleanupErr);
         }
-        console.log("Territories saved to Firestore");
+        // Do not auto-delete other Firestore territories; preserve existing areas
+        console.log("[territories] ✓ all territories saved to Firestore successfully");
       } catch (err) {
         console.error("Error saving territories to Firestore:", err);
       }
@@ -1626,61 +1938,145 @@
         const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js");
         const auth = getAuth();
 
-        // Wait for auth to be ready
+        // If not authenticated, use localStorage only
         if (!auth.currentUser) {
-          console.log('Not authenticated, skipping territory load from Firestore');
+          console.log('[territories] not authenticated, will use localStorage');
           return false;
         }
 
-        // Try loading from 'territories' collection first (preferred)
+        // If user is not admin, use localStorage (admins can load from Firestore)
+        if (userRole !== 'admin') {
+          console.log('[territories] rep user, will use localStorage instead of Firestore');
+          return false;
+        }
+
+        // Try loading from 'territories' collection first (preferred and authoritative)
         const { getDocs, collection, getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         const tSnap = await getDocs(collection(db, 'territories'));
         const loaded = [];
         tSnap.forEach(d => {
           const data = d.data();
-          if (Array.isArray(data.geoBoundary)) {
-            const pathArr = data.geoBoundary.map(p => ({ lat: p[0], lng: p[1] }));
-            loaded.push({
-              id: d.id,
-              name: data.name || d.id,
-              color: data.color || '#0078d7',
-              type: 'polygon',
-              path: pathArr,
-              focusFromDate: data.focusPeriodStart || null,
-              focusToDate: data.focusPeriodEnd || null,
-              area: calculateLoadedPolygonArea(pathArr),
-              reps: Array.isArray(data.reps) ? data.reps : [],
-            });
-          } else if (data.center && typeof data.radius === 'number') {
+          console.log('[territories] loading doc', d.id, ':', { name: data.name, type: data.type, hasGeoBoundary: !!data.geoBoundary, geoBoundaryLength: Array.isArray(data.geoBoundary) ? data.geoBoundary.length : 0, hasCenter: !!data.center });
+          
+          // Handle polygon territories
+          if (data.type === 'polygon' || Array.isArray(data.geoBoundary) || typeof data.geoBoundaryJSON === 'string') {
+            let raw = [];
+            if (Array.isArray(data.geoBoundary)) {
+              raw = data.geoBoundary; // Old format (shouldn't happen now)
+            } else if (typeof data.geoBoundaryJSON === 'string') {
+              try {
+                raw = JSON.parse(data.geoBoundaryJSON); // New format
+              } catch (e) {
+                console.warn('[territories] failed to parse geoBoundaryJSON:', e);
+                raw = [];
+              }
+            } else if (Array.isArray(data.path)) {
+              raw = data.path;
+            }
+            
+            const pathArr = (raw || []).map(p => {
+              if (Array.isArray(p) && p.length >= 2) return { lat: Number(p[0]), lng: Number(p[1]) };
+              if (p && typeof p.lat !== 'undefined' && typeof p.lng !== 'undefined') return { lat: Number(p.lat), lng: Number(p.lng) };
+              return null;
+            }).filter(Boolean);
+            
+            if (pathArr.length > 0) {
+              loaded.push({
+                id: d.id,
+                name: data.name || d.id,
+                color: data.color || '#0078d7',
+                type: 'polygon',
+                path: pathArr,
+                focusFromDate: data.focusPeriodStart || null,
+                focusToDate: data.focusPeriodEnd || null,
+                area: calculateLoadedPolygonArea(pathArr),
+                reps: Array.isArray(data.reps) ? data.reps : [],
+                allowedBookingDays: (data.allowedBookingDays && typeof data.allowedBookingDays === 'object') ? data.allowedBookingDays : {}
+              });
+              console.log('[territories] ✓ loaded polygon:', d.id, 'with', pathArr.length, 'points');
+            } else {
+              // Polygon with empty geoBoundary - still load it for reference
+              console.warn('[territories] loaded polygon', d.id, 'with empty geoBoundary (reference only)');
+              loaded.push({
+                id: d.id,
+                name: data.name || d.id,
+                color: data.color || '#0078d7',
+                type: 'polygon',
+                path: [],
+                focusFromDate: data.focusPeriodStart || null,
+                focusToDate: data.focusPeriodEnd || null,
+                area: null,
+                reps: Array.isArray(data.reps) ? data.reps : [],
+                allowedBookingDays: (data.allowedBookingDays && typeof data.allowedBookingDays === 'object') ? data.allowedBookingDays : {}
+              });
+            }
+          } 
+          // Handle circle territories
+          else if (data.type === 'circle' || (data.center && (typeof data.radius === 'number' || !isNaN(Number(data.radius))))) {
+            const centerObj = Array.isArray(data.center)
+              ? { lat: Number(data.center[0]), lng: Number(data.center[1]) }
+              : { lat: Number(data.center.lat), lng: Number(data.center.lng) };
             loaded.push({
               id: d.id,
               name: data.name || d.id,
               color: data.color || '#0078d7',
               type: 'circle',
-              center: data.center,
-              radius: data.radius,
+              center: centerObj,
+              radius: Number(data.radius),
               focusFromDate: data.focusPeriodStart || null,
               focusToDate: data.focusPeriodEnd || null,
               area: null,
               reps: Array.isArray(data.reps) ? data.reps : [],
+              allowedBookingDays: (data.allowedBookingDays && typeof data.allowedBookingDays === 'object') ? data.allowedBookingDays : {}
             });
+            console.log('[territories] ✓ loaded circle:', d.id);
+          }
+          // Handle territories with no geometry (reference-only areas)
+          else if (data.name) {
+            console.warn('[territories] loaded reference territory', d.id, '(no geometry)');
+            loaded.push({
+              id: d.id,
+              name: data.name || d.id,
+              color: data.color || '#0078d7',
+              type: 'reference',
+              focusFromDate: data.focusPeriodStart || null,
+              focusToDate: data.focusPeriodEnd || null,
+              area: null,
+              reps: Array.isArray(data.reps) ? data.reps : [],
+              allowedBookingDays: (data.allowedBookingDays && typeof data.allowedBookingDays === 'object') ? data.allowedBookingDays : {}
+            });
+          }
+          else {
+            console.warn('[territories] skipped doc', d.id, 'no name and no geometry');
           }
         });
         console.log('[territories] loaded from collection count:', loaded.length);
-        if (loaded.length) {
+        if (loaded.length > 0) {
           territories = loaded;
           territorySource = 'collection';
+          console.log('[territories] ✓ LOADED from collection:', territories.map(t => ({ id: t.id, name: t.name, type: t.type })));
+          // Final defensive dedupe by name (prefer first occurrence from collection)
+          const seen = new Set();
+          territories = territories.filter(t => {
+            const key = String(t.name || '').trim().toLowerCase();
+            if (!key) return true;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
           // Keep local in sync
           try { localStorage.setItem('territories', JSON.stringify(territories)); } catch {}
           return true;
         }
+        console.warn('[territories] no territories found in Firestore collection (loaded.length=0)');
 
-        // Fallback to system/territories doc structure
+        // Fallback to system/territories doc structure (should not be relied on as source of truth)
         const territoriesDoc = doc(db, 'system', 'territories');
         const snap = await getDoc(territoriesDoc);
         if (snap.exists() && snap.data().data) {
           console.log('[territories] fallback system doc used');
           territories = snap.data().data;
+          territories.forEach(t => { if (!t.allowedBookingDays || typeof t.allowedBookingDays !== 'object') t.allowedBookingDays = {}; });
           territorySource = 'system';
           try { localStorage.setItem('territories', JSON.stringify(territories)); } catch {}
           return true;
@@ -1715,6 +2111,28 @@
       div.textContent = text;
       return div.innerHTML;
     }
+    function buildBookingDaysHtml(territory) {
+      const abd = territory && territory.allowedBookingDays && typeof territory.allowedBookingDays === 'object' ? territory.allowedBookingDays : {};
+      const weekKeys = Object.keys(abd).filter(k => abd[k] && typeof abd[k] === 'object');
+      if (weekKeys.length === 0) {
+        return '<div class="booking-days-container"><h4>Assigned days & cleaners</h4><div class="booking-days-empty">No booking days set</div></div>';
+      }
+      weekKeys.sort((a,b) => { const na = parseInt(a.replace(/[^0-9]/g,'')||'0',10); const nb = parseInt(b.replace(/[^0-9]/g,'')||'0',10); return na - nb; });
+      const dayOrder = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const pills = [];
+      weekKeys.forEach(wk => {
+        const weekNum = parseInt(wk.replace(/[^0-9]/g,'')||'0',10) || 0;
+        const daysObj = abd[wk];
+        dayOrder.forEach(day => {
+          const arr = Array.isArray(daysObj[day]) ? daysObj[day] : [];
+          if (arr.length) {
+            const cleaners = arr.map(c => escapeHtml(c)).join(', ');
+            pills.push(`<span class="booking-day-pill"><span class="week-label">W${weekNum}</span>${escapeHtml(day)} • ${cleaners}</span>`);
+          }
+        });
+      });
+  return `<div class="booking-days-container"><h4>Assigned days & cleaners</h4><div class="booking-day-pills">${pills.join('') || '<span class=\"booking-days-empty\">No booking days set</span>'}</div></div>`;
+    }
 
     // Initialize map when page loads
     document.addEventListener('DOMContentLoaded', async () => {
@@ -1736,12 +2154,19 @@
           // Proceed with initialization
           await checkUserRole();
           await initMap();
+          setupTerritoryModalDrag();
         } else {
           // User not signed in - auth-check.js will handle redirect
           console.log('Waiting for authentication...');
         }
       });
     });
+
+    // Navigate to scheduler assign mode (admin only button currently)
+    function goToSetCleaningDays(id) {
+      if (!id) return;
+      window.location.href = `./scheduler.html?assignMode=true&territoryId=${encodeURIComponent(id)}`;
+    }
   </script>
 </body>
 </html>

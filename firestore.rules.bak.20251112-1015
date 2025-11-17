@@ -1,0 +1,361 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- QUOTES COLLECTION ---
+    match /quotes/{quoteId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isRep() {
+        return request.auth != null && userDoc().data.role == "rep";
+      }
+      
+      // Allow creating quotes from:
+      // 1) Public calculator (unauthenticated) with a restricted set of fields
+      // 2) Authenticated reps and admins (internal flow)
+      allow create: if (
+          // Public unauthenticated create with strict field whitelist
+          (request.auth == null
+            && request.resource.data.keys().hasOnly([
+              "repCode", "date", "customerName", "address", "mobile", "email",
+              "tier", "houseType", "houseSize", "extension", "conservatory",
+              "skylights", "roofLanterns", "partialCleaning", "alternating",
+              "pricePerClean", "price", "refCode", "status", "notes", "createdAt"
+            ])
+            && request.resource.data.status == "Pending Payment"
+          )
+          || isRep()
+          || isAdmin()
+        );
+
+      // Allow admins full control (read, update, delete)
+      allow read, update, delete: if isAdmin();
+
+      // Allow reps to read ONLY quotes assigned to them (by name match)
+      allow read: if isRep() && 
+        (resource.data.assignedCleaner == userDoc().data.name ||
+         resource.data.repCode == userDoc().data.name);
+    }
+
+    // --- CUSTOMERS COLLECTION ---
+    match /customers/{customerId} {
+      function hasUserDoc() {
+        return request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function userDoc() {
+        return hasUserDoc() ? get(/databases/$(database)/documents/users/$(request.auth.uid)) : null;
+      }
+      function role() {
+        return userDoc() != null ? userDoc().data.role : null;
+      }
+      function isAdmin() {
+        return role() == "admin";
+      }
+      function isRep() {
+        return role() == "rep";
+      }
+
+      allow read: if request.auth != null && (isAdmin() || isRep());
+      allow create, update: if request.auth != null && isAdmin();
+      allow delete: if request.auth != null && isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if request.auth != null && (isAdmin() || isRep());
+        allow create: if request.auth != null && (isAdmin() || isRep());
+        allow update, delete: if request.auth != null && isAdmin();
+      }
+    }
+
+    // --- TODOS COLLECTION ---
+    // Admin-created tasks assigned to reps
+    match /todos/{todoId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isAssignedToMe() {
+        return request.auth != null && 
+               resource.data.assignedRepIds != null && 
+               request.auth.uid in resource.data.assignedRepIds;
+      }
+
+      // Reps can read todos assigned to them
+      allow read: if isAssignedToMe() || isAdmin();
+      
+      // Only admins can create todos
+      allow create: if isAdmin();
+      
+      // Reps can update their own completion status; admins can update anything
+      allow update: if isAdmin() || (
+        isAssignedToMe() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completed', 'updatedAt', 'updatedBy'])
+      );
+      
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+
+    // --- CONTRACTS COLLECTION ---
+    // Docs keyed by userId (rep's uid)
+    match /contracts/{userId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isSelf() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Everyone authenticated can read their own contract; admins can read all
+      allow read: if isSelf() || isAdmin();
+
+      // Create allowed by the rep (self) or admin
+      allow create: if isSelf() || isAdmin();
+
+      // Update rules enforce one-time signatures per party
+      allow update: if (
+        // Admin may add admin signature once, but cannot change contractor fields
+        (isAdmin() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'adminSignatureDataUrl', 'adminSignedAt', 'adminName'
+          ]) &&
+          // Prevent changing admin signature after it's set
+          !(resource.data.adminSignedAt != null && request.resource.data.adminSignedAt != resource.data.adminSignedAt)
+        )
+        ||
+        // Rep (self) may set contractor fields once; cannot change admin fields
+        (isSelf() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'contractType', 'contractorName', 'startDate', 'contractorSignatureDataUrl', 'contractorSignedAt', 'contractDate', 'version'
+          ]) &&
+          // Prevent changing contractor signature/date after set
+          !(resource.data.contractorSignedAt != null && request.resource.data.contractorSignedAt != resource.data.contractorSignedAt)
+        )
+      );
+    }
+
+
+    // --- REP LOGS ---
+    // We support two structures in parallel:
+    // A) Historical: repLogs/{repId}/dates/{date}/doorLogs/{doorLogId}
+    // B) Current:    repLogs/{repId}_{date} (document with an array field 'logs')
+
+    // B) Document-per-day logs: repLogs/{repId}_{date}
+    match /repLogs/{logId} {
+      function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+      function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
+      function logRepId() { return logId.split('_')[0]; }
+      function isSelfLog() { return request.auth != null && request.auth.uid == logRepId(); }
+
+      // Allow all authenticated users to read (so reps can see each other's pins)
+      allow read: if request.auth != null;
+      // Allow create/update by the rep who owns the log or admins
+      allow create, update: if isAdmin() || isSelfLog();
+      allow delete: if isAdmin();
+    }
+
+    // A) Subcollection structure for backwards-compatibility
+    match /repLogs/{repId}/dates/{date} {
+      function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+      function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
+      function isSelf() { return request.auth != null && request.auth.uid == repId; }
+      allow read: if isAdmin() || isSelf();
+      allow create: if isAdmin() || isSelf();
+      allow update, delete: if isAdmin();
+
+      match /doorLogs/{doorLogId} {
+        // Anyone authenticated may read door log pins
+        allow read: if request.auth != null;
+        allow create: if isAdmin() || isSelf();
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // --- REP SHIFTS COLLECTION ---
+    // Docs keyed by repId_date
+    match /repShifts/{shiftId} {
+      function isAdmin() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"; 
+      }
+      // Extract repId prefix before underscore
+      function shiftRepId() { return shiftId.split('_')[0]; }
+      function isSelf() { return request.auth != null && request.auth.uid == shiftRepId(); }
+      allow read: if isAdmin() || isSelf();
+      allow create, update: if isAdmin() || isSelf();
+      allow delete: if isAdmin();
+    }
+
+    // --- REP LOCATIONS COLLECTION ---
+    match /repLocations/{repId} {
+      function isAdmin() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"; 
+      }
+      function isSelf() { return request.auth != null && request.auth.uid == repId; }
+      allow read: if isAdmin() || isSelf();
+      allow create, update: if isAdmin() || isSelf();
+      allow delete: if isAdmin();
+    }
+
+    // --- ROAD LOOKUPS COLLECTION ---
+    match /repRoadLookups/{lookupId} {
+      function isAdmin() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"; 
+      }
+      // Allow reps to write their own lookups; admins can read all
+      allow create: if request.auth != null;
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // --- DOORS KNOCKED COLLECTION ---
+    // Flat per-door documents for easier map rendering without collectionGroup
+    // Document fields (recommended):
+    // { repId, date: 'YYYY-MM-DD', timestamp, status: 'X'|'O'|'SignUp', houseNumber?, roadName?, notes?, gpsLat, gpsLng, territoryId?, accuracy?, source? }
+    match /doorsknocked/{doorId} {
+      // Safer helpers (avoid accessing .data on non-existent user doc)
+      function hasUserDoc() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)); 
+      }
+      function userDoc() { return hasUserDoc() ? get(/databases/$(database)/documents/users/$(request.auth.uid)) : null; }
+      function role() { return hasUserDoc() ? userDoc().data.role : null; }
+      function isAdmin() { return role() == "admin"; }
+      function isRep() { return role() == "rep"; }
+      // Read access for reps + admins (team map visibility)
+      allow read: if isAdmin() || isRep();
+      // Creation allowed for authenticated reps (their own doors) and admins
+      allow create: if isAdmin() || isRep();
+      // Only admins can update/delete (immutability of historical knocks)
+      allow update, delete: if isAdmin();
+    }
+
+
+    // --- REP CHAT COLLECTION ---
+    match /repChat/{messageId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isRep() {
+        return request.auth != null && userDoc().data.role == "rep";
+      }
+
+      // Everyone authenticated (rep/admin) can read and create messages
+      allow read, create: if isAdmin() || isRep();
+
+      // Delete restricted to admins only (for moderation)
+      allow delete: if isAdmin();
+    }
+
+
+    // --- USERS COLLECTION ---
+    match /users/{userId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      
+      // Users can read/write their own document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Admins can read/write ALL user documents (for user management)
+      allow read, write: if isAdmin();
+      
+      // --- USER AREAS SUBCOLLECTION ---
+      match /areas/{areaId} {
+        // Users can read/write their own areas
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        
+        // Admins can read/write ALL user areas
+        allow read, write: if isAdmin();
+      }
+    }
+
+
+    // --- ANNOUNCEMENTS COLLECTION ---
+    match /announcements/{announcementId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isRep() {
+        return request.auth != null && userDoc().data.role == "rep";
+      }
+
+      // Everyone authenticated can read announcements
+      allow read: if isAdmin() || isRep();
+
+      // Only admins can create, update, delete announcements
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- TERRITORIES COLLECTION ---
+    match /territories/{territoryId} {
+      function isAdmin() {
+        return request.auth != null &&
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+      }
+
+      // Everyone authenticated can read territories (no role doc dependency)
+      allow read: if request.auth != null;
+
+      // Only admins can create, update, delete territories
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- EVENTS COLLECTION ---
+    match /events/{eventId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isRep() {
+        return request.auth != null && userDoc().data.role == "rep";
+      }
+
+      // Everyone authenticated can read events
+      allow read: if isAdmin() || isRep();
+
+      // Only admins and reps can create/update events
+      allow create, update: if isAdmin() || isRep();
+
+      // Delete restricted to admins only
+      allow delete: if isAdmin();
+    }
+
+    // --- SYSTEM COLLECTION (shared config docs e.g. system/territories) ---
+    match /system/{docId} {
+      function isAdmin() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"; 
+      }
+      // Allow authenticated users to read shared configuration (no role doc dependency)
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}

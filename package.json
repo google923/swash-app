@@ -1,6 +1,12 @@
 {
   "dependencies": {
     "chokidar": "^4.0.3",
-    "node-notifier": "^10.0.1"
+    "node-notifier": "^10.0.1",
+    "firebase-admin": "^12.0.0",
+    "raw-body": "^2.5.2"
+  },
+  "scripts": {
+    "backfill:doors": "node scripts/backfill-doorsknocked.js --days=180",
+    "enrich:repname": "node scripts/enrich-doorsknocked-repname.js"
   }
 }

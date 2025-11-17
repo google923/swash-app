@@ -104,36 +104,29 @@
 
   <main class="page">
     <div class="contract-container">
-      <!-- Header with Logo -->
-      <div class="contract-header">
-        <div style="margin-bottom: 24px;">
-          <img 
-            src="../assets/blue-logo.png" 
-            alt="Swash Cleaning Ltd Logo" 
-            style="height: 80px; object-fit: contain;"
-          >
-        </div>
-        <p class="subtitle">Employment Contract – Field Sales Representative (Version 1.2)</p>
-        <div class="contact-info">
-          <div class="contact-item">
-            <strong>Registered Address</strong>
-            71–75 Shelton Street, London, WC2H 9JQ
-          </div>
-          <div class="contact-item">
-            <strong>Email</strong>
-            contact@swashcleaning.co.uk
-          </div>
-          <div class="contact-item">
-            <strong>Telephone</strong>
-            03300 436 345
-          </div>
-          <div class="contact-item">
-            <strong>Director</strong>
-            Christopher Wessell
-          </div>
+      <!-- Contract Type Toggle - ARCHIVED: Only show Commission-Only -->
+      <div style="text-align: center; margin-bottom: 32px; display: none;">
+        <div style="display: inline-flex; gap: 0; border: 2px solid #0078d7; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-wrap: wrap; justify-content: center;">
+          <button 
+            id="btnPayeContract" 
+            class="contract-toggle"
+            style="padding: 12px 32px; font-size: 1rem; font-weight: 600; background: white; color: #0078d7; border: none; cursor: pointer; transition: all 0.3s;"
+          >PAYE Contract</button>
+          <button 
+            id="btnFreelanceContract" 
+            class="contract-toggle"
+            style="padding: 12px 32px; font-size: 1rem; font-weight: 600; background: white; color: #0078d7; border: none; cursor: pointer; transition: all 0.3s;"
+          >Freelance Agreement</button>
+          <button 
+            id="btnCommissionContract" 
+            class="contract-toggle active"
+            style="padding: 12px 32px; font-size: 1rem; font-weight: 600; background: #0078d7; color: white; border: none; cursor: pointer; transition: all 0.3s;"
+          >Commission-Only Agreement</button>
         </div>
       </div>
 
+      <!-- PAYE Contract Content - ARCHIVED -->
+      <div id="payeContract" style="display: none;">
       <!-- Section 1 -->
       <div class="contract-section">
         <h2>1. Parties</h2>
@@ -296,7 +289,7 @@
                   id="contractEmployeeSignature" 
                   width="600" 
                   height="200"
-                  style="display: block; cursor: crosshair; background: white; border-radius: 4px; touch-action: none; width: 100%; height: auto;"
+                  style="display: block; cursor: crosshair; background: white; border-radius: 4px; touch-action: none; width: 100%; height: 200px;"
                 ></canvas>
               </div>
               <div style="display: flex; gap: 8px; margin-top: 8px;">
@@ -343,7 +336,7 @@
                   id="contractDirectorSignature" 
                   width="600" 
                   height="200"
-                  style="display: block; cursor: crosshair; background: white; border-radius: 4px; touch-action: none; width: 100%; height: auto;"
+                  style="display: block; cursor: crosshair; background: white; border-radius: 4px; touch-action: none; width: 100%; height: 200px;"
                 ></canvas>
               </div>
               <div style="display: flex; gap: 8px; margin-top: 8px;">
@@ -402,12 +395,563 @@
         <p>Swash Cleaning Ltd | Employment Contract | Field Sales Representative | Version 1.2 | © 2025<br>
         contact@swashcleaning.co.uk | 03300 436 345</p>
       </div>
+      </div>
+      <!-- End PAYE Contract -->
+
+      <!-- Freelance Agreement Content -->
+      <div id="freelanceContract" style="display: none;">
+        <!-- Section 1: Parties -->
+        <div class="contract-section">
+          <h2>1. Parties</h2>
+          <p>This Freelance Agreement ("the Agreement") is made between:</p>
+          <ul>
+            <li><strong>Client:</strong> Swash Cleaning Ltd ("the Company"), 71–75 Shelton Street, London, WC2H 9JQ</li>
+            <li><strong>Position:</strong> Freelance Field Sales Representative</li>
+          </ul>
+          
+          <div style="margin-top: 20px;">
+            <label for="freelanceContractorName" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Contractor Name:</label>
+            <input 
+              type="text" 
+              id="freelanceContractorName" 
+              name="freelanceContractorName" 
+              required
+              placeholder="Enter your full name"
+              style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 1rem; box-sizing: border-box; font-family: Arial, sans-serif;"
+            >
+          </div>
+
+          <div style="margin-top: 16px;">
+            <label for="freelanceStartDate" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Start Date:</label>
+            <input 
+              type="date" 
+              id="freelanceStartDate" 
+              name="freelanceStartDate"
+              style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 1rem; box-sizing: border-box; font-family: Arial, sans-serif;"
+            >
+          </div>
+        </div>
+
+        <!-- Section 2: Nature of Engagement -->
+        <div class="contract-section">
+          <h2>2. Nature of Engagement</h2>
+          <p>The Contractor is engaged by Swash Cleaning Ltd on a self-employed, freelance basis to provide door-to-door field sales and customer acquisition services.</p>
+          <p>This arrangement does not create an employment relationship. The Contractor is responsible for their own tax, National Insurance, insurance, and any other statutory obligations.</p>
+          <p>The Contractor will invoice Swash Cleaning Ltd for services rendered and is not entitled to holiday pay, sick pay, pension contributions, or any other employee benefits.</p>
+        </div>
+
+        <!-- Section 3: Duration and Performance Review -->
+        <div class="contract-section">
+          <h2>3. Duration and Performance Review</h2>
+          <p>This Agreement operates on a rolling one-month basis, renewable monthly for up to three (3) months, subject to satisfactory performance and mutual agreement.</p>
+          <p>Performance will be reviewed every two (2) weeks to monitor results, professionalism, and consistency.</p>
+          <p>Either party may terminate the Agreement by giving 7 days' written notice.</p>
+          <p>The first week of engagement will be a training and shadowing period conducted directly with the Director to ensure full understanding of Swash Cleaning Ltd's systems, approach, and customer standards.</p>
+        </div>
+
+        <!-- Section 4: Hours of Service -->
+        <div class="contract-section">
+          <h2>4. Hours of Service</h2>
+          <p>The Contractor will generally provide services equivalent to 40 hours per week, typically across any weekly period (Monday–Sunday), with flexibility to meet performance targets.</p>
+          <p>The Contractor manages their own working methods and schedule, provided performance targets and professionalism are maintained.</p>
+          <h3>Sales Area</h3>
+          <p>The Contractor will operate within sales areas assigned by Swash Cleaning Ltd, which may include specific towns, postcodes, or mapped zones within Essex. These areas will be allocated and communicated by the Company and may be adjusted as business needs require.</p>
+        </div>
+
+        <!-- Section 5: Fees, Commission & Expenses -->
+        <div class="contract-section">
+          <h2>5. Fees, Commission & Expenses</h2>
+          <h3>Base Payment</h3>
+          <p>The Contractor will receive £1,953.60 per four-week period, equivalent to 160 hours at £12.21 per hour.</p>
+          <ul>
+            <li>Payment is made monthly, upon receipt of a valid invoice, within 14 days of invoice date.</li>
+            <li>All invoices must be sent to contact@swashcleaning.co.uk at the end of each four-week period.</li>
+          </ul>
+
+          <h3>Commission Structure</h3>
+          <p>Commission is performance-based and paid monthly in arrears.</p>
+          <p>In each four-week period (20 working days):</p>
+          <ul>
+            <li>If the Contractor achieves an average of 4 or more verified new customer sign-ups per working day (80+ total), they qualify for commission.</li>
+            <li>Each verified customer must have paid in advance for three (3) cleans to qualify as valid.</li>
+            <li>The commission rate is based on the monthly revenue value of each qualifying customer, as follows:</li>
+          </ul>
+
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+              <tr style="background: #0078d7; color: white;">
+                <th style="padding: 12px; text-align: left; border: 1px solid #e5e7eb;">Average Verified Sales per Day</th>
+                <th style="padding: 12px; text-align: left; border: 1px solid #e5e7eb;">Commission Rate</th>
+                <th style="padding: 12px; text-align: left; border: 1px solid #e5e7eb;">Example per Customer (£25 monthly value)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">4+ per day</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">25%</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">£6.25</td>
+              </tr>
+              <tr style="background: #f8fafc;">
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">5+ per day</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">30%</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">£7.50</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">6+ per day</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">35%</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">£8.75</td>
+              </tr>
+              <tr style="background: #f8fafc;">
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">8+ per day</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">40%</td>
+                <td style="padding: 12px; border: 1px solid #e5e7eb;">£10.00</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Commission Examples</h3>
+          <ul>
+            <li><strong>If 4 average verified sales per day</strong> ≈ 80 verified customers each paying £25 per month: £25 × 80 = £2,000 total monthly revenue. At 25% commission = £500 payable</li>
+            <li><strong>If 5 average verified sales per day</strong> ≈ 100 verified customers each paying £25 per month: £25 × 100 = £2,500 total monthly revenue. At 30% commission = £750 payable</li>
+            <li><strong>If 6 average verified sales per day</strong> ≈ 120 verified customers each paying £25 per month: £25 × 120 = £3,000 total monthly revenue. At 35% commission = £1,050 payable</li>
+            <li><strong>If 8 average verified sales per day</strong> ≈ 160 verified customers each paying £25 per month: £25 × 160 = £4,000 total monthly revenue. At 40% commission = £1,600 payable</li>
+          </ul>
+
+          <h3>Verification & Payment</h3>
+          <ul>
+            <li>Commission is payable only for verified, active customers whose full 3-clean payment has been received.</li>
+            <li>Commission is added to the next base invoice once verified.</li>
+            <li>Any dispute regarding commission must be raised in writing within 14 days of payment.</li>
+            <li>Swash Cleaning Ltd will review and respond within one pay cycle.</li>
+          </ul>
+
+          <h3>Expenses & Mileage</h3>
+          <ul>
+            <li>The Contractor is entitled to claim mileage expenses at a rate of £0.45 per mile for approved business journeys.</li>
+            <li>Mileage applies only to travel made to and from the specified sales locations or areas assigned by Swash Cleaning Ltd during the working day.</li>
+            <li>The Contractor must log each journey's mileage daily, including date, start and end points, and total miles travelled.</li>
+            <li>Verified mileage totals must be included within the monthly invoice submitted at the end of each four-week period.</li>
+            <li>Mileage reimbursements will be paid together with the base payment for that period.</li>
+          </ul>
+        </div>
+
+        <!-- Section 6: Tools, Branding & Conduct -->
+        <div class="contract-section">
+          <h2>6. Tools, Branding & Conduct</h2>
+          <p>The Contractor will be provided with Swash Cleaning-branded uniform and marketing materials.</p>
+          <p>They must:</p>
+          <ul>
+            <li>Represent Swash Cleaning Ltd in a professional and courteous manner.</li>
+            <li>Maintain good personal presentation and communication.</li>
+            <li>Follow company sales and data-collection procedures accurately.</li>
+            <li>All customer and lead data remain the sole property of Swash Cleaning Ltd.</li>
+          </ul>
+        </div>
+
+        <!-- Section 7: Independent Contractor Status -->
+        <div class="contract-section">
+          <h2>7. Independent Contractor Status</h2>
+          <p>The Contractor acknowledges they are self-employed and responsible for:</p>
+          <ul>
+            <li>Declaring all income to HMRC.</li>
+            <li>Paying their own tax and National Insurance.</li>
+            <li>Maintaining appropriate business or public-liability insurance.</li>
+          </ul>
+          <p>Swash Cleaning Ltd will not deduct or pay tax, NI, or pension contributions on their behalf.</p>
+          <p>The Contractor agrees to indemnify Swash Cleaning Ltd against any loss, claim, or liability arising from their own actions, negligence, or breach of this agreement.</p>
+        </div>
+
+        <!-- Section 8: Confidentiality & Non-Solicitation -->
+        <div class="contract-section">
+          <h2>8. Confidentiality & Non-Solicitation</h2>
+          <p>The Contractor must keep all customer and company data strictly confidential.</p>
+          <p>For six (6) months following termination, the Contractor agrees not to:</p>
+          <ul>
+            <li>Provide or promote window-cleaning or related services to any Swash Cleaning Ltd customer acquired within the last 12 months.</li>
+            <li>Operate or assist a competing window-cleaning or exterior-cleaning business within 15 miles of their assigned sales area.</li>
+          </ul>
+        </div>
+
+        <!-- Section 9: Termination -->
+        <div class="contract-section">
+          <h2>9. Termination</h2>
+          <p>Either party may terminate this Agreement with 7 days' written notice.</p>
+          <p>Immediate termination may occur in cases of serious misconduct, breach of confidentiality, or misrepresentation.</p>
+        </div>
+
+        <!-- Section 10: Governing Law -->
+        <div class="contract-section">
+          <h2>10. Governing Law</h2>
+          <p>This Agreement is governed by the laws of England and Wales.</p>
+        </div>
+
+        <!-- Signatures for Freelance -->
+        <div class="contract-section">
+          <h2>11. Signatures</h2>
+          
+          <form id="freelanceAcknowledgementForm" style="margin-top: 30px;">
+            <!-- Contractor Signature Section -->
+            <div style="margin-bottom: 32px;">
+              <h3 style="margin-bottom: 20px;">Contractor</h3>
+
+              <div style="margin-bottom: 24px;">
+                <label for="freelanceContractorSignature" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Contractor Signature:</label>
+                <div style="border: 2px solid #e5e7eb; border-radius: 6px; background: #f8fafc; padding: 8px; max-width: 600px;">
+                  <canvas 
+                    id="freelanceContractorSignature" 
+                    width="600" 
+                    height="200"
+                    style="display:block;cursor:crosshair;background:white;border-radius:4px;touch-action:none;width:100%;height:200px;"
+                  ></canvas>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                  <button 
+                    type="button" 
+                    id="clearFreelanceContractor" 
+                    class="btn btn-secondary"
+                    style="flex: 1;"
+                  >Clear Signature</button>
+                  <button 
+                    type="button" 
+                    id="undoFreelanceContractor" 
+                    class="btn btn-secondary"
+                    style="flex: 1;"
+                  >Undo</button>
+                </div>
+                <p style="font-size: 0.85rem; color: #64748b; margin-top: 8px;">Click and drag to sign above</p>
+              </div>
+
+              <div style="margin-bottom: 24px;">
+                <label for="freelanceContractorDate" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Date:</label>
+                <input 
+                  type="text" 
+                  id="freelanceContractorDate" 
+                  name="freelanceContractorDate" 
+                  readonly
+                  style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 1rem; box-sizing: border-box; background: #f8fafc; color: #64748b;"
+                >
+              </div>
+            </div>
+
+            <!-- Director Section -->
+            <div style="margin-top: 40px; padding-top: 24px; border-top: 2px solid #e5e7eb;">
+              <h3 style="margin-bottom: 20px;">For Swash Cleaning Ltd</h3>
+              
+              <div style="margin-bottom: 24px;">
+                <p style="margin: 0 0 8px 0; font-weight: 600; color: #1e293b;">Christopher Wessell (Director)</p>
+              </div>
+
+              <div style="margin-bottom: 24px;">
+                <label for="freelanceDirectorSignature" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Signature:</label>
+                <div style="border: 2px solid #e5e7eb; border-radius: 6px; background: #f8fafc; padding: 8px; max-width: 600px;">
+                  <canvas 
+                    id="freelanceDirectorSignature" 
+                    width="600" 
+                    height="200"
+                    style="display:block;cursor:crosshair;background:white;border-radius:4px;touch-action:none;width:100%;height:200px;"
+                  ></canvas>
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                  <button 
+                    type="button" 
+                    id="clearFreelanceDirector" 
+                    class="btn btn-secondary"
+                    style="flex: 1;"
+                  >Clear Signature</button>
+                  <button 
+                    type="button" 
+                    id="undoFreelanceDirector" 
+                    class="btn btn-secondary"
+                    style="flex: 1;"
+                  >Undo</button>
+                </div>
+                <p style="font-size: 0.85rem; color: #64748b; margin-top: 8px;">Click and drag to sign above</p>
+              </div>
+
+              <div style="margin-bottom: 24px;">
+                <label for="freelanceDirectorDate" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Date:</label>
+                <input 
+                  type="text" 
+                  id="freelanceDirectorDate" 
+                  name="freelanceDirectorDate" 
+                  readonly
+                  style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 1rem; box-sizing: border-box; background: #f8fafc; color: #64748b;"
+                >
+              </div>
+
+              <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 4px; margin-top: 16px;">
+                <p style="margin: 0; font-size: 0.95rem; color: #92400e;">
+                  <strong>ℹ️ Note:</strong> The director signature and date will be added by Swash management once you submit your agreement. Your submission will be saved automatically.
+                </p>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div style="margin-top: 32px; display: flex; gap: 12px;">
+              <button 
+                type="submit" 
+                class="btn btn-primary"
+                style="flex: 1; padding: 12px 24px; font-size: 1rem;"
+              >Submit Agreement</button>
+              <button 
+                type="reset" 
+                class="btn btn-secondary"
+                style="flex: 1; padding: 12px 24px; font-size: 1rem;"
+              >Reset Form</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-text">
+          <p>Swash Cleaning Ltd | Freelance Agreement | Field Sales Representative | Version 1.2 | © 2025<br>
+          contact@swashcleaning.co.uk | 03300 436 345</p>
+        </div>
+      </div>
+      <!-- End Freelance Contract -->
+
+      <!-- Commission-Only Contract -->
+      <div id="commissionContract">
+        <div class="contract-header">
+          <div style="margin-bottom: 24px;">
+            <img 
+              src="../assets/blue-logo.png" 
+              alt="Swash Cleaning Ltd Logo" 
+              style="height: 80px; object-fit: contain;"
+            >
+          </div>
+          <h1 style="margin: 0; font-size: 1.8rem; color: #0078d7;">Swash Cleaning Ltd</h1>
+          <p id="contractSubtitle" class="subtitle">Freelance Agreement – Field Sales Representative (Version 1.8)<br>Commission-Only • £15 → £8 → £8 Taper Model • Monthly Payout • Territory Controlled</p>
+          <div class="contact-info">
+            <div class="contact-item">
+              <strong>Registered Address</strong>
+              71–75 Shelton Street, London, WC2H 9JQ
+            </div>
+            <div class="contact-item">
+              <strong>Contact</strong>
+              contact@swashcleaning.co.uk<br>03300 436 345
+            </div>
+            <div class="contact-item">
+              <strong>Director</strong>
+              Christopher Wessell
+            </div>
+          </div>
+        </div>
+
+        <div class="contract-section">
+          <h2>1. Parties</h2>
+          <p>This Freelance Agreement ("the Agreement") is made between:</p>
+          <ul>
+            <li><strong>Client:</strong> Swash Cleaning Ltd ("the Company")</li>
+            <li><strong>Contractor:</strong> <input id="commissionContractorName" type="text" placeholder="Enter your name" style="border: none; border-bottom: 1px solid #333; width: 200px; padding: 4px 0;" /> ("the Contractor")</li>
+          </ul>
+          <ul>
+            <li><strong>Start Date:</strong> <input id="commissionStartDate" type="date" style="border: 1px solid #cbd5e1; padding: 4px 8px; border-radius: 4px;" readonly /></li>
+            <li><strong>Position:</strong> Freelance Field Sales Representative</li>
+          </ul>
+        </div>
+
+        <div class="contract-section">
+          <h2>2. Nature of Engagement</h2>
+          <p>The Contractor is engaged by Swash Cleaning Ltd on a self-employed, commission-only basis to provide door-to-door sales, lead generation, and customer acquisition services.</p>
+          <p>This Agreement does not create employment, worker status, or agency. The Contractor:</p>
+          <ul>
+            <li>is responsible for their own tax, NI, insurance, and expenses</li>
+            <li>chooses their own working hours and methods</li>
+            <li>is not entitled to holiday pay, sick pay, pension contributions, or other employee benefits</li>
+            <li>provides services as an independent business</li>
+          </ul>
+        </div>
+
+        <div class="contract-section">
+          <h2>3. Duration and Termination</h2>
+          <p>This Agreement operates on a rolling monthly basis.</p>
+          <p>Either party may terminate this Agreement by giving 7 days' written notice.</p>
+          <p>Immediate termination may occur for serious misconduct, dishonesty, fraud, misuse of data, or breach of confidentiality.</p>
+          <p>Unverified customers do not qualify for commission after termination.</p>
+        </div>
+
+        <div class="contract-section">
+          <h2>4. Territory Assignment</h2>
+          <h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 16px;">4.1 Allocation of Territories</h3>
+          <p>The Company will assign specific sales territories (towns, mapped areas, or postcode sectors) in line with operational needs and route-building strategy.</p>
+          
+          <h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 16px;">4.2 Working Within Assigned Areas</h3>
+          <p>The Contractor must only canvass within the territories assigned to them. Sign-ups outside assigned areas may be rejected and will not qualify for commission.</p>
+          
+          <h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 16px;">4.3 Territory Adjustments</h3>
+          <p>Territories may be changed, rotated, or reassigned at any time. Requests for alternate areas may be made, but final allocation remains at the Company's discretion.</p>
+          
+          <h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 16px;">4.4 Non-Exclusivity</h3>
+          <p>Territories are not exclusive. The Company may assign multiple contractors or employees to the same or neighbouring areas.</p>
+          
+          <h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 16px;">4.5 Purpose of Territory Rules</h3>
+          <p>These rules exist solely for:</p>
+          <ul>
+            <li>scheduling efficiency</li>
+            <li>operational organisation</li>
+            <li>minimising overlap</li>
+            <li>ensuring viable customer density</li>
+          </ul>
+          <p>They do not dictate working hours or working methods.</p>
+          
+          <h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 16px;">4.6 Verification Requirement</h3>
+          <p>A customer is only considered a verified customer if:</p>
+          <ul>
+            <li>Signed within the Contractor's assigned territory</li>
+            <li>Correctly logged in the Company system</li>
+            <li>The property is serviceable and accepted by the Company</li>
+            <li>The customer completes their paid first clean</li>
+            <li>The customer's payment has cleared</li>
+            <li>There is no cancellation or refund</li>
+          </ul>
+          <p>Only verified customers qualify for commission.</p>
+        </div>
+
+        <div class="contract-section">
+          <h2>5. Commission Structure</h2>
+          <p>This is a pure commission-only role. There is:</p>
+          <ul>
+            <li>no base pay</li>
+            <li>no retainer</li>
+            <li>no hourly pay</li>
+            <li>no mileage reimbursement</li>
+          </ul>
+          <p>Commission is paid only after the Company completes paid cleans.</p>
+          
+          <h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 16px;">5.1 3-Month Tapered Commission Model</h3>
+          <p>For every verified customer signed by the Contractor, commission is paid as follows:</p>
+          <div class="highlight-box">
+            <ul style="margin: 0; padding-left: 20px;">
+              <li><strong>1st Clean Completed → £15</strong> (One-time sign-up bonus)</li>
+              <li><strong>2nd Clean Completed → £8</strong> (Residual commission)</li>
+              <li><strong>3rd Clean Completed → £8</strong> (Residual commission)</li>
+            </ul>
+          </div>
+          <p>Cleans After 3rd → £0</p>
+          <p>The Contractor receives no further payments for that customer. All revenue beyond the third clean belongs fully to the Company.</p>
+          
+          <h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 16px;">5.2 Monthly Payment Schedule</h3>
+          <p>Commission is paid monthly in arrears by invoice.</p>
+          <p>At the end of each month, the Company calculates:</p>
+          <ul>
+            <li>All 1st cleans completed → £15 each</li>
+            <li>All 2nd cleans completed → £8 each</li>
+            <li>All 3rd cleans completed → £8 each</li>
+          </ul>
+          <p>Only completed, fully paid cleans qualify. If a customer skips, moves, cancels, doesn't pay, or fails verification, the associated commission is not payable.</p>
+          
+          <h3 style="color: #1e293b; font-size: 1.1rem; margin-top: 16px;">5.3 Examples of Commission</h3>
+          <p>If the Contractor signs 100 customers per month:</p>
+          <ul>
+            <li><strong>Month 2</strong> → 100 × £15 = £1,500</li>
+            <li><strong>Month 3</strong> → 100 × £8 + 100 × £15 = £2,300</li>
+            <li><strong>Month 4</strong> → 100 × £8 + 100 × £8 + 100 × £15 = £3,100</li>
+            <li><strong>Month 4 onward (steady state)</strong> → £3,100 per month</li>
+          </ul>
+          <p>As long as 100 customers per month continue to be signed.</p>
+        </div>
+
+        <div class="contract-section">
+          <h2>6. Expenses, Equipment & Conduct</h2>
+          <p>The Contractor is responsible for:</p>
+          <ul>
+            <li>fuel, transport, phone, and all other costs</li>
+            <li>maintaining a professional appearance</li>
+            <li>conducting themselves respectfully at all doors</li>
+            <li>following Company sign-up, data entry, and verification processes</li>
+          </ul>
+          <p>Any branded materials or digital access provided remain Company property.</p>
+          <p>All customer data belongs solely to Swash Cleaning Ltd.</p>
+        </div>
+
+        <div class="contract-section">
+          <h2>7. Independent Contractor Status</h2>
+          <p>The Contractor acknowledges they are fully self-employed and responsible for:</p>
+          <ul>
+            <li>tax</li>
+            <li>NI</li>
+            <li>insurance</li>
+            <li>record-keeping</li>
+            <li>liabilities arising from their own work</li>
+          </ul>
+          <p>The Contractor indemnifies the Company for losses arising from their own actions or negligence.</p>
+        </div>
+
+        <div class="contract-section">
+          <h2>8. Confidentiality & Non-Solicitation</h2>
+          <p>For 6 months after termination, the Contractor agrees NOT to:</p>
+          <ul>
+            <li>offer window cleaning or related services to Swash customers they originally signed</li>
+            <li>divert customers to a competitor</li>
+            <li>assist or operate a competing cleaning business within 15 miles of their assigned territory</li>
+          </ul>
+          <p>Confidentiality obligations survive termination indefinitely.</p>
+        </div>
+
+        <div class="contract-section">
+          <h2>9. Governing Law</h2>
+          <p>This Agreement is governed by the laws of England and Wales.</p>
+        </div>
+
+        <div class="contract-section">
+          <h2>10. Signatures</h2>
+          <form id="commissionAcknowledgementForm">
+            <div style="margin: 24px 0;">
+              <p style="font-weight: 600; margin-bottom: 12px;">Contractor Signature</p>
+              <div style="border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 8px;">
+                <canvas id="commissionContractorSignature" style="display: block; width: 100%; height: 150px; cursor: crosshair; background: white;"></canvas>
+              </div>
+              <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button type="button" id="clearCommissionContractor" class="btn btn-secondary" style="flex: 1;">Clear</button>
+                <button type="button" id="undoCommissionContractor" class="btn btn-secondary" style="flex: 1;">Undo</button>
+              </div>
+              <label style="display: block; margin-bottom: 8px;">
+                <span style="font-weight: 600;">Name</span>
+                <input id="commissionContractorDate" type="text" readonly style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f9fafb;" />
+              </label>
+              <label style="display: block;">
+                <span style="font-weight: 600;">Date</span>
+                <input id="commissionContractorSignDate" type="text" readonly style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f9fafb;" />
+              </label>
+            </div>
+
+            <div style="margin: 24px 0;">
+              <p style="font-weight: 600; margin-bottom: 12px;">Director Signature (Admin Only)</p>
+              <div style="border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 8px;">
+                <canvas id="commissionDirectorSignature" style="display: block; width: 100%; height: 150px; cursor: crosshair; background: white;"></canvas>
+              </div>
+              <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button type="button" id="clearCommissionDirector" class="btn btn-secondary" style="flex: 1;">Clear</button>
+                <button type="button" id="undoCommissionDirector" class="btn btn-secondary" style="flex: 1;">Undo</button>
+              </div>
+              <label style="display: block;">
+                <span style="font-weight: 600;">Date</span>
+                <input id="commissionDirectorDate" type="text" readonly style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f9fafb;" />
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.1rem; margin-top: 16px;">Sign and Submit Agreement</button>
+          </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-text">
+          <p>Swash Cleaning Ltd | Commission-Only Agreement | Field Sales Representative | Version 1.8 | © 2025<br>
+          contact@swashcleaning.co.uk | 03300 436 345</p>
+        </div>
+      </div>
+      <!-- End Commission-Only Contract -->
+
     </div>
   </main>
 
   <script type="module" src="../auth-check.js"></script>
 
-  <script>
+  <script type="module">
+    import { auth, db } from '../firebase-init.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import { doc, getDoc, setDoc, updateDoc, addDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
     // Signature Canvas Handler
     class SignatureCanvas {
       constructor(canvasId, clearBtnId, undoBtnId) {
@@ -433,9 +977,12 @@
       }
 
       resizeCanvas() {
+        // Ensure canvas has a sensible default height if collapsed (e.g., when container was hidden)
         const rect = this.canvas.getBoundingClientRect();
-        this.canvas.width = rect.width;
-        this.canvas.height = rect.height;
+        const width = Math.max(300, Math.round(rect.width));
+        const height = Math.max(150, Math.round(rect.height || parseInt(this.canvas.style.height, 10) || this.canvas.height || 200));
+        this.canvas.width = width;
+        this.canvas.height = height;
         this.redrawCanvas();
       }
 
@@ -522,11 +1069,19 @@
       }
     }
 
-    // Initialize signature canvases
+    // Initialize signature canvases for PAYE
     const employeeSignature = new SignatureCanvas('contractEmployeeSignature', 'clearContractEmployee', 'undoContractEmployee');
     const directorSignature = new SignatureCanvas('contractDirectorSignature', 'clearContractDirector', 'undoContractDirector');
+    
+    // Initialize signature canvases for Freelance
+    const freelanceContractorSignature = new SignatureCanvas('freelanceContractorSignature', 'clearFreelanceContractor', 'undoFreelanceContractor');
+    const freelanceDirectorSignature = new SignatureCanvas('freelanceDirectorSignature', 'clearFreelanceDirector', 'undoFreelanceDirector');
 
-    // Auto-fill dates
+    // Initialize signature canvases for Commission-Only
+    const commissionContractorSignature = new SignatureCanvas('commissionContractorSignature', 'clearCommissionContractor', 'undoCommissionContractor');
+    const commissionDirectorSignature = new SignatureCanvas('commissionDirectorSignature', 'clearCommissionDirector', 'undoCommissionDirector');
+
+    // Auto-fill dates (today) and lock editable start dates to today as read-only
     function formatDate(date) {
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -537,48 +1092,794 @@
     const today = new Date();
     document.getElementById('contractEmployeeDate').value = formatDate(today);
     document.getElementById('contractDirectorDate').value = formatDate(today);
+    document.getElementById('freelanceContractorDate').value = formatDate(today);
+    document.getElementById('freelanceDirectorDate').value = formatDate(today);
+    // Lock start dates to today's date and make them read-only
+    const payeStart = document.getElementById('startDate');
+    const freeStart = document.getElementById('freelanceStartDate');
+    if (payeStart) {
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      payeStart.value = `${y}-${m}-${d}`;
+      payeStart.readOnly = true;
+      payeStart.setAttribute('aria-readonly', 'true');
+      payeStart.addEventListener('focus', (e) => e.target.blur());
+    }
+    if (freeStart) {
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      freeStart.value = `${y}-${m}-${d}`;
+      freeStart.readOnly = true;
+      freeStart.setAttribute('aria-readonly', 'true');
+      freeStart.addEventListener('focus', (e) => e.target.blur());
+    }
+    const commissionStart = document.getElementById('commissionStartDate');
+    if (commissionStart) {
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      commissionStart.value = `${y}-${m}-${d}`;
+      commissionStart.readOnly = true;
+      commissionStart.setAttribute('aria-readonly', 'true');
+      commissionStart.addEventListener('focus', (e) => e.target.blur());
+    }
+    document.getElementById('commissionContractorSignDate').value = formatDate(today);
+    document.getElementById('commissionDirectorDate').value = formatDate(today);
 
-    // Form submission handler
-    document.getElementById('contractAcknowledgementForm').addEventListener('submit', function(e) {
+    // Contract toggle functionality
+    const btnPayeContract = document.getElementById('btnPayeContract');
+    const btnFreelanceContract = document.getElementById('btnFreelanceContract');
+    const payeContract = document.getElementById('payeContract');
+    const freelanceContract = document.getElementById('freelanceContract');
+    const contractSubtitle = document.getElementById('contractSubtitle');
+
+    btnPayeContract.addEventListener('click', () => {
+      payeContract.style.display = 'block';
+      freelanceContract.style.display = 'none';
+      btnPayeContract.style.background = '#0078d7';
+      btnPayeContract.style.color = 'white';
+      btnFreelanceContract.style.background = 'white';
+      btnFreelanceContract.style.color = '#0078d7';
+      contractSubtitle.textContent = 'Employment Contract – Field Sales Representative (Version 1.2)';
+      
+      // Resize canvases after display change
+      requestAnimationFrame(() => {
+        employeeSignature.resizeCanvas();
+        directorSignature.resizeCanvas();
+      });
+    });
+
+    btnFreelanceContract.addEventListener('click', () => {
+      payeContract.style.display = 'none';
+      freelanceContract.style.display = 'block';
+      commissionContract.style.display = 'none';
+      btnFreelanceContract.style.background = '#0078d7';
+      btnFreelanceContract.style.color = 'white';
+      btnPayeContract.style.background = 'white';
+      btnPayeContract.style.color = '#0078d7';
+      document.getElementById('btnCommissionContract').style.background = 'white';
+      document.getElementById('btnCommissionContract').style.color = '#0078d7';
+      contractSubtitle.textContent = 'Freelance Agreement – Field Sales Representative (Version 1.2)';
+      
+      // Resize canvases after display change
+      requestAnimationFrame(() => {
+        freelanceContractorSignature.resizeCanvas();
+        freelanceDirectorSignature.resizeCanvas();
+      });
+    });
+
+    const btnCommissionContract = document.getElementById('btnCommissionContract');
+    const commissionContract = document.getElementById('commissionContract');
+
+    btnCommissionContract.addEventListener('click', () => {
+      payeContract.style.display = 'none';
+      freelanceContract.style.display = 'none';
+      commissionContract.style.display = 'block';
+      btnCommissionContract.style.background = '#0078d7';
+      btnCommissionContract.style.color = 'white';
+      btnPayeContract.style.background = 'white';
+      btnPayeContract.style.color = '#0078d7';
+      btnFreelanceContract.style.background = 'white';
+      btnFreelanceContract.style.color = '#0078d7';
+      contractSubtitle.textContent = 'Freelance Agreement – Field Sales Representative (Version 1.8)\nCommission-Only • £15 → £8 → £8 Taper Model • Monthly Payout • Territory Controlled';
+      
+      // Resize canvases after display change
+      requestAnimationFrame(() => {
+        commissionContractorSignature.resizeCanvas();
+        commissionDirectorSignature.resizeCanvas();
+      });
+    });
+
+    // Initialize with Commission-Only contract as default
+    commissionContract.style.display = 'block';
+    btnCommissionContract.style.background = '#0078d7';
+    btnCommissionContract.style.color = 'white';
+
+    // Utilities
+    function disableRepInputsFor(type) {
+      if (type === 'paye') {
+        document.getElementById('employeeNameContract').readOnly = true;
+        document.getElementById('employeeNameContract').setAttribute('aria-readonly', 'true');
+        document.getElementById('startDate').disabled = true;
+        // Disable signature drawing
+        document.getElementById('contractEmployeeSignature').style.pointerEvents = 'none';
+        document.getElementById('clearContractEmployee').disabled = true;
+        document.getElementById('undoContractEmployee').disabled = true;
+        // Disable submit button
+        const submitBtn = document.querySelector('#contractAcknowledgementForm button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+      } else if (type === 'freelance') {
+        document.getElementById('freelanceContractorName').readOnly = true;
+        document.getElementById('freelanceContractorName').setAttribute('aria-readonly', 'true');
+        document.getElementById('freelanceStartDate').disabled = true;
+        document.getElementById('freelanceContractorSignature').style.pointerEvents = 'none';
+        document.getElementById('clearFreelanceContractor').disabled = true;
+        document.getElementById('undoFreelanceContractor').disabled = true;
+        const submitBtn = document.querySelector('#freelanceAcknowledgementForm button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+      } else if (type === 'commission') {
+        document.getElementById('commissionContractorName').readOnly = true;
+        document.getElementById('commissionContractorName').setAttribute('aria-readonly', 'true');
+        document.getElementById('commissionStartDate').disabled = true;
+        document.getElementById('commissionContractorSignature').style.pointerEvents = 'none';
+        document.getElementById('clearCommissionContractor').disabled = true;
+        document.getElementById('undoCommissionContractor').disabled = true;
+        const submitBtn = document.querySelector('#commissionAcknowledgementForm button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+      }
+    }
+
+    function renderSavedSignature(canvasId, dataUrl) {
+      try {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+          // Clear and draw saved signature scaled to canvas
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = dataUrl;
+      } catch (_) {}
+    }
+
+    // Auth-aware load: populate existing contract and lock fields when applicable
+    let currentUser = null;
+    let existingContract = null;
+    let isAdmin = false;
+    let targetUid = null; // Admin can view a specific user's contract via ?uid=
+    let userContractType = 'freelance'; // Default from user document
+    
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user || null;
+      if (!user) return;
+      // Determine role and contract type from user document
+      try {
+        const userSnap = await getDoc(doc(db, 'users', user.uid));
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          isAdmin = userData.role === 'admin';
+          userContractType = userData.contractType || 'freelance';
+        }
+      } catch(_) { 
+        isAdmin = false; 
+        userContractType = 'freelance';
+      }
+      // Resolve target uid
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const forcedUid = params.get('uid');
+        targetUid = isAdmin && forcedUid ? forcedUid : user.uid;
+        // If admin viewing another user, fetch that user's contract type
+        if (isAdmin && forcedUid && forcedUid !== user.uid) {
+          try {
+            const targetUserSnap = await getDoc(doc(db, 'users', forcedUid));
+            if (targetUserSnap.exists()) {
+              userContractType = targetUserSnap.data().contractType || 'freelance';
+            }
+          } catch(_) {}
+        }
+      } catch(_) { targetUid = user.uid; }
+      // Show only the contract type matching user's contractType (hide toggle for reps)
+      if (!isAdmin) {
+        // Reps: show only their contract type, hide toggle
+        if (userContractType === 'paye') {
+          btnPayeContract.click();
+          payeContract.style.display = 'block';
+          freelanceContract.style.display = 'none';
+          commissionContract.style.display = 'none';
+        } else if (userContractType === 'commission') {
+          btnCommissionContract.click();
+          payeContract.style.display = 'none';
+          freelanceContract.style.display = 'none';
+          commissionContract.style.display = 'block';
+        } else {
+          btnFreelanceContract.click();
+          payeContract.style.display = 'none';
+          freelanceContract.style.display = 'block';
+          commissionContract.style.display = 'none';
+        }
+        // Hide toggle buttons for reps
+        btnPayeContract.parentElement.style.display = 'none';
+        
+        // Disable director signature fields for reps (never fillable)
+        disableDirectorCanvas('contractDirectorSignature', 'clearContractDirector', 'undoContractDirector');
+        disableDirectorCanvas('freelanceDirectorSignature', 'clearFreelanceDirector', 'undoFreelanceDirector');
+        disableDirectorCanvas('commissionDirectorSignature', 'clearCommissionDirector', 'undoCommissionDirector');
+      }
+      
+      try {
+        const snap = await getDoc(doc(db, 'contracts', targetUid));
+        if (snap.exists()) {
+          existingContract = snap.data();
+          const type = existingContract.contractType || (existingContract.type || userContractType);
+          // For admins: lock toggle and show the saved type
+          if (isAdmin) {
+            if (type === 'paye') {
+              btnPayeContract.click();
+            } else if (type === 'commission') {
+              btnCommissionContract.click();
+            } else {
+              btnFreelanceContract.click();
+            }
+            btnPayeContract.disabled = true;
+            btnFreelanceContract.disabled = true;
+            btnCommissionContract.disabled = true;
+          }
+          // Fill and disable inputs based on type
+          if (type === 'paye') {
+            if (existingContract.contractorName) {
+              document.getElementById('employeeNameContract').value = existingContract.contractorName;
+            }
+            if (existingContract.startDate) {
+              document.getElementById('startDate').value = existingContract.startDate;
+            }
+            if (existingContract.contractorSignatureDataUrl) {
+              renderSavedSignature('contractEmployeeSignature', existingContract.contractorSignatureDataUrl);
+            }
+            if (existingContract.contractorSignedAt) {
+              document.getElementById('contractEmployeeDate').value = formatDate(new Date(existingContract.contractorSignedAt));
+              disableRepInputsFor('paye');
+            }
+          } else if (type === 'commission') {
+            if (existingContract.contractorName) {
+              document.getElementById('commissionContractorName').value = existingContract.contractorName;
+            }
+            if (existingContract.startDate) {
+              document.getElementById('commissionStartDate').value = existingContract.startDate;
+            }
+            if (existingContract.contractorSignatureDataUrl) {
+              renderSavedSignature('commissionContractorSignature', existingContract.contractorSignatureDataUrl);
+            }
+            if (existingContract.contractorSignedAt) {
+              document.getElementById('commissionContractorSignDate').value = formatDate(new Date(existingContract.contractorSignedAt));
+              disableRepInputsFor('commission');
+            }
+          } else {
+            if (existingContract.contractorName) {
+              document.getElementById('freelanceContractorName').value = existingContract.contractorName;
+            }
+            if (existingContract.startDate) {
+              document.getElementById('freelanceStartDate').value = existingContract.startDate;
+            }
+            if (existingContract.contractorSignatureDataUrl) {
+              renderSavedSignature('freelanceContractorSignature', existingContract.contractorSignatureDataUrl);
+            }
+            if (existingContract.contractorSignedAt) {
+              document.getElementById('freelanceContractorDate').value = formatDate(new Date(existingContract.contractorSignedAt));
+              disableRepInputsFor('freelance');
+            }
+          }
+          // If admin signature exists, show it (read-only for reps)
+          if (existingContract.adminSignatureDataUrl) {
+            if ((existingContract.contractType || 'freelance') === 'paye') {
+              renderSavedSignature('contractDirectorSignature', existingContract.adminSignatureDataUrl);
+            } else {
+              renderSavedSignature('freelanceDirectorSignature', existingContract.adminSignatureDataUrl);
+            }
+          }
+
+          // Admin signing flow: enable director canvas only for admins when contractor has signed and admin hasn't
+          const contractorSigned = !!existingContract.contractorSignedAt;
+          const adminSigned = !!existingContract.adminSignedAt;
+          if (isAdmin && contractorSigned && !adminSigned) {
+            // Enable the appropriate canvas and inject a save button
+            if (type === 'paye') {
+              enableDirectorCanvas('contractDirectorSignature', 'clearContractDirector', 'undoContractDirector');
+              injectAdminSaveButton('paye');
+            } else if (type === 'commission') {
+              enableDirectorCanvas('commissionDirectorSignature', 'clearCommissionDirector', 'undoCommissionDirector');
+              injectAdminSaveButton('commission');
+            } else {
+              enableDirectorCanvas('freelanceDirectorSignature', 'clearFreelanceDirector', 'undoFreelanceDirector');
+              injectAdminSaveButton('freelance');
+            }
+          } else {
+            // Lock director canvas to read-only
+            disableDirectorCanvas('contractDirectorSignature', 'clearContractDirector', 'undoContractDirector');
+            disableDirectorCanvas('freelanceDirectorSignature', 'clearFreelanceDirector', 'undoFreelanceDirector');
+            disableDirectorCanvas('commissionDirectorSignature', 'clearCommissionDirector', 'undoCommissionDirector');
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load contract doc', err);
+      }
+    });
+
+    function disableDirectorCanvas(canvasId, clearBtnId, undoBtnId) {
+      const c = document.getElementById(canvasId);
+      if (c) c.style.pointerEvents = 'none';
+      const clr = document.getElementById(clearBtnId);
+      const und = document.getElementById(undoBtnId);
+      if (clr) clr.disabled = true;
+      if (und) und.disabled = true;
+    }
+    function enableDirectorCanvas(canvasId, clearBtnId, undoBtnId) {
+      const c = document.getElementById(canvasId);
+      if (c) c.style.pointerEvents = 'auto';
+      const clr = document.getElementById(clearBtnId);
+      const und = document.getElementById(undoBtnId);
+      if (clr) clr.disabled = false;
+      if (und) und.disabled = false;
+    }
+
+    // PAYE submission handler → Persist one-time contractor signature
+    document.getElementById('contractAcknowledgementForm').addEventListener('submit', async function(e) {
       e.preventDefault();
+      if (!currentUser) { alert('You must be signed in.'); return; }
+      if (existingContract && existingContract.contractorSignedAt) {
+        alert('Your contract has already been signed.');
+        return;
+      }
+      
+      // Verify user is actually PAYE type
+      if (userContractType !== 'paye') {
+        alert('This form is for PAYE contracts only. Please use your assigned contract type.');
+        return;
+      }
 
       const employeeName = document.getElementById('employeeNameContract').value.trim();
-      const startDate = document.getElementById('startDate').value;
+      const startDate = document.getElementById('startDate').value.trim();
+      if (!employeeName) { alert('Please enter your name'); return; }
+      if (!startDate) { alert('Please enter your start date'); return; }
+      if (!employeeSignature.hasSignature()) { alert('Please sign in the employee signature box'); return; }
 
-      if (!employeeName) {
-        alert('Please enter your name');
-        return;
-      }
-
-      if (!startDate) {
-        alert('Please enter your start date');
-        return;
-      }
-
-      if (!employeeSignature.hasSignature()) {
-        alert('Please sign in the employee signature box');
-        return;
-      }
-
-      const formData = {
-        employeeName: employeeName,
-        startDate: startDate,
-        employeeSignature: employeeSignature.getSignatureData(),
-        employeeDate: document.getElementById('contractEmployeeDate').value,
-        directorSignature: directorSignature.hasSignature() ? directorSignature.getSignatureData() : null,
-        directorDate: document.getElementById('contractDirectorDate').value,
-        submittedAt: new Date().toISOString(),
-        contractAccepted: true
-      };
-
-      console.log('Employment contract form ready for submission:', formData);
+      const nowIso = new Date().toISOString();
+      const signatureData = employeeSignature.getSignatureData();
       
-      alert('✓ Employment contract submitted successfully. Your response has been saved. Thank you!');
+      // Verify signature data is valid
+      if (!signatureData || signatureData === 'data:,') {
+        alert('Invalid signature data. Please sign again.');
+        return;
+      }
+      
+      const data = {
+        contractType: 'paye',
+        version: '1.2',
+        contractorName: employeeName,
+        startDate: startDate,
+        contractorSignatureDataUrl: signatureData,
+        contractorSignedAt: nowIso,
+        contractDate: nowIso,
+      };
+      try {
+        // Check if document exists to choose create vs update
+        const contractRef = doc(db, 'contracts', currentUser.uid);
+        const existingSnap = await getDoc(contractRef);
+        
+        if (!existingSnap.exists()) {
+          // New contract: use setDoc
+          await setDoc(contractRef, data);
+        } else {
+          // Existing doc: use updateDoc with exact fields the rules allow
+          await updateDoc(contractRef, {
+            contractType: data.contractType,
+            contractorName: data.contractorName,
+            startDate: data.startDate,
+            contractorSignatureDataUrl: data.contractorSignatureDataUrl,
+            contractorSignedAt: data.contractorSignedAt,
+            contractDate: data.contractDate,
+            version: data.version
+          });
+        }
+        existingContract = { ...(existingContract || {}), ...data };
+        // Lock UI and show saved signature
+        disableRepInputsFor('paye');
+        renderSavedSignature('contractEmployeeSignature', data.contractorSignatureDataUrl);
+        // Create calendar event for rep (contractor signed)
+        try {
+          const now = new Date();
+          const dateISO = now.toISOString().slice(0,10);
+          const time = now.toTimeString().slice(0,5);
+          await addDoc(collection(db,'events'), {
+            title: 'Contract signed',
+            description: `You signed your ${data.contractType?.toUpperCase()||'PAYE'} contract (v${data.version}).`,
+            dateISO,
+            time,
+            assignedRepIds: [currentUser.uid],
+            completed: true,
+            deleted: false,
+            createdAt: now.toISOString(),
+            createdBy: currentUser.uid,
+          });
+        } catch (evErr) { console.warn('Failed to create event (contractor signed)', evErr); }
+        
+        // Create admin todo for contract approval
+        try {
+          console.log('[Contract] Creating admin todo - querying for admin users...');
+          const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+          const adminSnap = await getDocs(adminQuery);
+          const adminIds = adminSnap.docs.map(doc => doc.id);
+          console.log('[Contract] Found admin IDs:', adminIds);
+          if (adminIds.length > 0) {
+            const userData = await getDoc(doc(db, 'users', currentUser.uid));
+            const repName = userData.exists() ? userData.data().name : 'Rep';
+            const todoData = {
+              title: `Review ${repName}'s ${data.contractType.toUpperCase()} Contract`,
+              description: `${repName} has signed their ${data.contractType.toUpperCase()} contract. Please review and countersign.`,
+              assignedRepIds: adminIds,
+              completed: false,
+              deleted: false,
+              createdAt: new Date().toISOString(),
+              createdBy: currentUser.uid
+            };
+            console.log('[Contract] Creating todo with data:', todoData);
+            const todoRef = await addDoc(collection(db, 'todos'), todoData);
+            console.log('[Contract] Todo created successfully with ID:', todoRef.id);
+          } else {
+            console.warn('[Contract] No admin users found - cannot create todo');
+          }
+        } catch (todoErr) { console.error('[Contract] Failed to create admin todo', todoErr); }
+        
+        alert('✓ Contract submitted successfully.');
+      } catch (err) {
+        console.error('Failed to save contract', err);
+        let errorMsg = 'Failed to save your contract. ';
+        if (err.code === 'permission-denied') {
+          errorMsg += 'Permission denied. Please ensure you are signed in.';
+        } else if (err.message) {
+          errorMsg += err.message;
+        } else {
+          errorMsg += 'Please try again.';
+        }
+        alert(errorMsg);
+      }
     });
+
+    // Freelance submission handler → Persist one-time contractor signature
+    document.getElementById('freelanceAcknowledgementForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      if (!currentUser) { alert('You must be signed in.'); return; }
+      if (existingContract && existingContract.contractorSignedAt) {
+        alert('Your agreement has already been signed.');
+        return;
+      }
+      
+      // Verify user is actually freelance type
+      if (userContractType !== 'freelance') {
+        alert('This form is for Freelance agreements only. Please use your assigned contract type.');
+        return;
+      }
+
+      const contractorName = document.getElementById('freelanceContractorName').value.trim();
+      const startDate = document.getElementById('freelanceStartDate').value.trim();
+      if (!contractorName) { alert('Please enter your name'); return; }
+      if (!startDate) { alert('Please enter your start date'); return; }
+      if (!freelanceContractorSignature.hasSignature()) { alert('Please sign in the contractor signature box'); return; }
+
+      const nowIso = new Date().toISOString();
+      const signatureData = freelanceContractorSignature.getSignatureData();
+      
+      // Verify signature data is valid
+      if (!signatureData || signatureData === 'data:,') {
+        alert('Invalid signature data. Please sign again.');
+        return;
+      }
+      
+      const data = {
+        contractType: 'freelance',
+        version: '1.2',
+        contractorName: contractorName,
+        startDate: startDate,
+        contractorSignatureDataUrl: signatureData,
+        contractorSignedAt: nowIso,
+        contractDate: nowIso,
+      };
+      try {
+        // Check if document exists to choose create vs update
+        const contractRef = doc(db, 'contracts', currentUser.uid);
+        const existingSnap = await getDoc(contractRef);
+        
+        if (!existingSnap.exists()) {
+          // New contract: use setDoc
+          await setDoc(contractRef, data);
+        } else {
+          // Existing doc: use updateDoc with exact fields the rules allow
+          await updateDoc(contractRef, {
+            contractType: data.contractType,
+            contractorName: data.contractorName,
+            startDate: data.startDate,
+            contractorSignatureDataUrl: data.contractorSignatureDataUrl,
+            contractorSignedAt: data.contractorSignedAt,
+            contractDate: data.contractDate,
+            version: data.version
+          });
+        }
+        existingContract = { ...(existingContract || {}), ...data };
+        disableRepInputsFor('freelance');
+        renderSavedSignature('freelanceContractorSignature', data.contractorSignatureDataUrl);
+        // Create calendar event for rep (contractor signed)
+        try {
+          const now = new Date();
+          const dateISO = now.toISOString().slice(0,10);
+          const time = now.toTimeString().slice(0,5);
+          await addDoc(collection(db,'events'), {
+            title: 'Contract signed',
+            description: `You signed your ${data.contractType?.toUpperCase()||'FREELANCE'} agreement (v${data.version}).`,
+            dateISO,
+            time,
+            assignedRepIds: [currentUser.uid],
+            completed: true,
+            deleted: false,
+            createdAt: now.toISOString(),
+            createdBy: currentUser.uid,
+          });
+        } catch (evErr) { console.warn('Failed to create event (contractor signed)', evErr); }
+        
+        // Create admin todo for contract approval
+        try {
+          console.log('[Freelance] Creating admin todo - querying for admin users...');
+          const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+          const adminSnap = await getDocs(adminQuery);
+          const adminIds = adminSnap.docs.map(doc => doc.id);
+          console.log('[Freelance] Found admin IDs:', adminIds);
+          if (adminIds.length > 0) {
+            const userData = await getDoc(doc(db, 'users', currentUser.uid));
+            const repName = userData.exists() ? userData.data().name : 'Rep';
+            const todoData = {
+              title: `Review ${repName}'s ${data.contractType.toUpperCase()} Agreement`,
+              description: `${repName} has signed their ${data.contractType.toUpperCase()} agreement. Please review and countersign.`,
+              assignedRepIds: adminIds,
+              completed: false,
+              deleted: false,
+              createdAt: new Date().toISOString(),
+              createdBy: currentUser.uid
+            };
+            console.log('[Freelance] Creating todo with data:', todoData);
+            const todoRef = await addDoc(collection(db, 'todos'), todoData);
+            console.log('[Freelance] Todo created successfully with ID:', todoRef.id);
+          } else {
+            console.warn('[Freelance] No admin users found - cannot create todo');
+          }
+        } catch (todoErr) { console.error('[Freelance] Failed to create admin todo', todoErr); }
+        
+        alert('✓ Agreement submitted successfully.');
+      } catch (err) {
+        console.error('Failed to save agreement', err);
+        let errorMsg = 'Failed to save your agreement. ';
+        if (err.code === 'permission-denied') {
+          errorMsg += 'Permission denied. Please ensure you are signed in.';
+        } else if (err.message) {
+          errorMsg += err.message;
+        } else {
+          errorMsg += 'Please try again.';
+        }
+        alert(errorMsg);
+      }
+    });
+
+    // Commission-Only submission handler → Persist one-time contractor signature
+    document.getElementById('commissionAcknowledgementForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      if (!currentUser) { alert('You must be signed in.'); return; }
+      if (existingContract && existingContract.contractorSignedAt && (existingContract.contractType === 'commission')) {
+        alert('Your agreement has already been signed.');
+        return;
+      }
+      
+      // Verify user is actually commission type
+      if (userContractType !== 'commission') {
+        alert('This form is for Commission-Only agreements only. Please use your assigned contract type.');
+        return;
+      }
+
+      const contractorName = document.getElementById('commissionContractorName').value.trim();
+      const startDate = document.getElementById('commissionStartDate').value.trim();
+      if (!contractorName) { alert('Please enter your name'); return; }
+      if (!startDate) { alert('Please enter your start date'); return; }
+      if (!commissionContractorSignature.hasSignature()) { alert('Please sign in the contractor signature box'); return; }
+
+      const nowIso = new Date().toISOString();
+      const signatureData = commissionContractorSignature.getSignatureData();
+      
+      // Verify signature data is valid
+      if (!signatureData || signatureData === 'data:,') {
+        alert('Invalid signature data. Please sign again.');
+        return;
+      }
+      
+      const data = {
+        contractType: 'commission',
+        version: '1.8',
+        contractorName: contractorName,
+        startDate: startDate,
+        contractorSignatureDataUrl: signatureData,
+        contractorSignedAt: nowIso,
+        contractDate: nowIso,
+      };
+      try {
+        // Check if document exists to choose create vs update
+        const contractRef = doc(db, 'contracts', currentUser.uid);
+        const existingSnap = await getDoc(contractRef);
+        
+        if (!existingSnap.exists()) {
+          // New contract: use setDoc
+          await setDoc(contractRef, data);
+        } else {
+          // Existing doc: use updateDoc
+          await updateDoc(contractRef, {
+            contractType: data.contractType,
+            contractorName: data.contractorName,
+            startDate: data.startDate,
+            contractorSignatureDataUrl: data.contractorSignatureDataUrl,
+            contractorSignedAt: data.contractorSignedAt,
+            contractDate: data.contractDate,
+            version: data.version
+          });
+        }
+        existingContract = { ...(existingContract || {}), ...data };
+        disableRepInputsFor('commission');
+        renderSavedSignature('commissionContractorSignature', data.contractorSignatureDataUrl);
+        
+        // Create calendar event for rep (contractor signed)
+        try {
+          const now = new Date();
+          const dateISO = now.toISOString().slice(0,10);
+          const time = now.toTimeString().slice(0,5);
+          await addDoc(collection(db,'events'), {
+            title: 'Commission-Only agreement signed',
+            description: `You signed your ${data.contractType?.toUpperCase()||'COMMISSION'} agreement (v${data.version}).`,
+            dateISO,
+            time,
+            assignedRepIds: [currentUser.uid],
+            completed: true,
+            deleted: false,
+            createdAt: now.toISOString(),
+            createdBy: currentUser.uid,
+          });
+        } catch (evErr) { console.warn('Failed to create event (contractor signed)', evErr); }
+        
+        // Create admin todo for contract approval
+        try {
+          console.log('[Commission] Creating admin todo - querying for admin users...');
+          const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+          const adminSnap = await getDocs(adminQuery);
+          const adminIds = adminSnap.docs.map(doc => doc.id);
+          console.log('[Commission] Found admin IDs:', adminIds);
+          if (adminIds.length > 0) {
+            const userData = await getDoc(doc(db, 'users', currentUser.uid));
+            const repName = userData.exists() ? userData.data().name : 'Rep';
+            const todoData = {
+              title: `Review ${repName}'s ${data.contractType.toUpperCase()} Agreement`,
+              description: `${repName} has signed their ${data.contractType.toUpperCase()} agreement. Please review and countersign.`,
+              assignedRepIds: adminIds,
+              completed: false,
+              deleted: false,
+              createdAt: new Date().toISOString(),
+              createdBy: currentUser.uid
+            };
+            console.log('[Commission] Creating todo with data:', todoData);
+            const todoRef = await addDoc(collection(db, 'todos'), todoData);
+            console.log('[Commission] Todo created successfully with ID:', todoRef.id);
+          } else {
+            console.warn('[Commission] No admin users found - cannot create todo');
+          }
+        } catch (todoErr) { console.error('[Commission] Failed to create admin todo', todoErr); }
+        
+        alert('✓ Agreement submitted successfully.');
+      } catch (err) {
+        console.error('Failed to save agreement', err);
+        let errorMsg = 'Failed to save your agreement. ';
+        if (err.code === 'permission-denied') {
+          errorMsg += 'Permission denied. Please ensure you are signed in.';
+        } else if (err.message) {
+          errorMsg += err.message;
+        } else {
+          errorMsg += 'Please try again.';
+        }
+        alert(errorMsg);
+      }
+    });
+
+    // Admin: inject Save button and persist director signature one-time
+    function injectAdminSaveButton(type) {
+      const existing = document.getElementById('adminSignatureSaveBtn');
+      if (existing) return;
+      const btn = document.createElement('button');
+      btn.id = 'adminSignatureSaveBtn';
+      btn.type = 'button';
+      btn.className = 'btn btn-primary';
+      btn.style.marginTop = '12px';
+      btn.textContent = 'Save Admin Signature';
+      let container;
+      if (type === 'paye') {
+        container = document.getElementById('contractDirectorSignature').parentElement.parentElement;
+      } else if (type === 'commission') {
+        container = document.getElementById('commissionDirectorSignature').parentElement.parentElement;
+      } else {
+        container = document.getElementById('freelanceDirectorSignature').parentElement.parentElement;
+      }
+      container.appendChild(btn);
+      btn.addEventListener('click', async () => {
+        if (!currentUser || !isAdmin) { alert('Admin only'); return; }
+        if (!existingContract || !existingContract.contractorSignedAt) { alert('Contractor must sign first'); return; }
+        if (existingContract.adminSignedAt) { alert('Already signed by admin.'); return; }
+        let canvasId, clearBtnId, undoBtnId;
+        if (type === 'paye') {
+          canvasId = 'contractDirectorSignature';
+          clearBtnId = 'clearContractDirector';
+          undoBtnId = 'undoContractDirector';
+        } else if (type === 'commission') {
+          canvasId = 'commissionDirectorSignature';
+          clearBtnId = 'clearCommissionDirector';
+          undoBtnId = 'undoCommissionDirector';
+        } else {
+          canvasId = 'freelanceDirectorSignature';
+          clearBtnId = 'clearFreelanceDirector';
+          undoBtnId = 'undoFreelanceDirector';
+        }
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+        const pixels = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+        let hasInk = false; for (let i=3;i<pixels.length;i+=4){ if(pixels[i]!==0){ hasInk=true; break; } }
+        if (!hasInk) { alert('Please add your signature first.'); return; }
+        const dataUrl = canvas.toDataURL('image/png');
+        const payload = {
+          adminSignatureDataUrl: dataUrl,
+          adminSignedAt: new Date().toISOString(),
+          adminName: 'Christopher Wessell',
+        };
+        try {
+          await updateDoc(doc(db, 'contracts', targetUid || currentUser.uid), payload);
+          existingContract = { ...(existingContract || {}), ...payload };
+          renderSavedSignature(canvasId, dataUrl);
+          disableDirectorCanvas(canvasId, clearBtnId, undoBtnId);
+          // Create calendar event for rep (admin signed)
+          try {
+            const now = new Date();
+            const dateISO = now.toISOString().slice(0,10);
+            const time = now.toTimeString().slice(0,5);
+            const target = (targetUid || currentUser.uid);
+            await addDoc(collection(db,'events'), {
+              title: 'Contract approved by Admin',
+              description: 'Your contract has been countersigned by Swash.',
+              dateISO,
+              time,
+              assignedRepIds: [target],
+              completed: true,
+              deleted: false,
+              createdAt: now.toISOString(),
+              createdBy: currentUser.uid,
+            });
+          } catch (evErr) { console.warn('Failed to create event (admin signed)', evErr); }
+          btn.disabled = true; btn.textContent = 'Admin Signature Saved';
+          alert('✓ Admin signature saved.');
+        } catch (err) {
+          console.error('Failed to save admin signature', err);
+          alert('Failed to save admin signature.');
+        }
+      });
+    }
 
     window.addEventListener('resize', () => {
       employeeSignature.resizeCanvas();
       directorSignature.resizeCanvas();
+      freelanceContractorSignature.resizeCanvas();
+      freelanceDirectorSignature.resizeCanvas();
+      commissionContractorSignature.resizeCanvas();
+      commissionDirectorSignature.resizeCanvas();
     });
   </script>
 </body>

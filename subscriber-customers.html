@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Customers - Swash Subscriber</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .admin-only, .rep-only, .admin-rep { display: none !important; }
+    .subscriber-only { display: block !important; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <h1 style="margin: 0 0 0 12px; font-size: 1.2rem;">👥 Customers</h1>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
+          <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
+          <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
+          <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
+          <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we verify your account.</p>
+    </div>
+  </section>
+
+  <main id="customersContent" class="page" style="display:none;">
+    <section class="card">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h2>Your Customers</h2>
+          <p class="text-muted">Manage your customer database</p>
+        </div>
+        <div class="card-header-actions">
+          <input type="search" id="searchBox" placeholder="Search customers..." class="search-input" style="margin-right:12px;padding:8px 16px;border:1px solid #cbd5e1;border-radius:6px;" />
+        </div>
+      </header>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Address</th>
+              <th>Email</th>
+              <th>Mobile</th>
+              <th>Tier</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="customersTableBody">
+            <tr>
+              <td colspan="7" style="text-align:center;padding:40px;color:#64748b;">Loading customers...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Customer Details Modal -->
+  <div id="customerModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:20px;">
+    <div class="modal-content" style="background:#fff; border-radius:12px; padding:20px; width:min(96vw,560px); box-shadow:0 20px 40px rgba(0,0,0,0.25);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h3 id="customerModalTitle" style="margin:0; font-size:1.2rem;">Customer Details</h3>
+        <button type="button" id="customerModalClose" class="btn btn-secondary" style="min-width:auto; padding:6px 10px;">×</button>
+      </div>
+      <form id="customerForm">
+        <div class="form-grid">
+          <label>
+            <span>Full Name</span>
+            <input id="custName" required />
+          </label>
+          <label>
+            <span>Address</span>
+            <input id="custAddress" required />
+          </label>
+          <label>
+            <span>Email</span>
+            <input id="custEmail" type="email" />
+          </label>
+          <label>
+            <span>Mobile</span>
+            <input id="custMobile" />
+          </label>
+          <label>
+            <span>Tier</span>
+            <input id="custTier" />
+          </label>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+          <button type="button" id="customerCancelBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="customerSaveBtn" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './firebase-init.js';
+    import {
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import {
+      doc,
+      getDoc,
+      collection,
+      getDocs,
+      updateDoc
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    let subscriberId = null;
+    let allCustomers = [];
+    let filteredCustomers = [];
+
+    const authOverlay = document.getElementById('authOverlay');
+    const customersContent = document.getElementById('customersContent');
+    const customersTableBody = document.getElementById('customersTableBody');
+    const searchBox = document.getElementById('searchBox');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
+    const customerModal = document.getElementById('customerModal');
+    const customerModalClose = document.getElementById('customerModalClose');
+    const customerCancelBtn = document.getElementById('customerCancelBtn');
+    const customerForm = document.getElementById('customerForm');
+    let currentCustomerId = null;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './subscriber-login.html';
+        return;
+      }
+
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewingUid = urlParams.get('uid');
+
+        const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!currentUserDoc.exists()) throw new Error('User not found');
+
+        const currentUserData = currentUserDoc.data();
+
+        if (viewingUid && currentUserData.role === 'admin') {
+          subscriberId = viewingUid;
+        } else {
+          subscriberId = user.uid;
+          if (currentUserData.role !== 'subscriber') {
+            throw new Error('Access denied');
+          }
+          if (!currentUserData.billingCompleted) {
+            window.location.href = './subscriber-billing.html';
+            return;
+          }
+        }
+
+        authOverlay.style.display = 'none';
+        customersContent.style.display = 'block';
+
+        await loadCustomers();
+
+      } catch (error) {
+        console.error('Auth error:', error);
+        alert(error.message);
+        await signOut(auth);
+        window.location.href = './subscriber-login.html';
+      }
+    });
+
+    async function loadCustomers() {
+      try {
+        const customersRef = collection(db, `subscribers/${subscriberId}/customers`);
+        const snapshot = await getDocs(customersRef);
+
+        allCustomers = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        filteredCustomers = [...allCustomers];
+        renderTable();
+
+      } catch (error) {
+        console.error('Error loading customers:', error);
+        customersTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#dc2626;">Failed to load customers</td></tr>';
+      }
+    }
+
+    function renderTable() {
+      if (filteredCustomers.length === 0) {
+        const message = searchBox.value.trim() 
+          ? 'No customers match your search'
+          : 'No customers yet. Create a quote to add customers!';
+        customersTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#64748b;">${message}</td></tr>`;
+        return;
+      }
+
+      customersTableBody.innerHTML = filteredCustomers.map(customer => `
+        <tr>
+          <td><strong>${escapeHtml(customer.name || 'N/A')}</strong></td>
+          <td>${escapeHtml(customer.address || 'N/A')}</td>
+          <td>${escapeHtml(customer.email || 'N/A')}</td>
+          <td>${escapeHtml(customer.mobile || 'N/A')}</td>
+          <td><span class="badge badge-info">${escapeHtml(customer.tier || 'N/A')}</span></td>
+          <td><span class="badge badge-success">Active</span></td>
+          <td>
+            <button class="btn btn-sm btn-secondary" onclick="viewCustomer('${customer.id}')">View</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    searchBox.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase().trim();
+      
+      if (!term) {
+        filteredCustomers = [...allCustomers];
+      } else {
+        filteredCustomers = allCustomers.filter(c => 
+          (c.name || '').toLowerCase().includes(term) ||
+          (c.address || '').toLowerCase().includes(term) ||
+          (c.email || '').toLowerCase().includes(term) ||
+          (c.mobile || '').toLowerCase().includes(term)
+        );
+      }
+      
+      renderTable();
+    });
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function openCustomerModal(data) {
+      document.getElementById('custName').value = data.name || '';
+      document.getElementById('custAddress').value = data.address || '';
+      document.getElementById('custEmail').value = data.email || '';
+      document.getElementById('custMobile').value = data.mobile || '';
+      document.getElementById('custTier').value = data.tier || '';
+      customerModal.style.display = 'flex';
+    }
+
+    function closeCustomerModal() {
+      customerModal.style.display = 'none';
+      currentCustomerId = null;
+      customerForm.reset();
+    }
+
+    window.viewCustomer = async (customerId) => {
+      try {
+        const snap = await getDoc(doc(db, `subscribers/${subscriberId}/customers`, customerId));
+        if (!snap.exists()) {
+          alert('Customer not found');
+          return;
+        }
+        currentCustomerId = customerId;
+        openCustomerModal(snap.data());
+      } catch (e) {
+        console.error('Load customer failed', e);
+        alert('Failed to load customer');
+      }
+    };
+
+    customerModalClose.addEventListener('click', closeCustomerModal);
+    customerCancelBtn.addEventListener('click', closeCustomerModal);
+
+    customerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentCustomerId) { closeCustomerModal(); return; }
+      try {
+        await updateDoc(doc(db, `subscribers/${subscriberId}/customers`, currentCustomerId), {
+          name: document.getElementById('custName').value.trim(),
+          address: document.getElementById('custAddress').value.trim(),
+          email: document.getElementById('custEmail').value.trim() || null,
+          mobile: document.getElementById('custMobile').value.trim() || null,
+          tier: document.getElementById('custTier').value.trim() || null,
+        });
+        closeCustomerModal();
+        await loadCustomers();
+        alert('Customer updated');
+      } catch (e) {
+        console.error('Update failed', e);
+        alert('Failed to save customer');
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = './subscriber-login.html';
+    });
+
+    menuBtn.addEventListener('click', () => {
+      menuDropdown.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.menu-box')) {
+        menuDropdown.classList.remove('show');
+      }
+    });
+  </script>
+
+</body>
+</html>

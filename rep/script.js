@@ -5,6 +5,7 @@ console.log("[Quote DEBUG] script.js module loading...");
 
 import { initMenuDropdown } from "./menu.js";
 import { authStateReady, handlePageRouting } from "../auth-check.js";
+import { logOutboundEmailToFirestore } from "../lib/firestore-utils.js";
 console.log("[Quote DEBUG] menu.js imported successfully");
 import {
   queueOfflineSubmission,
@@ -125,6 +126,7 @@ async function bootstrap() {
     calculateBtn: document.getElementById("calculateBtn"),
     submitBtn: document.getElementById("submitBtn"),
     resultPanel: document.getElementById("result"),
+    upfrontPayment: document.getElementById("upfrontPayment"),
     customerSection: document.getElementById("customerFields"),
     customerName: document.getElementById("customerName"),
     address: document.getElementById("address"),
@@ -137,6 +139,7 @@ async function bootstrap() {
     emailPreviewBody: document.getElementById("emailPreviewBody"),
     queueAlerts: document.getElementById("queueAlerts"),
     applyOfferBtn: document.getElementById("applyOfferBtn"),
+    frontOnly: document.getElementById("frontOnly"),
     emailMessage: document.getElementById("emailMessage"),
   });
 
@@ -325,14 +328,13 @@ function calculatePricing() {
   price += ROOF_LANTERN_ADDON * lanterns;
   price += VELUX_ADDON_EACH * skylights;
 
-  // Alternating logic
-  if (selectors.alternating.checked) {
-    price /= 2;
-    if (price < MIN_NET_PRICE) price = MIN_NET_PRICE;
-  }
-
   // Gold tier logic (skipped if offer applied)
   if (isGold) price *= GOLD_FACTOR;
+
+  // Alternating or Front Only logic (applied AFTER gold factor)
+  if (selectors.alternating.checked || (selectors.frontOnly && selectors.frontOnly.checked)) {
+    price /= 2;
+  }
 
   // Minimum price enforcement
   if (price < MIN_NET_PRICE) price = MIN_NET_PRICE;
@@ -368,15 +370,23 @@ function renderPricing(pricing) {
     ? `<p class="result-offer">Special offer applied${expiresCopy ? ` – expires ${escapeHtml(expiresCopy)}` : ""}</p>`
     : "";
 
-  selectors.resultPanel.innerHTML = `
-    <div class="result-box">
-      <p class="result-price"><strong>Price per clean:</strong> ${formatCurrency(computed.pricePerClean)}</p>
-      <p class="result-upfront">Advance payment (3 cleans): ${formatCurrency(computed.priceUpfront)}</p>
-      ${offerHtml}
-    </div>
+  // Find or create the result-box (preserve status messages)
+  let resultBox = selectors.resultPanel.querySelector(".result-box");
+  if (!resultBox) {
+    resultBox = document.createElement("div");
+    resultBox.className = "result-box";
+    selectors.resultPanel.insertBefore(resultBox, selectors.resultPanel.firstChild);
+  }
+  
+  const showUpfront = !!selectors.upfrontPayment?.checked;
+  resultBox.innerHTML = `
+    <p class="result-price"><strong>Price per clean:</strong> ${formatCurrency(computed.pricePerClean)}</p>
+    ${showUpfront ? `<p class="result-upfront">Advance payment (3 cleans): ${formatCurrency(computed.priceUpfront)}</p>` : ""}
+    ${offerHtml}
   `;
 
   selectors.resultPanel.hidden = false;
+  // Always show customer section when price is calculated (needed for modal flow)
   if (selectors.customerSection) {
     selectors.customerSection.hidden = false;
   }
@@ -529,6 +539,16 @@ async function sendQuoteEmail(
       message_body: message,
       email: recipient,
     });
+    try {
+      await logOutboundEmailToFirestore({
+        to: recipient,
+        subject: "Your Swash Window Cleaning Quote",
+        body: message,
+        source: "quote-calculator",
+      });
+    } catch (logError) {
+      console.warn("[Quote] Failed to log outbound quote email", logError);
+    }
     
     // Log successful send to Firestore if quote has ID
     if (quote.id && window.db) {
@@ -549,7 +569,8 @@ async function sendQuoteEmail(
           })
         });
       } catch (logError) {
-        console.warn("Failed to log email send", logError);
+        // Often blocked by rules for non-admins; not user-facing
+        if (console.debug) console.debug("Email send logged locally; server log skipped", logError?.code || logError);
       }
     }
     
@@ -577,7 +598,7 @@ async function sendQuoteEmail(
           })
         });
       } catch (logError) {
-        console.warn("Failed to log email failure", logError);
+        if (console.debug) console.debug("Email failure log skipped (rules)", logError?.code || logError);
       }
     }
     
@@ -753,28 +774,26 @@ function validateCustomerFields() {
 
 async function handleSubmit() {
   console.log("[Quote] Submit handler triggered");
-  // Require authentication to submit online
-  try {
-    if (!auth.currentUser) {
-      const overlay = document.getElementById("authOverlay");
-      if (overlay) {
-        overlay.hidden = false;
-        overlay.style.display = "flex";
-      }
-      selectors.resultPanel?.insertAdjacentHTML(
-        "beforeend",
-        '<p class="status warning">Please sign in first to save the quote online and send the email.</p>',
-      );
-      return;
-    }
-  } catch (_) {
-    // ignore
-  }
+  // Allow public submissions without authentication
+  // If user is authenticated, their info will be used; otherwise form will be submitted publicly
   
   if (!validateCustomerFields()) {
     console.warn("[Quote] Customer field validation failed");
     return;
   }
+
+  // Enforce pinned location requirement before quote submission
+  try {
+    const latVal = document.getElementById('customerLatitude')?.value;
+    const lngVal = document.getElementById('customerLongitude')?.value;
+    if (!latVal || !lngVal) {
+      selectors.resultPanel?.insertAdjacentHTML(
+        'beforeend',
+        '<p class="status warning">Please pin the customer location ("Set Location on Map") before saving the quote.</p>'
+      );
+      return;
+    }
+  } catch(_) {}
 
   const pricing = latestPricing || calculatePricing();
   if (!latestPricing) {
@@ -848,7 +867,7 @@ async function handleSubmit() {
     persistError = error;
     storedOnline = false;
   }
-  
+
   if (!storedOnline) {
     if (persistError) {
       const code = persistError?.code || "unknown";
@@ -887,42 +906,168 @@ async function handleSubmit() {
   }
   renderEmailPreview(quote);
 
+  // Store status messages to show AFTER form reset
+  const statusMessages = [];
+  
   if (emailSent) {
-    selectors.resultPanel.insertAdjacentHTML(
-      "beforeend",
-      `<p class="status success">Quote emailed to <strong>${escapeHtml(emailValue)}</strong>. Preview below.</p>`,
-    );
+    statusMessages.push(`<p class="status success">✅ Quote emailed to <strong>${escapeHtml(emailValue)}</strong> and saved to dashboard.</p>`);
   } else if (storedOnline && !emailQueued) {
-    selectors.resultPanel.insertAdjacentHTML(
-      "beforeend",
-      `<p class="status warning">Quote saved to dashboard. Email will need to be sent manually.</p>`,
-    );
+    statusMessages.push(`<p class="status warning">Quote saved to dashboard. Email will need to be sent manually.</p>`);
   }
 
   if (emailQueued) {
-    selectors.resultPanel.insertAdjacentHTML(
-      "beforeend",
-      `<p class="status info">Email queued. We will send it automatically once the quote syncs online.</p>`,
-    );
+    statusMessages.push(`<p class="status info">Email queued. We will send it automatically once the quote syncs online.</p>`);
   }
 
   if (!storedOnline && !persistError) {
-    selectors.resultPanel.insertAdjacentHTML(
-      "beforeend",
-      `<p class="status warning">Quote saved offline. We will sync automatically when you are back online.</p>`,
-    );
+    statusMessages.push(`<p class="status warning">Quote saved offline. We will sync automatically when you are back online.</p>`);
     renderOfflineQueue();
   } else if (storedOnline && !emailSent && !emailQueued) {
-    selectors.resultPanel.insertAdjacentHTML(
-      "beforeend",
-      `<p class="status warning">Email send failed automatically - please send manually from the dashboard.</p>`,
-    );
+    statusMessages.push(`<p class="status warning">Email send failed automatically - please send manually from the dashboard.</p>`);
+  }
+
+  // Clear all form fields after submission (reset for next sale)
+  if (selectors.customerName) selectors.customerName.value = "";
+  if (selectors.address) selectors.address.value = "";
+  if (selectors.mobile) selectors.mobile.value = "";
+  if (selectors.email) selectors.email.value = "";
+  if (selectors.houseType) selectors.houseType.selectedIndex = 0;
+  if (selectors.houseSize) selectors.houseSize.selectedIndex = 0;
+  if (selectors.conservatory) selectors.conservatory.checked = false;
+  if (selectors.extension) selectors.extension.checked = false;
+  if (selectors.roofLanterns) {
+    selectors.roofLanterns.value = 0;
+    if (selectors.roofLanternsValue) selectors.roofLanternsValue.textContent = "0";
+  }
+  if (selectors.skylights) {
+    selectors.skylights.value = 0;
+    if (selectors.skylightsValue) selectors.skylightsValue.textContent = "0";
+  }
+  if (selectors.partialCleaning) selectors.partialCleaning.value = 100;
+  if (selectors.alternating) selectors.alternating.checked = false;
+  if (selectors.frontOnly) selectors.frontOnly.checked = false;
+  if (selectors.notes) selectors.notes.value = "";
+  if (selectors.customerLatitude) selectors.customerLatitude.value = "";
+  if (selectors.customerLongitude) selectors.customerLongitude.value = "";
+  if (selectors.emailMessage) selectors.emailMessage.value = "";
+  
+  // Hide email preview and payment reference box for next sale
+  if (selectors.emailPreviewCard) selectors.emailPreviewCard.hidden = true;
+  if (selectors.paymentRefBox) selectors.paymentRefBox.hidden = true;
+  
+  // Reset offer state
+  offerApplied = false;
+  offerExpiresAt = null;
+  
+  // Clear old status messages from result panel
+  selectors.resultPanel?.querySelectorAll(".status").forEach((node) => node.remove());
+  
+  // Always recalculate and show price after reset
+  renderPricing(calculatePricing());
+  
+  // Now add the status messages AFTER form reset so they stay visible
+  if (statusMessages.length > 0 && selectors.resultPanel) {
+    statusMessages.forEach(msg => {
+      selectors.resultPanel.insertAdjacentHTML("beforeend", msg);
+    });
+    
+    // Scroll to show the status message in embed/modal
+    try {
+      const lastStatus = selectors.resultPanel.querySelector(".status:last-child");
+      if (lastStatus) {
+        lastStatus.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    } catch (_) {}
+    
+    // Update iframe height if in embed mode
+    if (isEmbedMode) {
+      try {
+        const h = document.documentElement.scrollHeight || document.body.scrollHeight;
+        parent.postMessage({ type: 'SWASH_IFRAME_HEIGHT', height: h }, '*');
+      } catch(_){}
+    }
   }
 }
 
 // ===== LOCATION MODAL =====
 let locationMap = null;
 let locationMarker = null;
+
+function updateLocationPickerPosition(lat, lng, options = {}) {
+  const locationLatInput = document.getElementById("locationLatInput");
+  const locationLngInput = document.getElementById("locationLngInput");
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !locationLatInput || !locationLngInput) return;
+
+  console.log('[Location] updateLocationPickerPosition called:', { lat, lng, options });
+
+  locationLatInput.value = Number(lat).toFixed(6);
+  locationLngInput.value = Number(lng).toFixed(6);
+  console.log('[Location] Input fields updated:', { latValue: locationLatInput.value, lngValue: locationLngInput.value });
+
+  if (locationMarker) {
+    locationMarker.setPosition({ lat, lng });
+    console.log('[Location] Marker position updated');
+  } else {
+    console.warn('[Location] locationMarker not initialized');
+  }
+
+  if (locationMap && options.pan !== false) {
+    locationMap.panTo({ lat, lng });
+    console.log('[Location] Map panned to', { lat, lng });
+  } else if (locationMap) {
+    console.log('[Location] pan disabled');
+  } else {
+    console.warn('[Location] locationMap not initialized');
+  }
+
+  if (locationMap && Number.isFinite(options.zoom)) {
+    locationMap.setZoom(options.zoom);
+    console.log('[Location] Map zoom set to', options.zoom);
+  }
+}
+
+function requestCurrentPositionForLocationModal() {
+  const statusEl = document.getElementById("locationGpsStatus");
+  if (!navigator?.geolocation) {
+    if (statusEl) {
+      statusEl.style.display = "block";
+      statusEl.style.color = "#b45309";
+      statusEl.textContent = "Device location isn’t available in this browser. Drag the pin manually.";
+    }
+    return;
+  }
+
+  if (statusEl) {
+    statusEl.style.display = "block";
+    statusEl.style.color = "#0369a1";
+    statusEl.textContent = "Detecting your current location…";
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude, longitude, accuracy } = pos.coords || {};
+      console.log('[Location] GPS Position received:', { latitude, longitude, accuracy: accuracy ? accuracy + 'm' : 'unknown' });
+      if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        updateLocationPickerPosition(latitude, longitude, { zoom: 18 });
+        if (statusEl) {
+          statusEl.style.display = "block";
+          statusEl.style.color = "#047857";
+          const accuracyText = accuracy ? ` (Accuracy: ${Math.round(accuracy)}m)` : '';
+          statusEl.textContent = "Location detected from your device. Save to confirm." + accuracyText;
+        }
+      }
+    },
+    (err) => {
+      console.warn("[Location] Geolocation failed", err);
+      if (statusEl) {
+        statusEl.style.display = "block";
+        statusEl.style.color = "#b45309";
+        statusEl.textContent = "Couldn't use device location. Drag the pin to the property.";
+      }
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
 
 function initLocationModal() {
   const setLocationBtn = document.getElementById("setLocationBtn");
@@ -934,6 +1079,7 @@ function initLocationModal() {
   const locationLngInput = document.getElementById("locationLngInput");
   const customerLatitude = document.getElementById("customerLatitude");
   const customerLongitude = document.getElementById("customerLongitude");
+  const locationGpsStatus = document.getElementById("locationGpsStatus");
 
   if (!setLocationBtn) return;
 
@@ -947,10 +1093,28 @@ function initLocationModal() {
     // Reset map and marker before opening modal
     locationMap = null;
     locationMarker = null;
+    if (locationGpsStatus) {
+      locationGpsStatus.textContent = "";
+      locationGpsStatus.style.display = "none";
+      locationGpsStatus.style.color = "#0369a1";
+    }
     
     setCustomerLocationModal.hidden = false;
     await delay(100);
     initLocationMapIfNeeded(address);
+
+    const lat = parseFloat(customerLatitude?.value);
+    const lng = parseFloat(customerLongitude?.value);
+    const hasExistingCoords = Number.isFinite(lat) && Number.isFinite(lng);
+    if (hasExistingCoords) {
+      if (locationGpsStatus) {
+        locationGpsStatus.style.display = "block";
+        locationGpsStatus.style.color = "#475569";
+        locationGpsStatus.textContent = "Using the previously saved location for this customer.";
+      }
+    } else {
+      requestCurrentPositionForLocationModal();
+    }
   });
 
   closeLocationModal?.addEventListener("click", () => {
@@ -974,6 +1138,17 @@ function initLocationModal() {
     customerLongitude.value = lng;
     setCustomerLocationModal.hidden = true;
     alert(`✓ Location saved: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+    
+    // Trigger booking date regeneration if the booking UI is visible
+    if (typeof window.generateSuggestedDates === 'function') {
+      setTimeout(() => {
+        try {
+          window.generateSuggestedDates();
+        } catch(e) {
+          console.warn('Failed to regenerate dates after location save', e);
+        }
+      }, 300);
+    }
   });
 
   // Input listeners for manual coordinate entry
@@ -999,12 +1174,17 @@ function initLocationModal() {
 function initLocationMapIfNeeded(address) {
   if (locationMap) return; // Already initialized
 
+  console.log('[Location] initLocationMapIfNeeded called with address:', address);
+
   const mapElement = document.getElementById("locationMap");
   const locationAddressDisplay = document.getElementById("locationAddressDisplay");
   const locationLatInput = document.getElementById("locationLatInput");
   const locationLngInput = document.getElementById("locationLngInput");
 
-  if (!mapElement) return;
+  if (!mapElement) {
+    console.error('[Location] mapElement not found');
+    return;
+  }
 
   locationAddressDisplay.textContent = address;
 
@@ -1013,6 +1193,8 @@ function initLocationMapIfNeeded(address) {
   const customerLongitude = document.getElementById("customerLongitude");
   let initialLat = customerLatitude?.value ? parseFloat(customerLatitude.value) : 51.7356;
   let initialLng = customerLongitude?.value ? parseFloat(customerLongitude.value) : 0.6756;
+
+  console.log('[Location] Initializing map with:', { initialLat, initialLng, hasSavedCoords: !!(customerLatitude?.value && customerLongitude?.value) });
 
   // Create map with initial position
   locationMap = new google.maps.Map(mapElement, {
@@ -1031,31 +1213,6 @@ function initLocationMapIfNeeded(address) {
   locationLatInput.value = initialLat.toFixed(6);
   locationLngInput.value = initialLng.toFixed(6);
 
-  // Geocode the address to center map on it - always geocode fresh address
-  if (address && window.google && google.maps.Geocoder) {
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ address: address }, (results, status) => {
-      if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
-        const location = results[0].geometry.location;
-        const geocodedLat = location.lat();
-        const geocodedLng = location.lng();
-        
-        // Always update to geocoded location
-        locationLatInput.value = geocodedLat.toFixed(6);
-        locationLngInput.value = geocodedLng.toFixed(6);
-        
-        // Update marker and map to geocoded location
-        if (locationMarker) {
-          locationMarker.setPosition({ lat: geocodedLat, lng: geocodedLng });
-        }
-        if (locationMap) {
-          locationMap.panTo({ lat: geocodedLat, lng: geocodedLng });
-          locationMap.setZoom(17);
-        }
-      }
-    });
-  }
-
   // Update inputs when marker is dragged
   locationMarker.addListener("drag", () => {
     const pos = locationMarker.getPosition();
@@ -1063,6 +1220,7 @@ function initLocationMapIfNeeded(address) {
     const lng = pos.lng();
     locationLatInput.value = lat.toFixed(6);
     locationLngInput.value = lng.toFixed(6);
+    console.log('[Location] Marker dragged to:', { lat, lng });
   });
 
   // Update marker position when map is clicked
@@ -1072,6 +1230,7 @@ function initLocationMapIfNeeded(address) {
     locationMarker.setPosition({ lat, lng });
     locationLatInput.value = lat.toFixed(6);
     locationLngInput.value = lng.toFixed(6);
+    console.log('[Location] Map clicked, marker moved to:', { lat, lng });
   });
 }
 
@@ -1141,6 +1300,18 @@ function registerEvents() {
       renderPricing(calculatePricing());
     });
   }
+  if (selectors.frontOnly) {
+    selectors.frontOnly.addEventListener("change", () => {
+      console.log("[DEBUG] Front Only changed");
+      renderPricing(calculatePricing());
+    });
+  }
+  if (selectors.upfrontPayment) {
+    selectors.upfrontPayment.addEventListener("change", () => {
+      console.log("[DEBUG] Upfront payment toggle changed");
+      renderPricing(calculatePricing());
+    });
+  }
   if (selectors.partialCleaning) {
     selectors.partialCleaning.addEventListener("input", () => {
       console.log("[DEBUG] Partial cleaning changed");
@@ -1149,7 +1320,19 @@ function registerEvents() {
   }
 
   if (selectors.submitBtn) {
-    selectors.submitBtn.addEventListener("click", handleSubmit);
+    selectors.submitBtn.addEventListener("click", () => {
+      // If payment completed and confirm button exists, delegate to booking confirmation
+      try {
+        const banner = document.getElementById('paymentSuccessBanner');
+        const confirmBtn = document.getElementById('confirmBookingBtn');
+        if (banner && confirmBtn) {
+          confirmBtn.click();
+          return;
+        }
+      } catch (_) {}
+      // Fallback to original quote submission flow
+      handleSubmit();
+    });
   }
 
   // Track manual edits to the email message
@@ -1239,6 +1422,12 @@ async function initApp() {
   registerEvents();
   renderOfflineQueue();
   updateTierCopy();
+  
+  // Always show customer section immediately (needed for modal flow)
+  if (selectors.customerSection) {
+    selectors.customerSection.hidden = false;
+  }
+  
   // Initial pricing render and ensure result panel is visible
   if (selectors.resultPanel && selectors.serviceTier) {
     const pricing = calculatePricing();

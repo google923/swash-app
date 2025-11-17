@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Complete Billing - Swash</title>
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    @font-face {
+      font-family: 'Cocogoose';
+      src: url('./assets/Cocogoose.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0078d7 0%, #005a9e 100%);
+      padding: 20px;
+    }
+    
+    .billing-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      max-width: 1400px;
+      width: 100%;
+      padding: 40px;
+    }
+    
+    .billing-logo {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    
+    .billing-logo img {
+      max-width: 120px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    
+    .billing-logo-text {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #6b7280;
+      letter-spacing: 2px;
+      margin-top: 8px;
+      text-transform: uppercase;
+    }
+    
+    .billing-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    
+    .billing-subtitle {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+    
+    .alert-box {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 16px;
+      border-radius: 6px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      color: #92400e;
+    }
+    
+    .billing-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+    
+    @media (max-width: 968px) {
+      .billing-content {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+    }
+    
+    .form-section {
+      margin-bottom: 32px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .form-section:last-of-type {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 16px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #0078d7;
+      box-shadow: 0 0 0 3px rgba(0,120,215,0.1);
+    }
+    
+    .form-help {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 6px;
+    }
+    
+    .counter-control {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .counter-btn {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #0078d7;
+      background: white;
+      color: #0078d7;
+      border-radius: 8px;
+      font-size: 20px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .counter-btn:hover {
+      background: #0078d7;
+      color: white;
+    }
+    
+    .counter-btn:disabled {
+      border-color: #cbd5e1;
+      color: #cbd5e1;
+      cursor: not-allowed;
+    }
+    
+    .counter-btn:disabled:hover {
+      background: white;
+      color: #cbd5e1;
+    }
+    
+    .counter-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1e293b;
+      min-width: 40px;
+      text-align: center;
+    }
+    
+    .pricing-summary {
+      background: #f0f9ff;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+    
+    .pricing-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 14px;
+      color: #334155;
+    }
+    
+    .pricing-row.total {
+      border-top: 2px solid #0078d7;
+      margin-top: 8px;
+      padding-top: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #0078d7;
+    }
+    
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      background: #0078d7;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .submit-btn:hover {
+      background: #005a9e;
+    }
+    
+    .submit-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    
+    .error-message {
+      background: #fee;
+      color: #dc2626;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .success-message {
+      background: #d1fae5;
+      color: #059669;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="billing-container">
+    <div class="billing-logo">
+      <img src="./assets/Swash-icon-grey.png" alt="Swash Logo" />
+      <div class="billing-logo-text">System</div>
+    </div>
+    
+    <h1 class="billing-title">Complete Your Billing Setup</h1>
+    <p class="billing-subtitle">Set up your Direct Debit to start using Swash System</p>
+    
+    <div class="alert-box">
+      ⚠️ You must set up a GoCardless Direct Debit before accessing your dashboard. Your first payment will be collected after 3 working days.
+    </div>
+    
+    <div id="errorMessage" class="error-message"></div>
+    <div id="successMessage" class="success-message"></div>
+    
+    <form id="billingForm">
+      <div class="billing-content">
+        <!-- Left Column -->
+        <div>
+          <div class="form-section">
+            <h3 class="section-title">Team Size</h3>
+            
+            <div class="form-group">
+              <label>Number of Cleaners</label>
+              <div class="counter-control">
+                <button type="button" class="counter-btn" id="cleanersDown">−</button>
+                <span class="counter-value" id="cleanersValue">1</span>
+                <button type="button" class="counter-btn" id="cleanersUp">+</button>
+              </div>
+              <div class="form-help">1 cleaner included in £15/month base, £10/month for each additional</div>
+            </div>
+            
+            <div class="form-group">
+              <label>Number of Reps</label>
+              <div class="counter-control">
+                <button type="button" class="counter-btn" id="repsDown" disabled>−</button>
+                <span class="counter-value" id="repsValue">0</span>
+                <button type="button" class="counter-btn" id="repsUp">+</button>
+              </div>
+              <div class="form-help">£10/month per rep</div>
+            </div>
+          </div>
+          
+          <!-- Direct Debit Info Section -->
+          <div class="form-section">
+            <h3 class="section-title">🏦 Direct Debit Setup</h3>
+            
+            <div style="background: #f0f9ff; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+              <p style="margin: 0 0 12px 0; font-weight: 600; color: #1e293b;">How it works:</p>
+              <ol style="margin: 0; padding-left: 20px; color: #334155; font-size: 14px; line-height: 1.6;">
+                <li>Click "Set Up Direct Debit" below</li>
+                <li>You'll be taken to GoCardless to authorize the mandate</li>
+                <li>Enter your bank details securely with GoCardless</li>
+                <li>Return here to complete setup and access your dashboard</li>
+              </ol>
+            </div>
+            
+            <div style="background: #fef3c7; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; color: #92400e;">
+              <strong>🔒 Secure & Protected:</strong> GoCardless is covered by the Direct Debit Guarantee. Your payment is fully protected, and you can cancel anytime.
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right Column -->
+        <div>
+          <!-- Pricing Summary -->
+          <div class="pricing-summary">
+            <div class="pricing-row">
+              <span>Base Subscription (includes 1 cleaner)</span>
+              <span>£15.00</span>
+            </div>
+            <div class="pricing-row">
+              <span>Extra Cleaners (<span id="summaryCleaners">0</span> × £10)</span>
+              <span>£<span id="summaryCleanersTotal">0.00</span></span>
+            </div>
+            <div class="pricing-row">
+              <span>Reps (<span id="summaryReps">0</span> × £10)</span>
+              <span>£<span id="summaryRepsTotal">0.00</span></span>
+            </div>
+            <div class="pricing-row total">
+              <span>Monthly Total</span>
+              <span>£<span id="summaryTotal">15.00</span></span>
+            </div>
+          </div>
+          
+          <button type="submit" class="submit-btn" id="submitBtn">🏦 Set Up Direct Debit with GoCardless</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './firebase-init.js';
+    import {
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import {
+      doc,
+      getDoc,
+      updateDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    const state = {
+      cleanersCount: 1, // 1 cleaner included in base price
+      repsCount: 0,
+      basePrice: 15, // Includes 1 cleaner
+      pricePerCleaner: 10, // For additional cleaners beyond the first
+      pricePerRep: 10,
+      userId: null
+    };
+
+    const form = document.getElementById('billingForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+    
+    // Counter elements
+    const cleanersValue = document.getElementById('cleanersValue');
+    const cleanersUp = document.getElementById('cleanersUp');
+    const cleanersDown = document.getElementById('cleanersDown');
+    const repsValue = document.getElementById('repsValue');
+    const repsUp = document.getElementById('repsUp');
+    const repsDown = document.getElementById('repsDown');
+    
+    // Summary elements
+    const summaryCleaners = document.getElementById('summaryCleaners');
+    const summaryCleanersTotal = document.getElementById('summaryCleanersTotal');
+    const summaryReps = document.getElementById('summaryReps');
+    const summaryRepsTotal = document.getElementById('summaryRepsTotal');
+    const summaryTotal = document.getElementById('summaryTotal');
+
+    // Check authentication
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './subscriber-login.html';
+        return;
+      }
+
+      state.userId = user.uid;
+
+      // Check if user is subscriber
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists() || userDoc.data().role !== 'subscriber') {
+        alert('Access denied. This page is for subscribers only.');
+        window.location.href = './subscriber-login.html';
+        return;
+      }
+
+      // Check if billing already completed
+      if (userDoc.data().billingCompleted) {
+        window.location.href = './subscriber-dashboard.html';
+        return;
+      }
+    });
+
+    // Counter controls
+    cleanersUp.addEventListener('click', () => {
+      state.cleanersCount++;
+      updateCounters();
+    });
+
+    cleanersDown.addEventListener('click', () => {
+      if (state.cleanersCount > 1) { // Can't go below 1 (1 cleaner included)
+        state.cleanersCount--;
+        updateCounters();
+      }
+    });
+
+    repsUp.addEventListener('click', () => {
+      state.repsCount++;
+      updateCounters();
+    });
+
+    repsDown.addEventListener('click', () => {
+      if (state.repsCount > 0) {
+        state.repsCount--;
+        updateCounters();
+      }
+    });
+
+    function updateCounters() {
+      cleanersValue.textContent = state.cleanersCount;
+      repsValue.textContent = state.repsCount;
+      cleanersDown.disabled = state.cleanersCount === 1; // Min 1 cleaner (included in base)
+      repsDown.disabled = state.repsCount === 0;
+      updateSummary();
+    }
+
+    function updateSummary() {
+      // Only charge for cleaners beyond the first (first is included in base)
+      const extraCleaners = Math.max(0, state.cleanersCount - 1);
+      const cleanersTotal = extraCleaners * state.pricePerCleaner;
+      const repsTotal = state.repsCount * state.pricePerRep;
+      const total = state.basePrice + cleanersTotal + repsTotal;
+
+      summaryCleaners.textContent = extraCleaners;
+      summaryCleanersTotal.textContent = cleanersTotal.toFixed(2);
+      summaryReps.textContent = state.repsCount;
+      summaryRepsTotal.textContent = repsTotal.toFixed(2);
+      summaryTotal.textContent = total.toFixed(2);
+    }
+
+    // Card number formatting
+    // Form submission - redirect to GoCardless
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      errorMessage.style.display = 'none';
+      successMessage.style.display = 'none';
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating Direct Debit mandate...';
+
+      try {
+        const monthlyTotal = state.basePrice + 
+                           (state.cleanersCount * state.pricePerCleaner) + 
+                           (state.repsCount * state.pricePerRep);
+        const monthlyTotalPennies = Math.round(monthlyTotal * 100);
+
+        // Get user data for GoCardless
+        const userDoc = await getDoc(doc(db, 'users', state.userId));
+        const userData = userDoc.data();
+
+        // Save team size to user doc (before redirect)
+        await updateDoc(doc(db, 'users', state.userId), {
+          cleanersCount: state.cleanersCount,
+          repsCount: state.repsCount,
+          monthlyTotal: monthlyTotal,
+          billingInProgress: true
+        });
+
+        // Call API to create GoCardless mandate
+        const response = await fetch('/api/createSubscriberMandate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscriberId: state.userId,
+            companyName: userData.companyName || userData.name,
+            email: userData.email,
+            monthlyAmount: monthlyTotalPennies
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create Direct Debit mandate');
+        }
+
+        const data = await response.json();
+
+        if (!data.redirect_url) {
+          throw new Error('No redirect URL returned from GoCardless');
+        }
+
+        // Store mandate request ID
+        await updateDoc(doc(db, 'users', state.userId), {
+          gcMandateRequestId: data.mandate_request_id
+        });
+
+        // Redirect to GoCardless
+        window.location.href = data.redirect_url;
+
+      } catch (error) {
+        console.error('GoCardless setup error:', error);
+        showError(error.message || 'Failed to set up Direct Debit. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🏦 Set Up Direct Debit with GoCardless';
+      }
+    });
+
+    function showError(msg) {
+      errorMessage.textContent = msg;
+      errorMessage.style.display = 'block';
+    }
+
+    function showSuccess(msg) {
+      successMessage.textContent = msg;
+      successMessage.style.display = 'block';
+    }
+
+    // Initialize
+    updateCounters();
+  </script>
+</body>
+</html>

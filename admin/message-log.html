@@ -21,9 +21,18 @@
         <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
-          <a id="admin-dashboard-link" href="/admin.html">Admin Dashboard</a>
-          <a id="message-log-link" class="active" href="/admin/message-log.html">Message Log</a>
-          <a id="stats-link" href="/admin/stats.html">Statistics</a>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html">🆕 New Quote</a>
+          <a href="/rep/scheduler.html" class="admin-rep">📅 Schedule</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
         </nav>
       </div>
     </div>

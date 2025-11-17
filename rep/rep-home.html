@@ -11,6 +11,16 @@
   <link rel="stylesheet" href="./rep-home.css" />
   <!-- Reuse the calendar styling from the Rep Dashboard -->
   <link rel="stylesheet" href="./rep-dashboard.css" />
+
+  <script type="module">
+    import { initMenuDropdown, setMenuForRole } from './menu.js';
+    window.addEventListener('DOMContentLoaded', () => {
+      initMenuDropdown();
+      // Use window.userRole if set by auth, fallback to 'rep'
+      const role = window.userRole || 'rep';
+      setMenuForRole(role);
+    });
+  </script>
 </head>
 <body>
   <header class="header">
@@ -28,8 +38,6 @@
           <a href="./rep-log.html">📝 Rep Log</a>
           <a href="./chat.html">💬 Rep Chat</a>
           <a href="./policy.html">📘 Policy Handbook</a>
-          <a href="./holiday.html">📅 Book Holiday</a>
-          <a href="./sickness.html">🤒 Report Sickness</a>
           <a href="./commission.html">💷 Commission & Mileage</a>
           <a href="./map.html">🗺️ Territory Map</a>
           <a href="./feedback.html">💡 Feedback / Ideas</a>
@@ -80,16 +88,6 @@
           <img src="../assets/Commission-icon.png" alt="Commission" class="action-card__icon">
           <h3 class="action-card__title">Commission</h3>
           <p class="action-card__desc">View earnings</p>
-        </a>
-        <a href="./holiday.html" class="action-card">
-          <img src="../assets/Cal-icon.png" alt="Calendar" class="action-card__icon">
-          <h3 class="action-card__title">Book Holiday</h3>
-          <p class="action-card__desc">Request time off</p>
-        </a>
-        <a href="./sickness.html" class="action-card">
-          <img src="../assets/Sick-icon.png" alt="Sickness" class="action-card__icon">
-          <h3 class="action-card__title">Report Sickness</h3>
-          <p class="action-card__desc">Notify management</p>
         </a>
         <a href="./map.html" class="action-card">
           <img src="../assets/Map-icon.png" alt="Map" class="action-card__icon">
@@ -169,6 +167,37 @@
       </div>
     </section>
 
+    <!-- Personal Todos / Checklist -->
+    <section class="todos-panel">
+      <h2>✓ Your Tasks</h2>
+      <div id="todosList" class="todos-list">
+        <div class="todos-empty">Loading tasks...</div>
+      </div>
+    </section>
+
+    <!-- Admin: Create Todo for Reps (hidden for reps) -->
+    <section id="adminTodoTools" class="admin-todo-tools" hidden>
+      <h2>Create Task for Reps</h2>
+      <form id="todoForm" class="todo-form" novalidate>
+        <label class="todo-field" for="todoTitle">
+          <span>Task Title</span>
+          <input id="todoTitle" type="text" placeholder="e.g., Complete vehicle declaration" required />
+        </label>
+        <label class="todo-field" for="todoDesc">
+          <span>Description (optional)</span>
+          <textarea id="todoDesc" rows="2" placeholder="Additional details..."></textarea>
+        </label>
+        <label class="todo-field" for="todoAssignees">
+          <span>Assign to reps</span>
+          <select id="todoAssignees" multiple size="5"></select>
+          <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+        </label>
+        <div class="todo-actions">
+          <button id="createTodoBtn" type="submit" class="btn btn-primary">Create Task</button>
+        </div>
+      </form>
+    </section>
+
     <!-- Announcements (moved above performance for layout) -->
     <section class="announcements-panel">
       <h2>Announcements</h2>
@@ -180,10 +209,14 @@
     <!-- Performance Snapshot at bottom spanning full width -->
     <section class="performance-snapshot">
       <h2>Performance Snapshot</h2>
+      <div class="performance-period-nav">
+        <button id="prevPeriodBtn" type="button" class="btn btn-secondary btn-sm" title="View previous pay period">◀ Previous Period</button>
+        <span id="periodLabel" class="period-label"></span>
+      </div>
       <div class="performance-grid">
         <div class="performance-card">
           <div class="performance-card__value" id="weeklySignups">--</div>
-          <div class="performance-card__label">Weekly Signups</div>
+          <div class="performance-card__label">Signups (20th–20th)</div>
           <div class="performance-card__trend performance-card__trend--neutral" id="weeklyTrend">--</div>
         </div>
         <div class="performance-card">

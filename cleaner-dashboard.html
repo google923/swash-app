@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Swash Cleaner Dashboard</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+
+  <script type="module">
+    import { initMenuDropdown, setMenuForRole } from './rep/menu.js';
+    window.addEventListener('DOMContentLoaded', () => {
+      initMenuDropdown();
+      // Use window.userRole if set by auth, fallback to 'cleaner'
+      const role = window.userRole || 'cleaner';
+      setMenuForRole(role);
+    });
+  </script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <span class="header-title">Cleaner Dashboard</span>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a id="admin-dashboard-link" href="/admin.html">Admin Dashboard</a>
+          <a href="/admin-tracking.html">Rep Tracking</a>
+          <a href="/admin/stats.html">Stats</a>
+          <a href="/admin/shifts-logs.html">Shifts & Logs</a>
+          <a href="/admin/message-log.html">Message Log</a>
+          <a href="/admin/users.html">Manage Users</a>
+          <a id="rep-home-link" href="/rep/rep-home.html">Rep Dashboard</a>
+          <a id="cleaner-dashboard-link" href="/rep/scheduler.html">Cleaner Dashboard</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+  <main class="page">
+    <h1>Cleaner Dashboard</h1>
+    <p>Welcome to the Swash Cleaner Dashboard. Use the menu to navigate to cleaner and admin tools.</p>
+  </main>
+</body>
+</html>

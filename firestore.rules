@@ -41,56 +41,255 @@ service cloud.firestore {
          resource.data.repCode == userDoc().data.name);
     }
 
+    // --- CUSTOMERS COLLECTION ---
+    match /customers/{customerId} {
+      function hasUserDoc() {
+        return request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function userDoc() {
+        return hasUserDoc() ? get(/databases/$(database)/documents/users/$(request.auth.uid)) : null;
+      }
+      function role() {
+        return userDoc() != null ? userDoc().data.role : null;
+      }
+      function isAdmin() {
+        return role() == "admin";
+      }
+      function isRep() {
+        return role() == "rep";
+      }
 
-    // --- REP LOGS HIERARCHY ---
-    // Structure: repLogs/{repId}/dates/{date}/doorLogs/{doorLogId}
-    match /repLogs/{repId} {
+      // ---- Swash chat: minimal access for customers + messages (keep scoped) ----
+      allow read, write: if request.auth != null;
+      // ---- end Swash chat block ----
+
+      allow read: if request.auth != null && (isAdmin() || isRep());
+      // Allow creating customer docs by reps/admins OR public (limited fields)
+      allow create: if (
+        (request.auth != null && (isAdmin() || isRep())) ||
+        (
+          request.auth == null &&
+          request.resource.data.keys().hasOnly([
+            'name','address','email','mobile','tier','houseType','houseSize','pricePerCleanText','createdAt','updatedAt','source','repName'
+          ])
+        )
+      );
+      // Updates to customer docs restricted to admins (except counters rule below)
+      allow update: if request.auth != null && isAdmin();
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(["counters"])
+        && request.resource.data.counters.unreadCount is int;
+      allow delete: if request.auth != null && isAdmin();
+
+      match /messages/{messageId} {
+        // ---- Swash chat: minimal access for customers + messages (keep scoped) ----
+        allow read, write: if request.auth != null;
+        // ---- end Swash chat block ----
+        allow read: if request.auth != null && (isAdmin() || isRep());
+        allow create: if request.auth != null && (isAdmin() || isRep());
+        allow update: if request.auth != null
+          && resource.data.read == false
+          && request.resource.data.read == true;
+        allow delete: if request.auth != null && isAdmin();
+      }
+
+      // --- Subcollections under customers ---
+      // Booking records (created by reps/admins from add-new-customer page)
+      match /booking/{bookingId} {
+        allow read: if request.auth != null && (isAdmin() || isRep());
+        // Allow public to create booking with restricted fields; updates remain restricted
+        allow create: if (
+          (request.auth != null && (isAdmin() || isRep())) ||
+          (
+            request.auth == null &&
+            request.resource.data.keys().hasOnly([
+              'createdAt','source','status','firstDateISO','secondDateISO','thirdDateISO','weekKey','dayKey','territoryId','cleanerId','repName'
+            ])
+          )
+        );
+        allow update: if request.auth != null && (isAdmin() || isRep());
+        allow delete: if request.auth != null && isAdmin();
+      }
+
+      // Quotes created under a specific customer (offline payment link sync, etc.)
+      match /quotes/{quoteId} {
+        allow read: if request.auth != null && (isAdmin() || isRep());
+        allow create, update: if request.auth != null && (isAdmin() || isRep());
+        allow delete: if request.auth != null && isAdmin();
+      }
+    }
+
+    // --- TODOS COLLECTION ---
+    // Admin-created tasks assigned to reps
+    match /todos/{todoId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isAssignedToMe() {
+        return request.auth != null && 
+               resource.data.assignedRepIds != null && 
+               request.auth.uid in resource.data.assignedRepIds;
+      }
+
+      // Reps can read todos assigned to them
+      allow read: if isAssignedToMe() || isAdmin();
+      
+      // Only admins can create todos
+      allow create: if isAdmin();
+      
+      // Reps can update their own completion status; admins can update anything
+      allow update: if isAdmin() || (
+        isAssignedToMe() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completed', 'updatedAt', 'updatedBy'])
+      );
+      
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+
+    // --- CONTRACTS COLLECTION ---
+    // Docs keyed by userId (rep's uid)
+    match /contracts/{userId} {
+      function userDoc() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function isAdmin() {
+        return request.auth != null && userDoc().data.role == "admin";
+      }
+      function isSelf() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Everyone authenticated can read their own contract; admins can read all
+      allow read: if isSelf() || isAdmin();
+
+      // Create allowed by the rep (self) or admin
+      allow create: if isSelf() || isAdmin();
+
+      // Update rules enforce one-time signatures per party
+      allow update: if (
+        // Admin may add admin signature once, but cannot change contractor fields
+        (isAdmin() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'adminSignatureDataUrl', 'adminSignedAt', 'adminName'
+          ]) &&
+          // Prevent changing admin signature after it's set
+          !(resource.data.adminSignedAt != null && request.resource.data.adminSignedAt != resource.data.adminSignedAt)
+        )
+        ||
+        // Rep (self) may set contractor fields once; cannot change admin fields
+        (isSelf() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'contractType', 'contractorName', 'startDate', 'contractorSignatureDataUrl', 'contractorSignedAt', 'contractDate', 'version'
+          ]) &&
+          // Prevent changing contractor signature/date after set
+          !(resource.data.contractorSignedAt != null && request.resource.data.contractorSignedAt != resource.data.contractorSignedAt)
+        )
+      );
+    }
+
+
+    // --- REP LOGS ---
+    // We support two structures in parallel:
+    // A) Historical: repLogs/{repId}/dates/{date}/doorLogs/{doorLogId}
+    // B) Current:    repLogs/{repId}_{date} (document with an array field 'logs')
+
+    // B) Document-per-day logs: repLogs/{repId}_{date}
+    match /repLogs/{logId} {
+      function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+      function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
+      function logRepId() { return logId.split('_')[0]; }
+      function isSelfLog() { return request.auth != null && request.auth.uid == logRepId(); }
+
+      // Allow all authenticated users to read (so reps can see each other's pins)
+      allow read: if request.auth != null;
+      // Allow create/update by the rep who owns the log or admins
+      allow create, update: if isAdmin() || isSelfLog();
+      allow delete: if isAdmin();
+    }
+
+    // A) Subcollection structure for backwards-compatibility
+    match /repLogs/{repId}/dates/{date} {
       function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
       function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
       function isSelf() { return request.auth != null && request.auth.uid == repId; }
-
-      // Allow authenticated reps to create/read under their own repId; admins full access
-      // Do NOT require the users doc to exist for these operational writes.
       allow read: if isAdmin() || isSelf();
       allow create: if isAdmin() || isSelf();
       allow update, delete: if isAdmin();
 
-      // dates subcollection
-      match /dates/{date} {
-  allow read: if isAdmin() || isSelf();
-  allow create: if isAdmin() || isSelf();
-  allow update, delete: if isAdmin();
-
-        // doorLogs leaf collection
-        match /doorLogs/{doorLogId} {
-          allow read: if isAdmin() || isSelf();
-          allow create: if isAdmin() || isSelf();
-          allow update, delete: if isAdmin();
-        }
+      match /doorLogs/{doorLogId} {
+        // Anyone authenticated may read door log pins
+        allow read: if request.auth != null;
+        allow create: if isAdmin() || isSelf();
+        allow update, delete: if isAdmin();
       }
     }
 
     // --- REP SHIFTS COLLECTION ---
     // Docs keyed by repId_date
     match /repShifts/{shiftId} {
-      function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
-      function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
+      function isAdmin() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"; 
+      }
       // Extract repId prefix before underscore
       function shiftRepId() { return shiftId.split('_')[0]; }
       function isSelf() { return request.auth != null && request.auth.uid == shiftRepId(); }
       allow read: if isAdmin() || isSelf();
-      allow create: if isAdmin() || isSelf();
-      allow update, delete: if isAdmin();
+      allow create, update: if isAdmin() || isSelf();
+      allow delete: if isAdmin();
     }
 
     // --- REP LOCATIONS COLLECTION ---
     match /repLocations/{repId} {
-      function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
-      function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
+      function isAdmin() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"; 
+      }
       function isSelf() { return request.auth != null && request.auth.uid == repId; }
       allow read: if isAdmin() || isSelf();
       allow create, update: if isAdmin() || isSelf();
       allow delete: if isAdmin();
+    }
+
+    // --- ROAD LOOKUPS COLLECTION ---
+    match /repRoadLookups/{lookupId} {
+      function isAdmin() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"; 
+      }
+      // Allow reps to write their own lookups; admins can read all
+      allow create: if request.auth != null;
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // --- DOORS KNOCKED COLLECTION ---
+    // Flat per-door documents for easier map rendering without collectionGroup
+    // Document fields (recommended):
+    // { repId, date: 'YYYY-MM-DD', timestamp, status: 'X'|'O'|'SignUp', houseNumber?, roadName?, notes?, gpsLat, gpsLng, territoryId?, accuracy?, source? }
+    match /doorsknocked/{doorId} {
+      // Safer helpers (avoid accessing .data on non-existent user doc)
+      function hasUserDoc() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)); 
+      }
+      function userDoc() { return hasUserDoc() ? get(/databases/$(database)/documents/users/$(request.auth.uid)) : null; }
+      function role() { return hasUserDoc() ? userDoc().data.role : null; }
+      function isAdmin() { return role() == "admin"; }
+      function isRep() { return role() == "rep"; }
+      // Read access for reps + admins (team map visibility)
+      allow read: if isAdmin() || isRep();
+      // Creation allowed for authenticated reps (their own doors) and admins
+      allow create: if isAdmin() || isRep();
+      // Only admins can update/delete (immutability of historical knocks)
+      allow update, delete: if isAdmin();
     }
 
 
@@ -122,12 +321,32 @@ service cloud.firestore {
       function isAdmin() {
         return request.auth != null && userDoc().data.role == "admin";
       }
+      function isSubscriber() {
+        return request.auth != null && userDoc().data.role == "subscriber";
+      }
       
       // Users can read/write their own document
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
       // Admins can read/write ALL user documents (for user management)
       allow read, write: if isAdmin();
+
+      // Allow subscriber owners to link/unlink rep users to their tenant by setting subscriberId.
+      // Strict field whitelist and constraints:
+      // - Only subscriberId, updatedAt, updatedBy may change
+      // - Target user must be a rep
+      // - Linking: set subscriberId == request.auth.uid
+      // - Unlinking: set subscriberId == null, and previous subscriberId must equal request.auth.uid
+      allow update: if isSubscriber() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["subscriberId","updatedAt","updatedBy"]) &&
+        resource.data.role == "rep" &&
+        (
+          request.resource.data.subscriberId == request.auth.uid ||
+          (
+            resource.data.subscriberId == request.auth.uid &&
+            request.resource.data.subscriberId == null
+          )
+        );
       
       // --- USER AREAS SUBCOLLECTION ---
       match /areas/{areaId} {
@@ -136,6 +355,87 @@ service cloud.firestore {
         
         // Admins can read/write ALL user areas
         allow read, write: if isAdmin();
+      }
+    }
+
+    // --- SUBSCRIBERS DATA COLLECTION ---
+    // Each subscriber gets their own isolated workspace
+    match /subscribers/{subscriberId} {
+      function hasUserDoc() {
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      }
+      function userDoc() {
+        return hasUserDoc() ? get(/databases/$(database)/documents/users/$(request.auth.uid)) : null;
+      }
+      function role() {
+        return hasUserDoc() ? userDoc().data.role : null;
+      }
+      function isAdmin() {
+        return role() == "admin";
+      }
+      function isOwner() {
+        return request.auth != null && request.auth.uid == subscriberId;
+      }
+      // Subscriber team members (reps) linked to this subscriber via users/{uid}.subscriberId
+      function isTeam() {
+        return hasUserDoc() && userDoc().data.subscriberId == subscriberId;
+      }
+      
+      // Read access for owner, admins, and linked team members. Metadata writes restricted to owner/admin.
+      allow read: if isOwner() || isAdmin() || isTeam();
+      allow write: if isOwner() || isAdmin();
+      
+      // --- SUBSCRIBER QUOTES ---
+      match /quotes/{quoteId} {
+        allow read, write: if isOwner() || isAdmin() || isTeam();
+      }
+      
+      // --- SUBSCRIBER CUSTOMERS ---
+      match /customers/{customerId} {
+        allow read, write: if isOwner() || isAdmin() || isTeam();
+        
+        match /booking/{bookingId} {
+          allow read, write: if isOwner() || isAdmin() || isTeam();
+        }
+        
+        match /quotes/{quoteId} {
+          allow read, write: if isOwner() || isAdmin() || isTeam();
+        }
+        
+        match /messages/{messageId} {
+          allow read, write: if isOwner() || isAdmin() || isTeam();
+        }
+      }
+      
+      // --- SUBSCRIBER TERRITORIES ---
+      match /territories/{territoryId} {
+        allow read, write: if isOwner() || isAdmin() || isTeam();
+      }
+      
+      // --- SUBSCRIBER REP LOGS ---
+      match /repLogs/{logId} {
+        allow read, write: if isOwner() || isAdmin() || isTeam();
+      }
+      
+      // --- SUBSCRIBER SHIFTS ---
+      match /repShifts/{shiftId} {
+        allow read, write: if isOwner() || isAdmin() || isTeam();
+      }
+      
+      // --- SUBSCRIBER EVENTS ---
+      match /events/{eventId} {
+        allow read, write: if isOwner() || isAdmin() || isTeam();
+      }
+      
+      // --- SUBSCRIBER TODOS ---
+      match /todos/{todoId} {
+        allow read, write: if isOwner() || isAdmin() || isTeam();
+      }
+      
+      // --- SUBSCRIBER ANNOUNCEMENTS ---
+      match /announcements/{announcementId} {
+        allow read, write: if isOwner() || isAdmin() || isTeam();
       }
     }
 
@@ -161,21 +461,30 @@ service cloud.firestore {
 
     // --- TERRITORIES COLLECTION ---
     match /territories/{territoryId} {
-      function userDoc() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid));
-      }
       function isAdmin() {
-        return request.auth != null && userDoc().data.role == "admin";
+        return request.auth != null &&
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
       }
       function isRep() {
-        return request.auth != null && userDoc().data.role == "rep";
+        return request.auth != null &&
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "rep";
       }
 
-      // Everyone authenticated can read territories
-      allow read: if isAdmin() || isRep();
+      // Everyone authenticated can read territories (no role doc dependency)
+      allow read: if request.auth != null;
 
-      // Only admins can create, update, delete territories
-      allow create, update, delete: if isAdmin();
+      // Only admins can create/delete territories
+      allow create, delete: if isAdmin();
+      // Updates: admins can update anything; reps can update allowedBookingDays and audit fields only
+      allow update: if (
+        isAdmin() || (
+          isRep() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['allowedBookingDays','updatedAt','updatedBy']) &&
+          request.resource.data.allowedBookingDays is map
+        )
+      );
     }
 
     // --- EVENTS COLLECTION ---
@@ -202,12 +511,30 @@ service cloud.firestore {
 
     // --- SYSTEM COLLECTION (shared config docs e.g. system/territories) ---
     match /system/{docId} {
-      function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
-      function isAdmin() { return request.auth != null && userDoc().data.role == "admin"; }
-      function isRep() { return request.auth != null && userDoc().data.role == "rep"; }
-      // Allow authenticated users to read shared configuration, restrict writes to admins.
-      allow read: if isAdmin() || isRep();
+      function isAdmin() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"; 
+      }
+      // Allow authenticated users to read shared configuration (no role doc dependency)
+      allow read: if request.auth != null;
       allow create, update, delete: if isAdmin();
+    }
+
+    // --- NOTIFICATIONS COLLECTION ---
+    // Lightweight notifications for reps/admins (offline payment received, resend, etc.)
+    match /notifications/{notificationId} {
+      function hasUserDoc() { 
+        return request.auth != null && 
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)); 
+      }
+      function userDoc() { return hasUserDoc() ? get(/databases/$(database)/documents/users/$(request.auth.uid)) : null; }
+      function role() { return hasUserDoc() ? userDoc().data.role : null; }
+      function isAdmin() { return role() == "admin"; }
+      function isRep() { return role() == "rep"; }
+      allow read: if request.auth != null && (isAdmin() || isRep());
+      allow create: if request.auth != null && (isAdmin() || isRep());
+      allow update, delete: if request.auth != null && isAdmin();
     }
   }
 }

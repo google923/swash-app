@@ -23,7 +23,9 @@
     .stat-row { display:grid; grid-template-columns: repeat(3,1fr); gap:8px; }
     .stats-card { background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; }
     .stats-card .num { font-size:1.25rem; font-weight:800; color:#0b63b5; }
-  .recent-list .recent-item { position:relative; display:grid; grid-template-columns: 1fr auto; gap:6px; padding:8px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; cursor:pointer; }
+    .shift-history-container { background:#f0f7ff; border:1px solid #d1e3f8; border-radius:12px; padding:14px; margin-top:16px; }
+    .shift-history-container h3 { margin:0 0 10px 0; color:#0b63b5; }
+    .recent-list .recent-item { position:relative; display:grid; grid-template-columns: 1fr auto; gap:6px; padding:8px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; cursor:pointer; }
     .recent-list .recent-item:hover { background:#f8fbff; }
   .recent-list .shift-del { position:absolute; top:6px; right:6px; width:22px; height:22px; border-radius:50%; border:1px solid #e5e7eb; background:#fff; color:#64748b; font-weight:800; display:flex; align-items:center; justify-content:center; line-height:1; cursor:pointer; }
     .recent-list .shift-del:hover { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }
@@ -38,19 +40,54 @@
     .summary-table { width:100%; border-collapse:collapse; }
     .summary-table td { padding:6px 8px; border-bottom:1px solid #eef2f7; }
     .pause-list { margin:6px 0 0 18px; }
-    #shiftSummaryModal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.4); z-index: 60; padding: 20px; }
-    #shiftSummaryModal[open] { display:flex; }
-    #shiftSummaryModal .modal__dialog { background: #fff; padding: 20px; border-radius: 14px; width: min(640px, 96vw); max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-soft); }
+    #shiftSummaryModal, #allShiftsModal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.4); z-index: 60; padding: 20px; border:none; }
+    #shiftSummaryModal[open], #allShiftsModal[open] { display:flex; }
+    #shiftSummaryModal .modal__dialog, #allShiftsModal .modal__dialog { background: #fff; padding: 20px; border-radius: 14px; width: min(640px, 96vw); max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-soft); }
     #shiftSummaryModal .modal__footer { display:flex; justify-content: space-between; align-items:center; gap:12px; margin-top:12px; }
+    .shifts-table { width:100%; border-collapse:collapse; }
+    .shifts-table thead { position:sticky; top:0; background:#f8fafc; z-index:10; }
+    .shifts-table th { text-align:left; padding:10px 12px; font-weight:700; color:#0b63b5; border-bottom:2px solid #d1e3f8; font-size:0.875rem; }
+    .shifts-table tbody tr { cursor:pointer; border-bottom:1px solid #e5e7eb; }
+    .shifts-table tbody tr:hover { background:#f8fbff; }
+    .shifts-table td { padding:10px 12px; font-size:0.875rem; }
+    .shifts-table .expand-cell { width:40px; text-align:center; font-size:1.1rem; user-select:none; }
+    .shifts-table .details-row { display:none; }
+    .shifts-table .details-row.visible { display:table-row; }
+    .shifts-table .details-row td { background:#f8fafc; padding:16px; }
     @media (max-width: 900px) {
       .admin-grid { grid-template-columns: 1fr; }
       #adminMap { height: 58vh; min-height: 360px; }
       .panel { padding: 12px; }
       .stat-row { grid-template-columns: repeat(2,1fr); }
     }
+    /* Loading Overlay */
+    #loadingOverlay { position:fixed; inset:0; background:rgba(0,120,215,0.5); backdrop-filter:blur(8px); z-index:9999; display:flex; align-items:center; justify-content:center; opacity:1; transition:opacity 0.6s ease-out; }
+    #loadingOverlay.fade-out { opacity:0; pointer-events:none; }
+    .loading-modal { background:#fff; border-radius:20px; padding:40px 50px; box-shadow:0 20px 60px rgba(0,0,0,0.3); text-align:center; min-width:420px; }
+    .loading-logo { width:120px; height:auto; margin-bottom:16px; }
+    .loading-title { font-size:1.75rem; font-weight:800; color:#0078d7; margin:0 0 24px 0; letter-spacing:0.5px; }
+    .progress-container { width:100%; height:12px; background:#e5e7eb; border-radius:12px; overflow:hidden; margin-bottom:16px; position:relative; }
+    .progress-bar { height:100%; background:linear-gradient(90deg, #0078d7, #00a6fb); border-radius:12px; width:0%; transition:width 0.4s cubic-bezier(0.4, 0.0, 0.2, 1); position:relative; }
+    .progress-bar::after { content:''; position:absolute; top:0; left:0; bottom:0; right:0; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation:shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { transform:translateX(-100%); } 100% { transform:translateX(100%); } }
+    .progress-text { font-size:0.875rem; font-weight:600; color:#64748b; margin-bottom:8px; }
+    .loading-status { font-size:0.875rem; color:#94a3b8; min-height:20px; }
   </style>
 </head>
 <body>
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay">
+    <div class="loading-modal">
+      <img class="loading-logo" src="./assets/blue-logo.png" alt="Swash logo" />
+      <h2 class="loading-title">Swash Rep Tracker</h2>
+      <div class="progress-text"><span id="progressPercent">0</span>%</div>
+      <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="loading-status" id="loadingStatus">Initializing...</div>
+    </div>
+  </div>
+
   <header class="header">
     <div class="header-left">
       <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
@@ -62,19 +99,15 @@
         <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
-          
-          <!-- Admin Menu Items -->
-          <a id="admin-dashboard-link" href="/admin.html">Admin Dashboard</a>
-          <a id="scheduler-link" href="/rep/scheduler.html">Scheduler</a>
-          <a id="rep-tracker-link" href="/admin-tracking.html">Rep Tracker</a>
-          <a id="stats-link" href="./admin/stats.html">Stats</a>
-          <a id="user-settings-link" href="./admin/users.html">User Settings</a>
-          <div class="dropdown-divider"></div>
-          
-          <!-- Rep Home (visible to admins) -->
-          <a id="rep-home-link" href="/rep/rep-home.html">Rep Home</a>
-          
-          <!-- Rep Menu Items (shown when in Rep Home or when rep user) -->
+          <a href="/admin/dashboard.html">🏠 Admin Overview</a>
+          <a href="/admin.html">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html">🆕 New Quote</a>
+          <a href="/admin/subscribers.html">🏢 Subscribers</a>
+          <a href="./admin/users.html">👥 Manage Users</a>
+          <a href="./admin/stats.html">📊 Stats</a>
+          <a href="/admin-tracking.html">🛰️ Rep Tracking</a>
+          <a href="./admin/shifts-logs.html">📋 Shifts & Logs</a>
+          <a href="./admin/message-log.html">📧 Message Log</a>
           <div id="rep-menu-section">
             <a id="rep-log-link" class="hidden" href="/rep/rep-log.html">Log</a>
             <a id="areas-map-link" class="hidden" href="/rep/map.html">Areas Map</a>
@@ -110,11 +143,17 @@
                 </label>
               </div>
               <div class="filters-row">
+                <label>Date Range:
+                  <select id="quickDateRange">
+                    <option value="today">Today</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="last7">Last 7 Days</option>
+                  </select>
+                </label>
+              </div>
+              <div class="filters-row">
                 <label>From:
                   <input id="filterDateStart" type="date" />
-                </label>
-                <label>To:
-                  <input id="filterDateEnd" type="date" />
                 </label>
               </div>
               <div class="filters-row">
@@ -140,8 +179,11 @@
             <div class="stats-card"><div class="num" id="aDph">0.0</div><div>Doors/hr</div></div>
           </div>
 
-          <h3 style="margin-top:16px;">Shift History</h3>
-          <div id="shiftHistory" class="recent-list"></div>
+          <div class="shift-history-container">
+            <h3>Shift History</h3>
+            <div id="shiftHistory" class="recent-list"></div>
+            <button id="viewAllShiftsBtn" class="btn btn-secondary" type="button" style="width:100%;margin-top:10px;">View All Shifts</button>
+          </div>
           <h3 style="margin-top:16px;">Replay</h3>
           <div class="row" style="gap:6px;align-items:center;">
             <input id="replayRange" type="range" min="0" max="0" value="0" style="flex:1;" />
@@ -152,6 +194,16 @@
         </div>
 
         <div class="panel">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border-soft);background:#f8fafc;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <span class="small" style="font-weight:600;color:#334155;">All rep pins</span>
+              <span id="adminPinsHint" class="small" style="color:#64748b;">All-time (no clustering)</span>
+              <button id="backfillDoorsBtn" class="btn btn-secondary" type="button" style="padding:4px 10px;font-size:11px;">Backfill Doors → Flat</button>
+              <button id="enrichRepNameBtn" class="btn btn-secondary" type="button" style="padding:4px 10px;font-size:11px;">Enrich Rep Names</button>
+              <button id="seedDoorsKnockedBtn" class="btn btn-secondary" type="button" style="padding:4px 10px;font-size:11px;">Seed DoorsKnocked Test</button>
+            </div>
+            <div id="adminPinsLoading" class="small" style="display:none;color:#64748b;">Loading pins…</div>
+          </div>
           <div class="map-wrap">
             <div id="adminMap"></div>
             <div id="mapOverlay" class="map-overlay hidden">No reps on shift</div>
@@ -178,6 +230,17 @@
         <span class="text-muted">Review the shift details and deductions.</span>
         <button id="shiftSummaryReplay" class="btn btn-primary" type="button">Replay this route</button>
       </div>
+    </div>
+  </dialog>
+
+  <!-- All Shifts Modal -->
+  <dialog id="allShiftsModal">
+    <div class="modal__dialog" style="width:min(1100px, 96vw);max-height:90vh;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <h3 style="margin:0;">All Shifts</h3>
+        <button id="allShiftsClose" class="btn btn-secondary" type="button">Close</button>
+      </div>
+      <div id="allShiftsBody" style="margin-top:14px;overflow-y:auto;max-height:calc(90vh - 100px);"></div>
     </div>
   </dialog>
 </body>

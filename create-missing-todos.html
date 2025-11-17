@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Missing Admin Todos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    button {
+      background: #0078d7;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #005a9e;
+    }
+    #output {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Create Missing Admin Todos</h1>
+  <p>This script will check for contracts that have been signed by reps but not yet by admins, and create admin todos for them.</p>
+  
+  <button onclick="createMissingTodos()">Create Missing Todos</button>
+  
+  <div id="output"></div>
+
+  <script type="module">
+    import { auth, db } from './firebase-init.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import { collection, getDocs, getDoc, doc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        log('Signed in as: ' + user.email);
+      } else {
+        log('Not signed in. Please sign in first.');
+      }
+    });
+
+    function log(message) {
+      const output = document.getElementById('output');
+      output.textContent += message + '\n';
+      console.log(message);
+    }
+
+    window.createMissingTodos = async function() {
+      if (!currentUser) {
+        alert('Please sign in first');
+        return;
+      }
+
+      const output = document.getElementById('output');
+      output.textContent = '';
+      
+      log('Starting scan for missing todos...\n');
+
+      try {
+        // 1. Get all admin users
+        log('1. Finding admin users...');
+        const adminQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+        const adminSnap = await getDocs(adminQuery);
+        const adminIds = adminSnap.docs.map(d => d.id);
+        log(`   Found ${adminIds.length} admin(s): ${adminIds.join(', ')}\n`);
+
+        if (adminIds.length === 0) {
+          log('ERROR: No admin users found! Cannot create todos.');
+          return;
+        }
+
+        // 2. Get all contracts
+        log('2. Scanning contracts...');
+        const contractsSnap = await getDocs(collection(db, 'contracts'));
+        log(`   Found ${contractsSnap.size} contracts\n`);
+
+        let todosCreated = 0;
+
+        for (const contractDoc of contractsSnap.docs) {
+          const contract = contractDoc.data();
+          const userId = contractDoc.id;
+
+          // Check if contract is signed by rep but NOT by admin
+          if (contract.contractorSignedAt && !contract.adminSignedAt) {
+            log(`3. Contract needs admin signature: ${userId}`);
+            
+            // Get rep name
+            const userDoc = await getDoc(doc(db, 'users', userId));
+            const repName = userDoc.exists() ? userDoc.data().name : 'Rep';
+            
+            const contractType = contract.contractType || 'contract';
+            const displayType = contractType.toUpperCase();
+
+            // Create todo
+            const todoData = {
+              title: `Review ${repName}'s ${displayType} ${contractType === 'freelance' ? 'Agreement' : 'Contract'}`,
+              description: `${repName} has signed their ${displayType} ${contractType === 'freelance' ? 'agreement' : 'contract'}. Please review and countersign.`,
+              assignedRepIds: adminIds,
+              completed: false,
+              deleted: false,
+              createdAt: new Date().toISOString(),
+              createdBy: currentUser.uid
+            };
+
+            log(`   Creating todo: "${todoData.title}"`);
+            const todoRef = await addDoc(collection(db, 'todos'), todoData);
+            log(`   ✓ Todo created with ID: ${todoRef.id}\n`);
+            todosCreated++;
+          }
+        }
+
+        log(`\n=== COMPLETE ===`);
+        log(`Created ${todosCreated} admin todo(s)`);
+        
+        if (todosCreated > 0) {
+          log('\nRefresh the admin home page to see the new todos!');
+        } else {
+          log('\nNo missing todos found. All contracts are either unsigned or already have admin signatures.');
+        }
+
+      } catch (err) {
+        log(`\nERROR: ${err.message}`);
+        console.error(err);
+      }
+    };
+  </script>
+</body>
+</html>

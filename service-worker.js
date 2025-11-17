@@ -1,6 +1,6 @@
 // Swash Service Worker
 // Provides offline caching and forwards sync events to the app shell.
-const CACHE_NAME = 'swash-cache-v43';
+const CACHE_NAME = 'swash-cache-v53';
 const OFFLINE_URLS = [
   "/index.html",
   "/admin.html",
@@ -10,6 +10,9 @@ const OFFLINE_URLS = [
   "/rep/rep-home.html",
   // Legacy dashboard removed from primary nav; keep out of offline cache
   "/rep/quote.html",
+  // Embedded quote form (must be cached so iframe works offline)
+  "/rep/quote-embed.html",
+  "/rep/quote-embed.js",
   "/rep/scheduler.html",
   "/rep/chat.html",
   "/style.css",
@@ -147,14 +150,21 @@ async function networkFirst(request) {
     }
     return response;
   } catch (error) {
-    const cached = await caches.match(request);
+    // Try exact match first, then ignore query params (helps for routes like /rep/quote-embed.html?embed=true)
+    let cached = await caches.match(request);
+    if (!cached) {
+      cached = await caches.match(request, { ignoreSearch: true });
+    }
     if (cached) return cached;
     return caches.match("index.html");
   }
 }
 
 async function cacheFirst(request) {
-  const cached = await caches.match(request);
+  let cached = await caches.match(request);
+  if (!cached) {
+    cached = await caches.match(request, { ignoreSearch: true });
+  }
   if (cached) {
     fetch(request)
       .then((response) => {

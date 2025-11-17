@@ -1,0 +1,2265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <meta name="google-site-verification" content="Tonc5cIN27DjhCRG2R8B9FMVGnGgWn_RFuBKYM2865Q" />
+  <title>Swash - Add Customer</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+  <!-- Ensure Firebase is initialised for this page and expose db/auth on window -->
+  <script type="module">
+    import { db as fdb, auth as fauth } from "../firebase-init.js";
+    window.db = fdb;
+    window.firebaseAuth = fauth;
+  </script>
+  <style>
+    /* Embed mode: show only the quote form content inside modals/iframes */
+    body.embed .header { display: none !important; }
+    body.embed .page { padding-top: 0 !important; }
+    body.embed { background: transparent; }
+    /* In embed, stretch to full height and allow internal scrolling */
+    html, body { height:100%; }
+    body.embed html, body.embed { overflow: auto !important; }
+
+    /* Responsive modals: fit to device screen */
+    #setCustomerLocationModal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.55);
+      z-index: 1000;
+      padding: 12px;
+    }
+    #setCustomerLocationModal:not([hidden]) { display: flex; }
+    #setCustomerLocationModal .modal__dialog {
+      width: min(100vw - 24px, 760px);
+      max-height: 90dvh;
+      overflow: auto;
+      border-radius: 12px;
+      padding: 16px;
+      background: #fff;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    /* Map height adapts to viewport */
+    #locationMap { height: min(60vh, 460px) !important; }
+
+    /* Payment modal inner container responsive sizing */
+    #instantPayModal > div {
+      width: min(96vw, 520px);
+      max-height: 90dvh;
+      overflow: auto;
+    }
+
+    @media (max-width: 480px) {
+      #setCustomerLocationModal .modal__dialog {
+        width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+        padding: 12px;
+      }
+      #locationMap { height: 60vh !important; }
+      #instantPayModal > div {
+        width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+      }
+    }
+    /* Hide any upfront/multiple pricing display; show only single price per clean */
+    .result-upfront { display: none !important; }
+    /* Ensure embedded page content stretches */
+    .page { min-height: 100%; width:100%; max-width:100%; }
+  </style>
+</head>
+<body class="quote-page">
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
+      <a href="../home.html" id="backToHomeBtn" class="btn btn-secondary">← Back to Home</a>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Rep Resources</div>
+          <a id="rep-home-link" class="hidden" href="./rep-home.html">🏠 Home</a>
+          <a id="add-customer-link" class="hidden" href="./quote.html">➕ Add Customer</a>
+          <a href="/rep/rep-log.html">📝 Log</a>
+          <a href="./chat.html">💬 Rep Chat</a>
+          <a href="./policy.html">📘 Policy Handbook</a>
+          <a href="./holiday.html">📅 Book Holiday</a>
+          <a href="./sickness.html">🤒 Report Sickness</a>
+          <a href="./commission.html">💷 PAY + Commission</a>
+          <a href="./map.html">🗺️ Territory Map</a>
+          <a href="./feedback.html">💡 Feedback / Ideas</a>
+          <a href="./performance.html">🎯 Performance Dashboard</a>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-title">System</div>
+          <a id="login-link" href="./login.html">Sign in</a>
+          <a id="quotes-link" class="hidden" href="/admin.html">Quotes Dashboard</a>
+          <a id="admin-dashboard-link" class="hidden" href="/admin.html">Admin Dashboard</a>
+          <a id="schedule-link" class="hidden" href="./scheduler.html">Schedule</a>
+          <a id="manage-users-link" class="hidden" href="/admin/users.html">Manage Users</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+  <main class="page">
+    <section class="card">
+      <header class="card-header">
+        <h2>Add Customer</h2>
+        <p id="tierDescription">Select a service tier to see the details.</p>
+      </header>
+
+      
+
+      <form id="quoteForm" class="form-grid" autocomplete="off">
+        <label class="form-section" for="repCode" hidden>
+          <span>Rep Code</span>
+          <input id="repCode" name="repCode" required value="Website Quote" />
+        </label>
+
+        <label class="form-section" for="quoteDate" hidden>
+          <span>Quote Date</span>
+          <input id="quoteDate" name="quoteDate" readonly />
+        </label>
+
+        <div class="options-box">
+          <div class="form-grid">
+            <label class="form-section" for="serviceTier">
+              <span>Service Tier</span>
+              <select id="serviceTier" name="serviceTier">
+                <option value="gold" selected>Gold</option>
+                <option value="silver">Silver</option>
+              </select>
+            </label>
+
+            <!-- Side-by-side: House Size (left) and House Type (right) -->
+            <div class="inline-two">
+              <label class="form-section" for="houseSize">
+                <span>House Size</span>
+                <select id="houseSize" name="houseSize">
+                  <option>2 bed</option>
+                  <option>3 bed</option>
+                  <option>4 bed</option>
+                  <option>5 bed</option>
+                  <option>6 bed</option>
+                </select>
+              </label>
+
+              <label class="form-section" for="houseType">
+                <span>House Type</span>
+                <select id="houseType" name="houseType">
+                  <option value="Bungalow">Bungalow</option>
+                  <option value="Maisonette">Maisonette</option>
+                  <option value="Terrace">Terrace</option>
+                  <option value="Semi-Detached">Semi-Detached</option>
+                  <option value="Detached">Detached</option>
+                  <option value="Mobile Home">Mobile Home</option>
+                </select>
+              </label>
+            </div>
+
+            <!-- Side-by-side larger checkboxes (stay inline on mobile) -->
+            <div class="inline-two inline-two--mobile-2">
+              <label class="form-section checkbox checkbox--lg" for="conservatory">
+                <input type="checkbox" id="conservatory" />
+                <span>Conservatory</span>
+              </label>
+
+              <label class="form-section checkbox checkbox--lg" for="extension">
+                <input type="checkbox" id="extension" />
+                <span>Extension</span>
+              </label>
+            </div>
+
+            <label class="form-section" for="roofLanterns">
+              <span>Roof Lanterns</span>
+              <div class="slider-row">
+                <input type="range" id="roofLanterns" min="0" max="10" value="0" step="1" />
+                <span class="slider-value" id="roofLanternsValue">0</span>
+              </div>
+            </label>
+
+            <label class="form-section" for="skylights">
+              <span>Skylights</span>
+              <div class="slider-row">
+                <input type="range" id="skylights" min="0" max="10" value="0" step="1" />
+                <span class="slider-value" id="skylightsValue">0</span>
+              </div>
+            </label>
+
+            <!-- Alternating moved below price area next to offer button -->
+
+            <input type="hidden" id="partialCleaning" value="100" />
+            <input type="hidden" id="addVAT" value="true" />
+
+            <label class="form-section" for="notes">
+              <span>Notes</span>
+              <textarea id="notes" rows="3" placeholder="Add any customer notes or access information..."></textarea>
+            </label>
+
+            <div style="margin-bottom: 16px; padding: 12px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; color: #1e293b;">
+                <!-- Removed the location checkbox; show only the action button below -->
+              </label>
+              <p style="margin: 8px 0 0 26px; color: #64748b; font-size: 0.85rem;">Click the button below to set the exact customer location on a map.</p>
+            </div>
+            <div style="margin-bottom: 16px;">
+              <button type="button" id="setLocationBtn" class="btn btn-secondary" style="width: 100%;">📍 Set Location on Map</button>
+            </div>
+
+            <input type="hidden" id="customerLatitude" />
+            <input type="hidden" id="customerLongitude" />
+          </div>
+        </div>
+
+        <!-- Auto-calc enabled: no calculate button needed -->
+      </form>
+
+      <!-- Customer details: moved above pricing for better workflow -->
+      <section id="customerFields" class="customer-section customer-box" hidden>
+        <h3>Customer Details</h3>
+        <div class="form-grid">
+          <label for="customerName">Full Name</label>
+          <input id="customerName" autocomplete="name" required />
+
+          <label for="address">Address</label>
+          <input id="address" autocomplete="street-address" required />
+
+          <label for="mobile">Mobile</label>
+          <input id="mobile" autocomplete="tel" required />
+
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" required />
+        </div>
+      </section>
+
+      <div class="form-actions form-actions--end form-actions--compact" style="margin-bottom: 8px;">
+        <label class="checkbox checkbox--lg" for="alternating">
+          <input type="checkbox" id="alternating" />
+          <span>Alternating Clean</span>
+        </label>
+        <label class="checkbox checkbox--lg" for="frontOnly">
+          <input type="checkbox" id="frontOnly" />
+          <span>Front Only</span>
+        </label>
+        <!-- Upfront payment checkbox removed per requirements -->
+        <button type="button" id="applyOfferBtn" class="btn btn-offer">Apply Special Offer</button>
+      </div>
+      <section id="result" class="result-panel" aria-live="polite"></section>
+      
+      <div class="form-grid">
+        <label class="form-section" for="emailMessage" hidden>
+          <span>Email message</span>
+          <textarea id="emailMessage" rows="10" placeholder="This message will be sent to the customer."></textarea>
+        </label>
+      </div>
+
+      <aside id="paymentRefBox" class="payment-ref" hidden>
+        <p><strong>Payment Reference:</strong> <span id="paymentRefValue"></span></p>
+      </aside>
+
+      <section id="emailPreviewCard" class="email-preview-card" hidden>
+        <div class="email-preview-header">
+          <h3>Email Preview</h3>
+          <p id="emailPreviewSubject" class="email-preview-subject"></p>
+        </div>
+        <div id="emailPreviewBody" class="email-preview-body"></div>
+      </section>
+
+      <section id="queueAlerts" class="queue-alerts" hidden aria-live="polite"></section>
+
+      <!-- Booking dates summary (removed as redundant; dates are shown inline above) -->
+      <section id="bookingDatesDisplay" class="customer-section" hidden style="display:none;"><div id="bookingDatesContent"></div></section>
+
+      <!-- Hidden duplicate removed for structural compatibility -->
+      <section id="customerFields_old" class="customer-section customer-box" hidden style="display:none;">
+        <h3>Customer Details</h3>
+        <div class="form-grid">
+          <label for="customerName">Full Name</label>
+          <input id="customerName" autocomplete="name" required />
+
+          <label for="address">Address</label>
+          <input id="address" autocomplete="street-address" required />
+
+          <label for="mobile">Mobile</label>
+          <input id="mobile" autocomplete="tel" required />
+
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" required />
+        </div>
+      </section>
+
+      <div id="bookingActionBar" class="form-actions form-actions--end" style="flex-direction:column; gap:10px;" hidden>
+        <button type="button" id="confirmBookingBtn" class="btn btn-primary">Schedule First Clean</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Embed adapter: enable clean iframe embedding and query prefill -->
+  <script>
+    (function(){
+      try {
+        var params = new URLSearchParams(location.search);
+        var isEmbed = (function(){ try { return window.self !== window.top; } catch(_) { return true; } })() || params.get('embed') === 'true';
+        if (isEmbed) {
+          document.body.classList.add('embed-mode');
+        }
+        // Prefill from query
+        var rep = params.get('rep');
+        var addr = params.get('address');
+        var notes = params.get('notes');
+        if (rep) {
+          var repEl = document.getElementById('repCode');
+          if (repEl) repEl.value = rep;
+        }
+        if (addr) {
+          var addrEl = document.getElementById('address');
+          if (addrEl) addrEl.value = addr;
+        }
+        if (notes) {
+          var notesEl = document.getElementById('notes');
+          if (notesEl) notesEl.value = notes;
+        }
+      } catch(_) {}
+    })();
+  </script>
+</body>
+</html>
+  <div id="setCustomerLocationModal" hidden>
+    <div class="modal__dialog">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0;">Set Customer Location</h3>
+        <button type="button" class="modal__close" id="closeLocationModal" aria-label="Close">×</button>
+      </div>
+  <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 12px;">Map shows your current location. Drag the pin to the exact customer property for: <strong id="locationAddressDisplay"></strong></p>
+  <p id="locationGpsStatus" role="status" style="display: none; margin: -4px 0 12px; font-size: 0.9rem; color: #0369a1;"></p>
+      <div id="locationMap" style="width: 100%; height: 400px; border-radius: 8px; border: 2px solid #e5e7eb; margin-bottom: 16px;"></div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+        <label class="modal__field">
+          <span>Latitude</span>
+          <input id="locationLatInput" type="number" placeholder="Latitude" step="0.0001" />
+        </label>
+        <label class="modal__field">
+          <span>Longitude</span>
+          <input id="locationLngInput" type="number" placeholder="Longitude" step="0.0001" />
+        </label>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn-secondary" id="cancelLocationBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveLocationBtn">Save Location</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Maps API -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=geometry,drawing&loading=async"></script>
+  <!-- QR Code library for Instant Bank Pay (without SRI to avoid blocking if hash changes on CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Shared navigation (dropdown + rep view + modals) -->
+  <script type="module" src="../nav.js"></script>
+  <script type="module" src="../rep/script.js"></script>
+  
+  <!-- Instant Bank Pay Modal -->
+  <div id="instantPayModal" hidden style="position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background:#fff; border-radius:12px; padding:20px; width: min(92vw, 480px); box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h3 style="margin:0; font-size:1.1rem;">Confirm Payment</h3>
+        <button type="button" id="instantPayCloseBtn" aria-label="Close" class="btn btn-secondary" style="min-width:auto; padding:6px 10px;">×</button>
+      </div>
+      <p style="margin:0 0 12px; color:#475569;">Scan to confirm your payment securely.</p>
+      <div id="instantPayQr" style="display:flex; align-items:center; justify-content:center; padding:12px; border:1px solid #e5e7eb; border-radius:10px; min-height:220px;"></div>
+      <p id="instantPayAmountLine" style="text-align:center; margin:12px 0 0; color:#334155; font-weight:600;"></p>
+      <div id="instantPayStatus" style="margin-top:12px; text-align:center; color:#64748b; font-size:0.9rem;">Waiting for bank approval…</div>
+    </div>
+  </div>
+
+  <script>
+    // Adds a "Quote Accepted" button next to the price and wires up GoCardless Instant Bank Pay
+    (function () {
+      // ===== Offline Queue (IndexedDB with localStorage fallback) =====
+      const OFFLINE_DB_NAME = 'swash-offline';
+      const OFFLINE_STORE = 'paymentLinks';
+      const OFFLINE_LS_KEY = 'swashOfflinePaymentLinks';
+      function uuid() { return (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2)); }
+      function openIdb() {
+        return new Promise((resolve, reject) => {
+          if (!('indexedDB' in window)) return resolve(null);
+          const req = indexedDB.open(OFFLINE_DB_NAME, 1);
+          req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains(OFFLINE_STORE)) db.createObjectStore(OFFLINE_STORE, { keyPath: 'id' });
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        });
+      }
+      async function idbPut(item) {
+        const db = await openIdb();
+        if (!db) return lsPut(item);
+        return new Promise((resolve) => {
+          const tx = db.transaction(OFFLINE_STORE, 'readwrite');
+          tx.objectStore(OFFLINE_STORE).put(item);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => { lsPut(item); resolve(false); };
+        });
+      }
+      async function idbGetAll() {
+        const db = await openIdb();
+        if (!db) return lsGetAll();
+        return new Promise((resolve) => {
+          const tx = db.transaction(OFFLINE_STORE, 'readonly');
+          const req = tx.objectStore(OFFLINE_STORE).getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => resolve(lsGetAll());
+        });
+      }
+      async function idbUpdate(id, partial) {
+        const list = await idbGetAll();
+        const idx = list.findIndex(x => x.id === id);
+        if (idx >= 0) {
+          const merged = { ...list[idx], ...partial };
+          await idbPut(merged);
+          return true;
+        }
+        return false;
+      }
+      async function idbRemove(id) {
+        const db = await openIdb();
+        if (!db) return lsRemove(id);
+        return new Promise((resolve) => {
+          const tx = db.transaction(OFFLINE_STORE, 'readwrite');
+          tx.objectStore(OFFLINE_STORE).delete(id);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => { lsRemove(id); resolve(false); };
+        });
+      }
+      function lsGetAll() {
+        try { return JSON.parse(localStorage.getItem(OFFLINE_LS_KEY) || '[]'); } catch(_) { return []; }
+      }
+      function lsWrite(arr) { try { localStorage.setItem(OFFLINE_LS_KEY, JSON.stringify(arr || [])); } catch(_) {} }
+      function lsPut(item) { const a = lsGetAll(); const idx = a.findIndex(x => x.id === item.id); if (idx>=0) a[idx]=item; else a.push(item); lsWrite(a); }
+      function lsRemove(id) { const a = lsGetAll().filter(x => x.id !== id); lsWrite(a); }
+      function toPennies(txt) {
+        if (!txt) return 0;
+        const s = String(txt).replace(/,/g, '');
+        // Find the last currency-like number in the string (e.g. takes £79.95 and ignores the preceding "3")
+        const re = /£?\s*(\d+(?:\.\d{1,2})?)/g;
+        let m, last = null;
+        while ((m = re.exec(s)) !== null) {
+          last = m[1];
+        }
+        if (!last) return 0;
+        const value = parseFloat(last);
+        return Number.isFinite(value) ? Math.round(value * 100) : 0;
+      }
+
+      function penniesToGBP(p) {
+        return '£' + (Math.max(0, Number(p || 0)) / 100).toFixed(2);
+      }
+
+      function ensureButton() {
+        // Remove any older inline action row so only the main Confirm Booking is used
+        const row = document.getElementById('quoteAcceptedRow');
+        if (row && row.parentNode) row.parentNode.removeChild(row);
+        const btn = document.getElementById('quoteAcceptedBtn');
+        if (btn && btn.parentNode) btn.parentNode.removeChild(btn);
+      }
+
+      function getRepName() {
+        try {
+          const v = localStorage.getItem('swash:lastRepName');
+          return (v && v.trim()) || '';
+        } catch (_) { return ''; }
+      }
+
+      async function handleQuoteAcceptedClick() {
+        try {
+          // Require pinned customer location before proceeding
+          const latVal = document.getElementById('customerLatitude')?.value;
+          const lngVal = document.getElementById('customerLongitude')?.value;
+          if (!latVal || !lngVal) {
+            alert('Please set the customer location first (Use "Set Location on Map").');
+            return;
+          }
+
+          // Get form data
+          const form = getCustomerFormData();
+          if (!form.name || !form.email) {
+            alert('Please provide customer name and email.');
+            return;
+          }
+
+          // Generate reference code if not exists
+          let refCode = document.getElementById('paymentRefValue')?.textContent?.trim();
+          if (!refCode) {
+            refCode = generateReference();
+            const paymentRefValue = document.getElementById('paymentRefValue');
+            if (paymentRefValue) paymentRefValue.textContent = refCode;
+          }
+
+          // Save as pending booking
+          await saveCustomerBooking('pending', {
+            territoryId: selectedTerritory?.id || null,
+          });
+
+          // Update quote document to Pending Booking status
+          try {
+            await updateQuoteDocPending(refCode);
+          } catch (e) {
+            console.warn('Quote doc update (pending) failed', e);
+          }
+
+          // Send welcome email
+          const emailParams = composePendingEmailParams(form);
+          const sent = await sendPendingEmail(emailParams);
+          
+          // Broadcast update
+          broadcastQuotesUpdated('add-new-customer');
+
+          // Show success message
+          showToast(sent ? '✅ Booking confirmed and welcome email sent!' : '✅ Booking confirmed (email may be delayed)', 'success');
+
+          // Show success banner
+          const resultPanel = document.getElementById('result');
+          if (resultPanel && !document.getElementById('bookingSuccessBanner')) {
+            const banner = document.createElement('div');
+            banner.id = 'bookingSuccessBanner';
+            banner.textContent = '✅ Booking Confirmed';
+            banner.style.background = '#22c55e';
+            banner.style.color = '#063b14';
+            banner.style.padding = '10px 12px';
+            banner.style.borderRadius = '8px';
+            banner.style.fontWeight = '700';
+            banner.style.marginTop = '10px';
+            banner.style.textAlign = 'center';
+            resultPanel.appendChild(banner);
+          }
+
+          // Disable the button after successful submission
+          const btn = document.getElementById('quoteAcceptedBtn');
+          if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Booking Submitted';
+          }
+
+        } catch (err) {
+          console.error('Booking confirmation failed', err);
+          alert('Could not complete booking. Please try again.');
+        }
+      }
+
+      let pollTimer = null;
+      let modalClosed = false;
+
+      function closeInstantPayModal() {
+        if (modalClosed) return; // ensure we close only once
+        modalClosed = true;
+        const modal = document.getElementById('instantPayModal');
+        if (modal) {
+          modal.style.display = 'none';
+          modal.hidden = true;
+        }
+        if (pollTimer) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+      }
+
+      function openInstantPayModal(url, amountPennies) {
+        const modal = document.getElementById('instantPayModal');
+        const qrBox = document.getElementById('instantPayQr');
+        const amountLine = document.getElementById('instantPayAmountLine');
+        const status = document.getElementById('instantPayStatus');
+        const closeBtn = document.getElementById('instantPayCloseBtn');
+        if (!modal || !qrBox) return;
+
+        // Reset content
+        qrBox.innerHTML = '';
+  amountLine.textContent = 'Amount: ' + penniesToGBP(amountPennies);
+        status.textContent = 'Waiting for bank approval…';
+        modalClosed = false;
+
+        // Create QR code pointing to the authorisation URL
+        try {
+          // global QRCode from qrcodejs
+          // eslint-disable-next-line no-undef
+          new QRCode(qrBox, {
+            text: url,
+            width: 220,
+            height: 220,
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        } catch (e) {
+          // Fallback: show the link clickable
+          const a = document.createElement('a');
+          a.href = url;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.textContent = 'Open payment link';
+          a.className = 'btn btn-primary';
+          qrBox.appendChild(a);
+        }
+
+        modal.hidden = false;
+        modal.style.display = 'flex';
+        const onBackdrop = (e) => { if (e.target === modal) closeInstantPayModal(); };
+        closeBtn.onclick = closeInstantPayModal;
+        modal.addEventListener('click', onBackdrop, { once: true });
+      }
+
+      async function pollPaymentStatus(sessionId) {
+        if (pollTimer) clearInterval(pollTimer);
+        const resultPanel = document.getElementById('result');
+        const modal = document.getElementById('instantPayModal');
+        const status = document.getElementById('instantPayStatus');
+
+        async function checkOnce() {
+          try {
+            const res = await fetch('/api/checkPaymentStatus?id=' + encodeURIComponent(sessionId));
+            if (!res.ok) return; // try again
+            const data = await res.json();
+            const s = (data && data.status) || 'pending';
+            if (s === 'confirmed' || s === 'fulfilled' || s === 'paid') {
+              clearInterval(pollTimer);
+              pollTimer = null;
+              status.textContent = 'Payment confirmed.';
+              closeInstantPayModal();
+              // Show success banner
+              if (!document.getElementById('paymentSuccessBanner')) {
+                const banner = document.createElement('div');
+                banner.id = 'paymentSuccessBanner';
+                banner.textContent = '💸 Payment Received';
+                banner.style.background = '#22c55e';
+                banner.style.color = '#063b14';
+                banner.style.padding = '10px 12px';
+                banner.style.borderRadius = '8px';
+                banner.style.fontWeight = '700';
+                banner.style.marginTop = '10px';
+                banner.style.textAlign = 'center';
+                resultPanel.appendChild(banner);
+              }
+              // Present next-step booking actions
+              try { renderPostPaymentActions(); } catch(_) {}
+            } else if (s === 'cancelled' || s === 'failed' || s === 'denied') {
+              clearInterval(pollTimer);
+              pollTimer = null;
+              status.textContent = 'Payment was not completed.';
+            }
+          } catch (_) { /* ignore and retry */ }
+        }
+
+        // initial and then every 10s
+        checkOnce();
+        pollTimer = setInterval(checkOnce, 10000);
+      }
+
+      // Initialize EmailJS
+      (function initEmailJS() {
+        try {
+          if (window.emailjs) {
+            window.emailjs.init('7HZRYXz3JmMciex1L');
+            console.log('[EmailJS] Initialized with public key');
+          } else {
+            console.warn('[EmailJS] Not available yet');
+            setTimeout(initEmailJS, 500);
+          }
+        } catch (e) {
+          console.error('[EmailJS] Init failed', e);
+        }
+      })();
+
+      // Bind the Schedule First Clean button directly (not inside renderPostPaymentActions to ensure it always fires)
+      (function attachScheduleFirstCleanListener() {
+        const tryAttach = () => {
+          const confirmBtn = document.getElementById('confirmBookingBtn');
+          if (!confirmBtn) {
+            console.warn('[Schedule First Clean] Button not found yet, retrying...');
+            setTimeout(tryAttach, 200);
+            return;
+          }
+          console.log('[Schedule First Clean] Button found, attaching listener');
+          
+          confirmBtn.addEventListener('click', async (evt) => {
+            evt.preventDefault();
+            evt.stopPropagation();
+            console.log('[Schedule First Clean] Button clicked');
+            try {
+              if (!isFormComplete()) {
+                alert('Please fill in all required fields: Name, Address, Email, Mobile');
+                return;
+              }
+              console.log('[Schedule First Clean] Form complete, proceeding...');
+              // Proceed even if not signed in; public create allowed with limited fields
+              const form = getCustomerFormData();
+              console.log('[Schedule First Clean] Form data:', { name: form.name, email: form.email, address: form.address });
+              selectedTerritory = await detectCustomerTerritory();
+              if (!selectedTerritory) {
+                alert('Set the customer location on the map so we can match them to a territory and available service day.');
+                return;
+              }
+
+              if (!selectedBooking || !selectedBooking.dateISO) {
+                alert('Please choose one of the available service days before confirming the booking.');
+                return;
+              }
+
+              if (!selectedBookingEligible) {
+                alert('That day is no longer available. Please pick another available day and try again.');
+                return;
+              }
+
+              const slotDate = new Date(selectedBooking.dateISO);
+              if (Number.isNaN(slotDate.getTime())) {
+                alert('The selected date is invalid. Please choose another day.');
+                return;
+              }
+
+              const cleanerId = selectedBooking.cleanerId || null;
+              if (!cleanerId) {
+                alert('The selected day has not been assigned to a cleaner yet. Please pick another slot.');
+                return;
+              }
+
+              const { first, second, third } = computeNextDates(selectedBooking.dateISO);
+              const weekKey = selectedBooking.weekKey || getWeekKeyForDate(first);
+              const dayKey = selectedBooking.dayKey || getDayKeyForDate(first);
+              const territoryId = selectedBooking.territoryId || selectedTerritory.id || null;
+              const parsedPrice = parseGBP(form.pricePerCleanText);
+
+              // Step 1: Save customer booking with confirmed slot
+              try {
+                await saveCustomerBooking('booked', {
+                  territoryId,
+                  bookedDate: first.toISOString(),
+                  weekKey,
+                  dayKey,
+                  cleanerId,
+                  assignedCleaner: cleanerId,
+                  nextCleanDates: [second.toISOString(), third.toISOString()],
+                  pricePerClean: parsedPrice,
+                  pricePerCleanText: form.pricePerCleanText || '',
+                });
+                console.log('[Schedule First Clean] Booking saved to customers collection with booked status');
+              } catch (e) {
+                console.error('[Schedule First Clean] saveCustomerBooking failed:', e);
+                throw new Error('Failed to save booking: ' + e.message);
+              }
+
+              // Step 2: Resolve reference code & update quote document to booked
+              let refCode = document.getElementById('paymentRefValue')?.textContent?.trim() || '';
+              if (!refCode) {
+                refCode = generateReference();
+                const paymentRefValue = document.getElementById('paymentRefValue');
+                if (paymentRefValue) paymentRefValue.textContent = refCode;
+              }
+
+              try {
+                await updateQuoteDocAfterBooking(refCode, {
+                  first,
+                  second,
+                  third,
+                  cleanerId,
+                  territoryId,
+                  pricePerClean: parsedPrice,
+                });
+                console.log('[Schedule First Clean] Quote updated with booked status', refCode);
+              } catch (e) {
+                console.error('[Schedule First Clean] Quote doc update (booked) failed:', e);
+                throw new Error('Failed to update scheduler status: ' + e.message);
+              }
+
+              // Step 3: Send booked confirmation email
+              let sent = false;
+              try {
+                const emailParams = composeBookedEmailParams(form, { first, second, third });
+                console.log('[Schedule First Clean] Sending booked email via EmailJS with params:', emailParams);
+                sent = await sendBookedEmail(emailParams);
+                console.log('[Schedule First Clean] Email sent result:', sent);
+              } catch (e) {
+                console.error('[Schedule First Clean] Booked email send failed:', e);
+                sent = false;
+              }
+
+              // Step 4: Broadcast update to other tabs / dashboards
+              try {
+                broadcastQuotesUpdated('add-new-customer');
+              } catch (_) {}
+
+              const niceDate = formatDateNice(first);
+              const toastMsg = sent
+                ? `✅ First clean booked for ${niceDate}. Confirmation email sent to ${form.email}.`
+                : `✅ First clean booked for ${niceDate}. Email will follow shortly.`;
+              console.log('[Schedule First Clean] Showing toast:', toastMsg);
+              showToast(toastMsg, 'success');
+
+              // Show green success box with confirmation message
+              const resultPanel = document.getElementById('result');
+              if (resultPanel) {
+                const oldSuccess = resultPanel.querySelector('[data-success-box]');
+                if (oldSuccess) oldSuccess.remove();
+
+                const successBox = document.createElement('div');
+                successBox.setAttribute('data-success-box', 'true');
+                successBox.style.background = '#ecfdf5';
+                successBox.style.border = '2px solid #22c55e';
+                successBox.style.borderRadius = '10px';
+                successBox.style.padding = '14px 16px';
+                successBox.style.marginTop = '12px';
+                successBox.style.color = '#0f172a';
+                successBox.style.fontWeight = '600';
+                successBox.style.fontSize = '0.95rem';
+                successBox.textContent = `✅ First clean booked for ${formatDdMmYyyy(first)}`;
+                resultPanel.appendChild(successBox);
+              }
+
+              // Show thank you overlay to give visual feedback
+              try {
+                showThankYouOverlay(form.name, niceDate);
+              } catch (overlayErr) {
+                console.warn('[Schedule First Clean] Unable to display thank you overlay', overlayErr);
+              }
+
+              // Lock button to prevent duplicate submissions
+              confirmBtn.disabled = true;
+              confirmBtn.dataset.reason = 'booked';
+              confirmBtn.textContent = 'First clean scheduled';
+              updateConfirmBtnState(confirmBtn);
+
+              // Step 5: Notify parent (rep log) to mark sale and add recent entry
+              try {
+                console.log('[Schedule First Clean] Posting message to parent window');
+                if (window.parent && window.parent !== window) {
+                  window.parent.postMessage({
+                    type: 'swash-signup-saved',
+                    status: 'booked_online',
+                    customer_name: form.name || 'Customer',
+                    address: form.address || '',
+                    ref_code: refCode,
+                    booked_date: first.toISOString(),
+                    price_per_clean: form.pricePerCleanText || '',
+                    summary: niceDate ? `Booked • ${niceDate}` : 'Booked',
+                  }, window.location.origin);
+                  console.log('[Schedule First Clean] Message posted to parent');
+                }
+              } catch (e) {
+                console.warn('[Schedule First Clean] Parent message failed:', e);
+              }
+            } catch (e) {
+              console.error('[Schedule First Clean] Overall failure:', e);
+              alertFirestoreError('Booking could not be completed right now.', e);
+            }
+          });
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', tryAttach);
+        } else {
+          tryAttach();
+        }
+      })();
+
+      // Wait for initial price render, then place the button
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ensureButton, { once: true });
+      } else {
+        ensureButton();
+      }
+
+      // Ensure booking UI is available even before payment
+      (function initBookingUiEarly(){
+        const init = () => { try { renderPostPaymentActions(); } catch(_) {} };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', init, { once: true });
+        } else {
+          init();
+        }
+      })();
+
+      // --- Booking/email flow (available regardless of payment) ---
+  let selectedBooking = null;
+  let bookingMode = 'none'; // 'booked' (date selected) or 'pending' (contact with a date)
+  let selectedBookingEligible = false;
+  let bookingUiInserted = false;
+  let bookedQuotesCache = null; // loaded once for capacity checks
+      // Territory detection cache for eligibility gating
+      let territoriesCache = null;
+      let selectedTerritory = null;
+      const BASELINE_START_DATE = '2025-11-03'; // Week 1 baseline (Monday)
+
+      function formatDdMmYyyy(dateOrIso) {
+        try {
+          const d = (dateOrIso instanceof Date) ? dateOrIso : new Date(dateOrIso);
+          const dd = String(d.getDate()).padStart(2,'0');
+          const mm = String(d.getMonth()+1).padStart(2,'0');
+          const yyyy = d.getFullYear();
+          return `${dd}/${mm}/${yyyy}`;
+        } catch(_) { return ''; }
+      }
+
+      function computeNextDates(firstIso) {
+        const first = new Date(firstIso);
+        const second = new Date(first);
+        second.setDate(first.getDate() + 28);
+        const third = new Date(first);
+        third.setDate(first.getDate() + 56);
+        return { first, second, third };
+      }
+
+      function formatDateNice(date) {
+        return new Date(date).toLocaleDateString('en-GB', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+      }
+
+      function formatDdMmYyyyToday() {
+        const d = new Date();
+        const dd = String(d.getDate()).padStart(2,'0');
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const yyyy = d.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+      }
+
+      function getTextPricePerClean() {
+        const priceNode = document.querySelector('#result .result-price');
+        if (!priceNode) return '';
+        const m = priceNode.textContent.match(/£\s*\d+(?:\.\d{1,2})?/);
+        return m ? m[0].replace(/\s+/g,'') : '';
+      }
+
+      function getTextUpfront() {
+        const n = document.querySelector('#result .result-upfront');
+        if (!n) return '';
+        const m = n.textContent.match(/£\s*\d+(?:\.\d{1,2})?/);
+        return m ? m[0].replace(/\s+/g,'') : '';
+      }
+
+      function parseGBP(text) {
+        if (!text) return 0;
+        const s = String(text).replace(/[^0-9.]/g,'');
+        const v = parseFloat(s);
+        return Number.isFinite(v) ? v : 0;
+      }
+
+      function getCustomerFormData() {
+        const getCount = (id) => {
+          const value = Number(document.getElementById(id)?.value);
+          return Number.isFinite(value) ? value : 0;
+        };
+
+        const name = document.getElementById('customerName')?.value?.trim() || '';
+        const address = document.getElementById('address')?.value?.trim() || '';
+        const email = document.getElementById('email')?.value?.trim() || '';
+        const mobile = document.getElementById('mobile')?.value?.trim() || '';
+        const tier = document.getElementById('serviceTier')?.value || '';
+        const houseType = document.getElementById('houseType')?.value || '';
+        const houseSize = document.getElementById('houseSize')?.value || '';
+        const conservatory = document.getElementById('conservatory')?.checked ?? false;
+        const extension = document.getElementById('extension')?.checked ?? false;
+        const roofLanterns = getCount('roofLanterns');
+        const skylights = getCount('skylights');
+        const alternating = document.getElementById('alternating')?.checked ?? false;
+        const frontOnly = document.getElementById('frontOnly')?.checked ?? false;
+        const notes = document.getElementById('notes')?.value?.trim() || '';
+        const pricePerCleanText = getTextPricePerClean();
+        const offerAppliedFlag = !!document.querySelector('.result-offer');
+
+        return {
+          name,
+          address,
+          email,
+          mobile,
+          tier,
+          houseType,
+          houseSize,
+          conservatory,
+          extension,
+          roofLanterns,
+          skylights,
+          alternating,
+          frontOnly,
+          notes,
+          offerApplied: offerAppliedFlag,
+          pricePerCleanText
+        };
+      }
+
+      async function saveCustomerBooking(statusKind, bookingPayload) {
+        try {
+          const db = window.db;
+          if (!db) throw new Error('Firestore not initialised');
+          const mod = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+          const { collection, addDoc, serverTimestamp, doc, setDoc, getDoc } = mod;
+          // Optional auth context (used to attach rep info when available)
+          let repUid = null; let repName = null; let signedIn = false;
+          try {
+            const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js');
+            const auth = getAuth();
+            signedIn = !!auth.currentUser;
+            repUid = auth.currentUser?.uid || null;
+            repName = getRepName() || auth.currentUser?.displayName || null;
+          } catch(_) {}
+          if (!signedIn) { repName = 'Website Booking'; }
+
+          // Build base
+          const base = { createdAt: serverTimestamp(), source: 'add-new-customer', status: statusKind };
+          const form = getCustomerFormData();
+          const root = {
+            name: form.name,
+            address: form.address,
+            email: form.email,
+            mobile: form.mobile,
+            tier: form.tier,
+            houseType: form.houseType,
+            houseSize: form.houseSize,
+            pricePerCleanText: form.pricePerCleanText,
+            updatedAt: serverTimestamp(),
+            source: 'add-new-customer'
+          };
+          if (repUid) { root.repUid = repUid; }
+          if (repName) { root.repName = repName; }
+
+          // Ensure customer doc exists or create it
+          let customerId = window.swashCustomerId || null;
+          if (!customerId) {
+            const created = await addDoc(collection(db, 'customers'), root);
+            customerId = created?.id || null;
+            if (customerId) window.swashCustomerId = customerId;
+          } else {
+            // Merge basic info if doc exists
+            try {
+              await setDoc(doc(db, 'customers', customerId), root, { merge: true });
+            } catch (_) { /* ignore */ }
+          }
+
+          if (!customerId) throw new Error('Could not resolve customerId');
+
+          // Write booking to subcollection customers/{id}/booking
+          const booking = { ...base, ...bookingPayload };
+          if (repUid) booking.repUid = repUid;
+          if (repName) booking.repName = repName;
+          await addDoc(collection(db, 'customers', customerId, 'booking'), booking);
+          return customerId;
+        } catch (e) {
+          console.error('Failed to save booking', e);
+          throw e;
+        }
+      }
+
+      async function sendBookedEmail(params) {
+        if (!window.emailjs || !emailjs.send) return false;
+        try {
+          const EMAIL_SERVICE = 'service_cdy739m';
+          const TEMPLATE_ID = 'template_943nfcg';
+          await emailjs.send(EMAIL_SERVICE, TEMPLATE_ID, params);
+          return true;
+        } catch (e) {
+          console.warn('Booked email failed', e);
+          return false;
+        }
+      }
+
+      async function sendPendingEmail(params) {
+        if (!window.emailjs || !emailjs.send) return false;
+        try {
+          const EMAIL_SERVICE = 'service_cdy739m';
+          const TEMPLATE_ID = 'template_6mpufs4';
+          await emailjs.send(EMAIL_SERVICE, TEMPLATE_ID, params);
+          return true;
+        } catch (e) {
+          console.warn('Welcome email failed', e);
+          return false;
+        }
+      }
+
+      function getFirstName(value) {
+        const trimmed = (value || '').trim();
+        if (!trimmed) return 'there';
+        return trimmed.split(/\s+/)[0];
+      }
+
+      function generateReference() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let ref = '';
+        for (let i = 0; i < 6; i += 1) {
+          ref += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return ref;
+      }
+
+      function getPlanLabel(tier) {
+        if (!tier) return 'Silver';
+        const normalised = tier.toLowerCase();
+        if (normalised === 'gold-for-silver') return 'Gold';
+        return normalised.charAt(0).toUpperCase() + normalised.slice(1);
+      }
+
+      function formatExtrasList(items = []) {
+        if (!items.length) return '';
+        if (items.length === 1) return items[0];
+        return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+      }
+
+      function buildPropertySummary(form) {
+        if (!form) return 'home';
+        const baseParts = [];
+        if (form.houseSize) baseParts.push(form.houseSize.trim());
+        if (form.houseType) baseParts.push(form.houseType.trim());
+        let summary = baseParts.length ? `${baseParts.join(' ')} home` : 'home';
+
+        const extras = [];
+        if (form.conservatory) extras.push('conservatory');
+        if (form.extension) extras.push('extension');
+        if (form.skylights) {
+          const label = form.skylights === 1 ? 'skylight' : 'skylights';
+          extras.push(`${form.skylights} ${label}`);
+        }
+        if (form.roofLanterns) {
+          const label = form.roofLanterns === 1 ? 'your roof lantern' : `${form.roofLanterns} roof lanterns`;
+          extras.push(label);
+        }
+
+        if (extras.length) {
+          summary += ` with ${formatExtrasList(extras)}`;
+        }
+        return summary;
+      }
+
+      function composeBookedEmailParams(form, dates) {
+        const firstNice = formatDateNice(dates.first);
+        const secondNice = formatDateNice(dates.second);
+        const thirdNice = formatDateNice(dates.third);
+        const firstName = getFirstName(form.name);
+        const safeFullName = form.name?.trim() || firstName;
+        const planLabel = getPlanLabel(form.tier || 'silver');
+        const propertySummary = buildPropertySummary(form);
+        const offerSuffix = form.offerApplied ? ' (special offer applied)' : '';
+        const priceCopy = form.pricePerCleanText ? form.pricePerCleanText : 'your confirmed rate';
+        const repContact = getRepName() ? `If you need anything, just reply to this email or message ${getRepName()}.` : 'If you need anything, just reply to this email.';
+        const messageParts = [
+          `Hi ${firstName},`,
+          `Thank you for choosing Swash Cleaning Ltd. The regular cleaning for your ${propertySummary} is all paid for and scheduled.`,
+          `You're on our ${planLabel} plan${offerSuffix}, and the price per clean every 4 weeks is ${priceCopy}.`,
+          `🗓 Your first clean is scheduled for ${firstNice}.`,
+          `Your next cleans are expected around:\n• ${secondNice}\n• ${thirdNice}\n(Dates may vary slightly due to weather.)`,
+          `You'll receive a reminder email the day before each clean. We look forward to keeping your windows sparkling!`,
+          `Please don't forget — your feedback means the world to us. If you're happy, a quick Google review really helps us grow. If there's ever an issue, just reply to this email so we can make it right straight away.`,
+          `Best regards,\n\nChristopher Wessell\nDirector – Swash Cleaning Ltd\n📞 03300 436 345\n🌐 www.swashcleaning.co.uk`,
+          repContact
+        ].filter(Boolean);
+        const message = messageParts.join('\n\n');
+        return {
+          title: 'Your next 3 window cleans are confirmed!',
+          subject: 'Your Swash booking is confirmed',
+          customer_name: safeFullName,
+          name: safeFullName,
+          first_name: firstName,
+          email: form.email,
+          address: form.address,
+          service_address: form.address,
+          plan_label: planLabel,
+          plan_label_with_offer: `${planLabel}${offerSuffix}`.trim(),
+          price_per_clean: form.pricePerCleanText,
+          first_date: firstNice,
+          first_clean_date: firstNice,
+          second_date: secondNice,
+          second_clean_date: secondNice,
+          third_date: thirdNice,
+          third_clean_date: thirdNice,
+          second_date_short: formatDdMmYyyy(dates.second),
+          third_date_short: formatDdMmYyyy(dates.third),
+          rep_name: getRepName() || '',
+          offer_applied: form.offerApplied ? 'yes' : 'no',
+          house_summary: propertySummary,
+          message,
+          message_body: message,
+          booking_summary: `First clean: ${firstNice} • Next cleans: ${secondNice} & ${thirdNice}`
+        };
+      }
+
+      function composePendingEmailParams(form) {
+        const title = 'Welcome to Swash Cleaning Ltd';
+        const message = 'Thank you for choosing to use Swash Cleaning Ltd to keep your homes windows looking their best. We will contact you shortly to book in your first clean.';
+        return {
+          title,
+          name: form.name,
+          customer_name: form.name,
+          first_name: getFirstName(form.name),
+          email: form.email,
+          message,
+          message_body: message
+        };
+      }
+
+      function showToast(msg, type) {
+        const toast = document.createElement('div');
+        toast.textContent = msg;
+        // Position relative to viewport
+        toast.style.position = 'fixed';
+        toast.style.right = '16px';
+        toast.style.bottom = '100px'; // Higher to avoid being cut off by modal buttons
+        toast.style.maxWidth = '90vw';
+        toast.style.background = type === 'success' ? '#ecfdf5' : (type === 'warning' ? '#fff7ed' : '#eef2ff');
+        toast.style.color = '#0f172a';
+        toast.style.border = '2px solid #1c9c5d';
+        toast.style.padding = '12px 16px';
+        toast.style.borderRadius = '10px';
+        toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+        toast.style.zIndex = '99999';
+        toast.style.fontSize = '14px';
+        toast.style.fontWeight = '600';
+        toast.style.minWidth = '250px';
+        // Try to append to parent window (rep-log.html body) for visibility, fall back to iframe body
+        try {
+          if (window.parent && window.parent !== window && window.parent.document && window.parent.document.body) {
+            window.parent.document.body.appendChild(toast);
+            console.log('[Toast] Shown in parent window:', msg);
+          } else {
+            document.body.appendChild(toast);
+            console.log('[Toast] Shown in iframe:', msg);
+          }
+        } catch (e) {
+          // Cross-origin or security restriction, fall back to iframe
+          document.body.appendChild(toast);
+          console.log('[Toast] Shown in iframe (cross-origin):', msg);
+        }
+        setTimeout(() => {
+          toast.remove();
+          console.log('[Toast] Hidden after 5 seconds');
+        }, 5000);
+      }
+
+      // User-friendly Firestore error helper
+      function formatFirestoreError(err) {
+        const code = err && (err.code || err.name) || '';
+        const message = err && err.message || '';
+        let hint = '';
+        const text = (code + ' ' + message).toLowerCase();
+        if (text.includes('permission')) hint = 'Permission denied — check your sign-in and access level.';
+        else if (text.includes('unavailable') || text.includes('network')) hint = 'Network/service unavailable — check your connection and try again.';
+        else if (text.includes('deadline') || text.includes('timeout')) hint = 'Request timed out — please try again.';
+        else if (text.includes('failed-precondition')) hint = 'Local cache issue — try a hard refresh (Ctrl+Shift+R).';
+        return { code, message, hint };
+      }
+      function alertFirestoreError(prefix, err) {
+        const { code, message, hint } = formatFirestoreError(err);
+        let details = '';
+        if (code) details += `\n\nError: ${code}`;
+        if (message) details += `\n${message}`;
+        if (hint) details += `\nHint: ${hint}`;
+        alert(`${prefix}${details}`);
+      }
+
+      function isFormComplete() {
+        try {
+          const name = document.getElementById('customerName')?.value?.trim();
+          const address = document.getElementById('address')?.value?.trim();
+          const email = document.getElementById('email')?.value?.trim();
+          const mobile = document.getElementById('mobile')?.value?.trim();
+          return !!(name && address && email && mobile);
+        } catch (_) { return false; }
+      }
+
+      function updateConfirmBtnState(btn) {
+        if (!btn) return;
+        const complete = isFormComplete();
+
+        if (!complete) {
+          btn.disabled = true;
+          if (!btn.dataset.reason) {
+            btn.textContent = 'Schedule First Clean';
+          }
+          return;
+        }
+
+        // Preserve disabled state when another workflow has locked the button
+        if (btn.dataset.reason && btn.dataset.reason !== 'booked') {
+          btn.disabled = true;
+          return;
+        }
+
+        if (btn.dataset.reason === 'booked') {
+          btn.disabled = true;
+          return;
+        }
+
+        const hasEligibleSlot = !!(selectedBooking && selectedBooking.dateISO && selectedBookingEligible);
+        if (!hasEligibleSlot) {
+          btn.disabled = true;
+          if (!btn.dataset.reason) {
+            btn.textContent = selectedTerritory ? 'Pick an available day' : 'Set location to unlock days';
+          }
+          return;
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Schedule First Clean';
+      }
+
+      async function loadBookedQuotesIfNeeded() {
+        if (bookedQuotesCache) return bookedQuotesCache;
+        try {
+          const db = window.db; if (!db) return [];
+          const mod = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+          const { collection, query, where, getDocs } = mod;
+          const q = query(collection(db, 'quotes'), where('bookedDate', '!=', null));
+          const snap = await getDocs(q);
+          bookedQuotesCache = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(q => !q.deleted && q.bookedDate);
+          return bookedQuotesCache;
+        } catch (e) {
+          console.warn('loadBookedQuotesIfNeeded failed', e);
+          bookedQuotesCache = [];
+          return bookedQuotesCache;
+        }
+      }
+
+      function normalizeYmd(date) {
+        const d = new Date(date); d.setHours(0,0,0,0); return d;
+      }
+
+      function daysBetween(a, b) {
+        const ms = normalizeYmd(b) - normalizeYmd(a); return Math.round(ms / 86400000);
+      }
+
+      function occursOnDate(quote, targetDate) {
+        try {
+          const start = new Date(quote.bookedDate); start.setHours(0,0,0,0);
+          const tgt = normalizeYmd(targetDate);
+          const diff = daysBetween(start, tgt);
+          return diff >= 0 && diff % 28 === 0;
+        } catch(_) { return false; }
+      }
+
+      function resolvePricePerCleanLocal(quote) {
+        const candidates = [quote.pricePerClean, quote.price_per_clean, quote.price];
+        for (const v of candidates) { const n = Number(v); if (Number.isFinite(n)) return n; }
+        return 0;
+      }
+
+      async function computeDayTotalGBP(dateISO) {
+        const list = await loadBookedQuotesIfNeeded();
+        let sum = 0;
+        for (const q of list) {
+          if (occursOnDate(q, dateISO)) sum += resolvePricePerCleanLocal(q);
+        }
+        return sum;
+      }
+
+      // ===== Territory detection and date eligibility =====
+      function pointInPolygon(point, polygon) {
+        if (!point || !Array.isArray(polygon) || polygon.length < 3) return false;
+        const x = Number(point.lat), y = Number(point.lng);
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+          const xi = Number(polygon[i].lat), yi = Number(polygon[i].lng);
+          const xj = Number(polygon[j].lat), yj = Number(polygon[j].lng);
+          const intersect = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi);
+          if (intersect) inside = !inside;
+        }
+        return inside;
+      }
+
+      function haversineMeters(a, b) {
+        const R = 6371000; // meters
+        const dLat = (b.lat - a.lat) * Math.PI / 180;
+        const dLng = (b.lng - a.lng) * Math.PI / 180;
+        const lat1 = a.lat * Math.PI / 180;
+        const lat2 = b.lat * Math.PI / 180;
+        const s1 = Math.sin(dLat/2), s2 = Math.sin(dLng/2);
+        const c = s1*s1 + Math.cos(lat1) * Math.cos(lat2) * s2*s2;
+        return 2 * R * Math.asin(Math.min(1, Math.sqrt(c)));
+      }
+
+      function pointInCircle(point, center, radiusMeters) {
+        if (!point || !center || !Number.isFinite(Number(radiusMeters))) return false;
+        return haversineMeters({ lat: Number(point.lat), lng: Number(point.lng) }, { lat: Number(center.lat), lng: Number(center.lng) }) <= Number(radiusMeters);
+      }
+
+      async function loadTerritories() {
+        if (territoriesCache) return territoriesCache;
+        try {
+          const db = window.db; if (!db) return [];
+          const { getDocs, collection, getDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+          // Preferred: top-level territories collection
+          const snap = await getDocs(collection(db, 'territories'));
+          const arr = [];
+          snap.forEach(d => {
+            const data = d.data() || {};
+            const allowed = (data.allowedBookingDays && typeof data.allowedBookingDays === 'object') ? data.allowedBookingDays : {};
+
+            // Normalise polygon paths regardless of stored format
+            let rawPath = [];
+            if (Array.isArray(data.geoBoundary)) {
+              rawPath = data.geoBoundary;
+            } else if (typeof data.geoBoundaryJSON === 'string') {
+              try {
+                rawPath = JSON.parse(data.geoBoundaryJSON) || [];
+              } catch (err) {
+                console.warn('[Territories] Failed to parse geoBoundaryJSON for', d.id, err);
+                rawPath = [];
+              }
+            } else if (Array.isArray(data.path)) {
+              rawPath = data.path;
+            }
+
+            if (Array.isArray(rawPath) && rawPath.length) {
+              const path = rawPath
+                .map(p => {
+                  if (Array.isArray(p) && p.length >= 2) return { lat: Number(p[0]), lng: Number(p[1]) };
+                  if (p && typeof p.lat !== 'undefined' && typeof p.lng !== 'undefined') return { lat: Number(p.lat), lng: Number(p.lng) };
+                  return null;
+                })
+                .filter(Boolean);
+
+              if (path.length >= 3) {
+                arr.push({
+                  id: d.id,
+                  name: data.name || d.id,
+                  type: 'polygon',
+                  path,
+                  allowedBookingDays: allowed,
+                  color: data.color || '#0078d7',
+                });
+                return;
+              }
+            }
+
+            if (data.center && data.radius != null) {
+              const center = Array.isArray(data.center)
+                ? { lat: Number(data.center[0]), lng: Number(data.center[1]) }
+                : { lat: Number(data.center.lat), lng: Number(data.center.lng) };
+              const radius = Number(data.radius);
+              arr.push({
+                id: d.id,
+                name: data.name || d.id,
+                type: 'circle',
+                center,
+                radius,
+                allowedBookingDays: allowed,
+                color: data.color || '#0078d7',
+              });
+            }
+          });
+          if (arr.length) { territoriesCache = arr; return territoriesCache; }
+          // Fallback: system/territories aggregated doc
+          const sys = await getDoc(doc(db, 'system', 'territories'));
+          if (sys.exists() && Array.isArray(sys.data().data)) {
+            territoriesCache = sys.data().data.map(t => {
+              // Normalize polygon path from arrays or objects
+              let path = [];
+              let raw = Array.isArray(t.path) ? t.path : (Array.isArray(t.geoBoundary) ? t.geoBoundary : []);
+              if ((!Array.isArray(raw) || !raw.length) && typeof t.geoBoundaryJSON === 'string') {
+                try {
+                  raw = JSON.parse(t.geoBoundaryJSON) || [];
+                } catch (err) {
+                  console.warn('[Territories] Failed to parse legacy geoBoundaryJSON from system doc', err);
+                  raw = [];
+                }
+              }
+              if (Array.isArray(raw)) {
+                path = raw.map(p => {
+                  if (Array.isArray(p) && p.length >= 2) return { lat: Number(p[0]), lng: Number(p[1]) };
+                  if (p && typeof p.lat !== 'undefined' && typeof p.lng !== 'undefined') return { lat: Number(p.lat), lng: Number(p.lng) };
+                  return null;
+                }).filter(Boolean);
+              }
+              // Normalize circle center
+              let center = null; let radius = null;
+              if (t.center && t.radius != null) {
+                center = Array.isArray(t.center)
+                  ? { lat: Number(t.center[0]), lng: Number(t.center[1]) }
+                  : { lat: Number(t.center.lat), lng: Number(t.center.lng) };
+                radius = Number(t.radius);
+              }
+              return {
+                id: t.id || t.territoryId || t.name,
+                name: t.name || t.title || (t.id || 'Area'),
+                type: t.type || (center && radius != null ? 'circle' : 'polygon'),
+                path,
+                center,
+                radius,
+                allowedBookingDays: (t.allowedBookingDays && typeof t.allowedBookingDays === 'object') ? t.allowedBookingDays : {},
+                color: t.color || t.colour || '#0078d7'
+              };
+            });
+            return territoriesCache;
+          }
+        } catch (e) {
+          console.warn('loadTerritories failed', e);
+        }
+        territoriesCache = [];
+        return territoriesCache;
+      }
+
+      async function detectCustomerTerritory() {
+        try {
+          const lat = parseFloat(document.getElementById('customerLatitude')?.value);
+          const lng = parseFloat(document.getElementById('customerLongitude')?.value);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+          const terrs = await loadTerritories();
+          const pt = { lat, lng };
+          for (const t of terrs) {
+            if (t.type === 'polygon' && Array.isArray(t.path) && t.path.length >= 3) {
+              if (pointInPolygon(pt, t.path)) return t;
+            } else if (t.type === 'circle' && t.center && t.radius != null) {
+              if (pointInCircle(pt, t.center, t.radius)) return t;
+            }
+          }
+          return null;
+        } catch (_) { return null; }
+      }
+
+      function getCycleWeekNumber(date) {
+        try {
+          const baseline = new Date(BASELINE_START_DATE + 'T00:00:00');
+          const weekStart = new Date(date);
+          // normalize to Monday
+          const day = weekStart.getDay();
+          const offset = day === 0 ? -6 : 1 - day;
+          weekStart.setDate(weekStart.getDate() + offset);
+          const diffWeeks = Math.floor((weekStart - baseline) / (7 * 24 * 60 * 60 * 1000));
+          const mod = ((diffWeeks % 4) + 4) % 4;
+          return mod + 1;
+        } catch(_) { return 1; }
+      }
+
+      function getWeekKeyForDate(date) {
+        const n = getCycleWeekNumber(date);
+        return 'week' + String(n);
+      }
+
+      function getDayKeyForDate(date) {
+        try {
+          const s = new Date(date).toLocaleDateString('en-GB', { weekday: 'short' });
+          return s.replace('.', '');
+        } catch(_) { return 'Mon'; }
+      }
+
+      function renderPostPaymentActions() {
+        if (bookingUiInserted) return;
+        const resultPanel = document.getElementById('result');
+        if (!resultPanel) return;
+        
+        // Ensure refCode exists for quote tracking
+        const paymentRefValue = document.getElementById('paymentRefValue');
+        if (paymentRefValue && !paymentRefValue.textContent.trim()) {
+          const newRef = generateReference();
+          paymentRefValue.textContent = newRef;
+        }
+        
+        const wrap = document.createElement('div');
+        wrap.id = 'postPaymentActions';
+        wrap.style.marginTop = '10px';
+        wrap.style.padding = '12px';
+        wrap.style.border = '1px solid #e5e7eb';
+        wrap.style.borderRadius = '8px';
+        wrap.style.background = '#f8fafc';
+        wrap.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+              <button type="button" id="savePendingBtn" class="btn btn-secondary">We'll contact you with a date</button>
+            </div>
+            <div id="dummySlots" style="display:none; gap:8px; flex-wrap:wrap; margin-top:8px;">
+            </div>
+          </div>
+        `;
+        resultPanel.appendChild(wrap);
+        bookingUiInserted = true;
+
+          const actionBar = document.getElementById('bookingActionBar');
+        if (actionBar) actionBar.hidden = false;
+          const confirmBtn = document.getElementById('confirmBookingBtn');
+          const pendingBtn = document.getElementById('savePendingBtn');
+        updateConfirmBtnState(confirmBtn);
+        const bind = (id, evt='input') => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener(evt, () => updateConfirmBtnState(confirmBtn));
+        };
+        bind('customerName');
+        bind('address');
+        bind('email');
+        bind('mobile');
+
+        // Ensure offline submit button only appears when actually offline
+        const offlineBtn = document.getElementById('submitBtn');
+        const updateOfflineVisibility = () => {
+          if (!offlineBtn) return;
+          offlineBtn.hidden = navigator.onLine; // show only when offline
+        };
+        updateOfflineVisibility();
+        window.addEventListener('online', updateOfflineVisibility);
+        window.addEventListener('offline', updateOfflineVisibility);
+
+        // If no external slot UI is present, generate suggested dates inline
+        try {
+          if (!window.swashHasSlotUi) {
+            const container = document.getElementById('dummySlots');
+            // We'll repurpose this container for suggested dates if territory + price known
+            container.style.display = 'flex';
+            container.id = 'suggestedDatesContainer';
+            const heading = document.createElement('div');
+            heading.style.flexBasis = '100%';
+            heading.style.fontWeight = '700';
+            heading.style.fontSize = '0.95rem';
+            heading.style.color = '#0f172a';
+            heading.textContent = 'Please choose from one of the following available days we are next in your area';
+            container.appendChild(heading);
+            const contactBtn = document.getElementById('savePendingBtn');
+            if (contactBtn) contactBtn.hidden = true; // hide 'we'll contact you' when showing dates
+            // Defer generation slightly to allow territory detection
+            setTimeout(() => { try { generateSuggestedDates(); } catch(e){ console.warn('generateSuggestedDates failed', e); } }, 400);
+          }
+        } catch(_) {}
+        // no extra instructional paragraph here; heading above is sufficient
+
+        // Insert an eligibility line below capacity info
+        const elig = document.createElement('div');
+        elig.id = 'eligibilityInfo';
+        elig.style.fontSize = '0.9rem';
+        elig.style.color = '#334155';
+        elig.style.marginTop = '4px';
+        wrap.appendChild(elig);
+
+        // Button listener is now attached globally above, so no duplicate here
+        // Pending is now a selection toggle; no email is sent until Confirm Booking
+        if (pendingBtn) pendingBtn.hidden = true; // remove secondary pending button
+      }
+
+      // Allow other UI to set the selected booking slot
+      window.setSelectedBooking = function setSelectedBooking(slot) {
+        (async () => {
+          let confirmBtn = null;
+          try {
+            selectedBooking = slot && typeof slot === 'object' ? { ...slot } : null;
+            bookingMode = selectedBooking ? 'booked' : 'none';
+            selectedBookingEligible = !!selectedBooking;
+
+            // Highlight selected date button (green background, white text)
+            const allDateButtons = document.querySelectorAll('.suggested-date-btn');
+            allDateButtons.forEach(btn => {
+              if (selectedBooking && btn.textContent.trim() === new Date(selectedBooking.dateISO).toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' })) {
+                btn.style.background = '#22c55e';
+                btn.style.color = '#fff';
+                btn.style.borderColor = '#22c55e';
+              } else {
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+              }
+            });
+            
+            confirmBtn = document.getElementById('confirmBookingBtn');
+            if (confirmBtn) {
+              delete confirmBtn.dataset.reason;
+            }
+            const info = document.getElementById('capacityInfo');
+            const bookingDatesDisplay = document.getElementById('bookingDatesDisplay');
+            
+            if (!selectedBooking || !selectedBooking.dateISO) {
+              selectedBookingEligible = false;
+              if (info) info.textContent = '';
+              if (bookingDatesDisplay) bookingDatesDisplay.hidden = true;
+              if (confirmBtn) updateConfirmBtnState(confirmBtn);
+              return;
+            }
+            
+            // Show booking dates
+            // bookingDatesDisplay suppressed as redundant
+            // Enforce at least +1 day (skip same-day bookings)
+            const today = new Date(); today.setHours(0,0,0,0);
+            const chosen = new Date(selectedBooking.dateISO); chosen.setHours(0,0,0,0);
+            const isSameDay = chosen.getTime() === today.getTime();
+            // Resolve territory on-demand
+            if (!selectedTerritory) {
+              selectedTerritory = await detectCustomerTerritory();
+            }
+
+            const baseTotal = await computeDayTotalGBP(selectedBooking.dateISO);
+            const priceNode = document.querySelector('#result .result-price');
+            let jobPrice = 0;
+            if (priceNode) {
+              const m = priceNode.textContent.match(/£\s*(\d+(?:\.\d{1,2})?)/);
+              if (m) jobPrice = parseFloat(m[1] || '0');
+            }
+            const withThis = baseTotal + jobPrice;
+            const limit = 400;
+            if (info) info.textContent = `Day total: £${baseTotal.toFixed(2)} • With this job: £${withThis.toFixed(2)} (limit £${limit.toFixed(0)})`;
+            let over = withThis > limit;
+
+            // Eligibility check against territory allowedBookingDays
+            const eligEl = document.getElementById('eligibilityInfo');
+            let eligOk = true;
+            let eligMsg = '';
+            if (!selectedTerritory) {
+              eligOk = false;
+              eligMsg = 'Set the customer location to validate area and available days.';
+            } else {
+              const abd = selectedTerritory.allowedBookingDays || {};
+              const wk = getWeekKeyForDate(selectedBooking.dateISO);
+              const dk = getDayKeyForDate(selectedBooking.dateISO);
+              const cleaners = abd[wk] && Array.isArray(abd[wk][dk]) ? abd[wk][dk] : [];
+              if (!cleaners.length) {
+                eligOk = false;
+                const niceDay = new Date(selectedBooking.dateISO).toLocaleDateString('en-GB', { weekday: 'long' });
+                const terrName = selectedTerritory.name || selectedTerritory.id || 'your area';
+                eligMsg = `${niceDay} (Week ${wk.replace('week','')}) isn't scheduled for ${terrName}.`;
+              } else {
+                // Optionally attach territoryId and cleanerId if not provided
+                selectedBooking.territoryId = selectedBooking.territoryId || selectedTerritory.id || null;
+                if (!selectedBooking.cleanerId) {
+                  selectedBooking.cleanerId = cleaners[0] || null;
+                }
+              }
+            }
+            if (isSameDay) {
+              eligOk = false;
+              eligMsg = 'Same-day booking not allowed – pick a future date.';
+            }
+            if (eligEl) eligEl.textContent = eligMsg;
+
+            let reason = '';
+            if (over) {
+              reason = 'capacity';
+              if (confirmBtn) confirmBtn.textContent = 'Day over capacity (choose another)';
+            } else if (!eligOk) {
+              reason = 'eligibility';
+              if (confirmBtn) confirmBtn.textContent = eligMsg || 'Date not eligible for this area';
+            }
+
+            selectedBookingEligible = !reason;
+            if (confirmBtn) {
+              if (reason) {
+                confirmBtn.dataset.reason = reason;
+              } else {
+                delete confirmBtn.dataset.reason;
+              }
+              updateConfirmBtnState(confirmBtn);
+            }
+          } catch(e) {
+            console.error('setSelectedBooking error:', e);
+            // Still try to update button state
+            if (confirmBtn) {
+              selectedBookingEligible = false;
+              confirmBtn.dataset.reason = 'error';
+              confirmBtn.disabled = true;
+              confirmBtn.textContent = 'Error - please try again';
+            }
+          }
+        })();
+      };
+
+      // Generate a small set of suggested eligible dates (next 120 days) matching territory week/day & capacity < £400, skipping today
+      window.generateSuggestedDates = async function generateSuggestedDates(maxCount = 5) {
+        console.log('[Booking] Generating suggested dates...');
+        try {
+          const pendingBtn = document.getElementById('savePendingBtn');
+          const container = document.getElementById('suggestedDatesContainer');
+          if (!container) {
+            console.warn('[Booking] suggestedDatesContainer not found');
+            if (pendingBtn) pendingBtn.hidden = false; // allow pending path if UI missing
+            return;
+          }
+          const confirmBtn = document.getElementById('confirmBookingBtn');
+          if (confirmBtn) {
+            delete confirmBtn.dataset.reason;
+          }
+          selectedBooking = null;
+          selectedBookingEligible = false;
+          if (confirmBtn) updateConfirmBtnState(confirmBtn);
+          // Clear old buttons and error messages (leave heading/note)
+          Array.from(container.querySelectorAll('button.suggested-date-btn')).forEach(b => b.remove());
+          Array.from(container.querySelectorAll('div[style*="color:#dc2626"]')).forEach(m => m.remove());
+          Array.from(container.querySelectorAll('div[style*="color:#64748b"]')).forEach(m => m.remove());
+          
+          const pricePerCleanText = getTextPricePerClean();
+          const priceNum = parseFloat(pricePerCleanText.replace(/[^0-9.]/g,'')) || 0;
+          console.log('[Booking] Price per clean:', priceNum);
+          
+          selectedTerritory = await detectCustomerTerritory();
+          if (!selectedTerritory) {
+            console.warn('[Booking] No territory detected - location not set');
+            // Don't show error message when no territory
+            if (pendingBtn) pendingBtn.hidden = false; // allow pending if no territory
+            return;
+          }
+          console.log('[Booking] Territory detected:', selectedTerritory.name || selectedTerritory.id);
+          const abd = selectedTerritory.allowedBookingDays || {};
+          const today = new Date(); today.setHours(0,0,0,0);
+          let cursor = new Date(today); cursor.setDate(cursor.getDate() + 1); // start tomorrow
+          let found = 0;
+          const limitDate = new Date(today); limitDate.setDate(limitDate.getDate() + 60); // 2 months max
+          while (found < maxCount && cursor <= limitDate) {
+            const iso = cursor.toISOString();
+            const wk = getWeekKeyForDate(iso);
+            const dk = getDayKeyForDate(iso);
+            const cleaners = abd[wk] && Array.isArray(abd[wk][dk]) ? abd[wk][dk] : [];
+            if (cleaners.length) {
+              const baseTotal = await computeDayTotalGBP(iso);
+              const withThis = baseTotal + priceNum;
+              if (withThis <= 400) {
+                // Accept
+                const btn = document.createElement('button');
+                btn.type='button';
+                btn.className='btn btn-secondary suggested-date-btn';
+                btn.style.flex='0 0 auto';
+                btn.style.fontSize='0.75rem';
+                const nice = cursor.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+                btn.textContent = nice;
+                btn.title = `Week ${wk.replace('week','')} • ${dk} • Capacity after: £${withThis.toFixed(2)}`;
+                btn.addEventListener('click', () => {
+                  window.setSelectedBooking({ dateISO: iso, weekKey: wk, dayKey: dk, territoryId: selectedTerritory.id || null, cleanerId: cleaners[0] || null });
+                });
+                container.appendChild(btn);
+                found++;
+              }
+            }
+            cursor.setDate(cursor.getDate() + 1);
+          }
+          if (found === 0) {
+            const none = document.createElement('div');
+            none.style.flexBasis='100%';
+            none.style.fontSize='0.72rem';
+            none.style.color='#64748b';
+            none.textContent='No eligible days under capacity in the next 120 days.';
+            container.appendChild(none);
+            if (pendingBtn) pendingBtn.hidden = false; // show pending if none available
+          } else {
+            if (pendingBtn) pendingBtn.hidden = true; // hide pending when at least one date is available
+          }
+        } catch(e) {
+          console.error('generateSuggestedDates error', e);
+          const errMsg = document.createElement('div');
+          errMsg.style.flexBasis='100%';
+          errMsg.style.fontSize='0.75rem';
+          errMsg.style.color='#dc2626';
+          errMsg.textContent='Error loading dates. Please try again.';
+          const container = document.getElementById('suggestedDatesContainer');
+          if (container) container.appendChild(errMsg);
+          const pendingBtn = document.getElementById('savePendingBtn');
+          if (pendingBtn) pendingBtn.hidden = false; // fallback to pending on error
+        }
+      };
+
+      // ===== Offline UI helpers =====
+      function showOfflineAcceptedUi() {
+        try {
+          // Banner
+          const resultPanel = document.getElementById('result');
+          if (resultPanel && !document.getElementById('offlineBanner')) {
+            const b = document.createElement('div');
+            b.id = 'offlineBanner';
+            b.style.background = '#fff7ed';
+            b.style.border = '1px solid #fcd34d';
+            b.style.color = '#92400e';
+            b.style.padding = '8px 10px';
+            b.style.borderRadius = '8px';
+            b.style.marginTop = '8px';
+            b.textContent = '📡 Offline Submission Detected — a payment link will be emailed when internet is restored.';
+            resultPanel.appendChild(b);
+          }
+          // Next to Quote Accepted button
+          const actionRow = document.getElementById('quoteAcceptedRow');
+          if (actionRow && !document.getElementById('offlineBadgeQa')) {
+            const s = document.createElement('span');
+            s.id = 'offlineBadgeQa';
+            s.style.marginLeft = '8px';
+            s.style.color = '#92400e';
+            s.style.fontWeight = '600';
+            s.textContent = '📡 Offline — Payment link will be sent when back online';
+            actionRow.appendChild(s);
+          }
+          // Change Confirm Booking button label (still allow booking)
+          const cb = document.getElementById('confirmBookingBtn');
+          if (cb) {
+            cb.textContent = 'Submit Offline';
+            cb.disabled = false;
+          }
+          const fallbackBtn = document.getElementById('submitBtn');
+          if (fallbackBtn) fallbackBtn.hidden = navigator.onLine; // only show if offline
+        } catch(_) {}
+      }
+
+      // ===== Offline Sync (Online event) =====
+      async function syncOfflineQueue() {
+        try {
+          const now = Date.now();
+          const items = (await idbGetAll()).filter(x => x.offlineSubmitted && !x.offlineEmailSent && (!x.retryAt || x.retryAt <= now));
+          if (!items.length) return;
+          for (const it of items) {
+            try {
+              // Create payment link
+              const desc = `Payment from ${it.customerName || 'Customer'} for 3 window cleans - Rep ${localStorage.getItem('swash:lastRepName') || ''}`;
+              const resp = await fetch('/api/createInstantPayLink', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: Math.round((Number(it.totalAmount)||0)*100), currency: 'GBP', description: desc })
+              });
+              if (!resp.ok) throw new Error('Link create failed');
+              const { redirect_url, session_id, billing_request } = await resp.json();
+              const paymentLink = redirect_url;
+              const gRef = (billing_request && billing_request.id) || null;
+              await idbUpdate(it.id, { paymentLink, gocardlessRef: gRef });
+
+              // Send offline payment email via EmailJS (universal blank template fields only)
+              if (window.emailjs && emailjs.send) {
+                const totalStr = Number(it.totalAmount||0).toFixed(2);
+                const body = `Please use this secure payment link to complete your upfront payment of £${totalStr} for your ${it.propertyType} on the ${it.tierLabel} plan:\n\n${paymentLink}\n\nOnce payment is completed, we will email you with all available booking dates for your first clean.\nIf you have any questions, just reply to this email. Thank you!`;
+                await emailjs.send(
+                  'service_cdy739m',
+                  'template_6mpufs4',
+                  {
+                    title: 'Payment Link – Swash Cleaning Ltd',
+                    name: it.customerName,
+                    message: body
+                  }
+                );
+              }
+
+              // Create Firestore record under customers/{customerId}/quotes
+              const db = window.db; if (db) {
+                const mod = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+                const { collection, addDoc } = mod;
+                const customerId = await ensureCustomerDocFromEntry(it);
+                if (customerId) {
+                  await addDoc(collection(db, 'customers', customerId, 'quotes'), {
+                    offlineSubmitted: true,
+                    offlineEmailSent: true,
+                    paymentLink,
+                    gocardlessRef: gRef,
+                    totalAmount: Number(it.totalAmount||0),
+                    tierLabel: it.tierLabel || '',
+                    propertyType: it.propertyType || '',
+                    status: 'pending_payment',
+                    timestamp: new Date().toISOString(),
+                    territoryId: it.territoryId || null,
+                    repId: it.repId || null,
+                    retryCount: it.retryCount || 0
+                  });
+                }
+              }
+
+              await idbUpdate(it.id, { offlineEmailSent: true });
+              window.offlineEmailSentFlag = true;
+            } catch (e) {
+              const next = Date.now() + 5*60*1000; // retry in 5 mins
+              const rc = (it.retryCount || 0) + 1;
+              await idbUpdate(it.id, { retryAt: next, retryCount: rc });
+            }
+          }
+          showToast('✅ Offline quotes synced and emails sent', 'success');
+        } catch(e) {
+          console.warn('syncOfflineQueue failed', e);
+        }
+      }
+
+      async function startOfflineWatcher() {
+        window.addEventListener('online', () => syncOfflineQueue());
+        // If currently offline and a queue item exists, show banner
+        try {
+          const items = await idbGetAll();
+          if (!navigator.onLine && items.some(x => x.offlineSubmitted && !x.offlineEmailSent)) {
+            showOfflineAcceptedUi();
+          }
+        } catch(_) {}
+      }
+
+      // Ensure these helpers are globally available
+      window.syncOfflineQueue = syncOfflineQueue;
+      window.startOfflineWatcher = startOfflineWatcher;
+      window.sendOfflinePaymentEmail = async function(entry){
+        // A thin wrapper that attempts to send the offline email for a single entry id
+        const items = await idbGetAll();
+        const it = items.find(x => x.id === entry?.id);
+        if (it) {
+          await idbUpdate(it.id, { offlineEmailSent: false });
+          await syncOfflineQueue();
+        }
+      };
+      async function ensureCustomerDocFromEntry(entry) {
+        try {
+          const db = window.db; if (!db || !entry) return null;
+          const mod = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+          const { collection, addDoc, query, where, getDocs } = mod;
+          if (entry.customerEmail) {
+            try {
+              const q = query(collection(db, 'customers'), where('email','==', entry.customerEmail));
+              const snap = await getDocs(q);
+              for (const d of snap.docs) return d.id;
+            } catch(_) {}
+          }
+          const docRef = await addDoc(collection(db, 'customers'), {
+            name: entry.customerName || 'Customer',
+            email: entry.customerEmail || '',
+            address: entry.address || '',
+            territoryId: entry.territoryId || null,
+            repId: entry.repId || null,
+            createdAt: new Date().toISOString(),
+            source: 'offline-queue'
+          });
+          return docRef.id;
+        } catch(e) { console.warn('ensureCustomerDocFromEntry failed', e); return null; }
+      }
+      window.ensureCustomerDocFromEntry = ensureCustomerDocFromEntry;
+      // Detect existing offline submission / paid status when loading or after email entry
+      async function checkOfflineState() {
+        try {
+          const emailInput = document.getElementById('customerEmail');
+          const emailVal = emailInput && emailInput.value && emailInput.value.trim();
+          if (!emailVal) return; // wait until email provided
+          const db = window.db; if (!db) return;
+          const mod = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+          const { collectionGroup, query, where, getDocs } = mod;
+          const qRef = query(collectionGroup(db,'quotes'), where('email','==', emailVal), where('offlineSubmitted','==', true));
+          const snap = await getDocs(qRef);
+          if (snap.empty) return;
+          const docData = snap.docs[0].data();
+          // Hide online flow elements
+          try { document.getElementById('quoteAcceptedBtn')?.setAttribute('hidden',''); } catch(_) {}
+          try { document.getElementById('instantPayModal')?.setAttribute('hidden',''); } catch(_) {}
+          window.offlineSubmissionActive = true;
+          // Banner logic
+          const resultPanel = document.getElementById('result');
+          if (resultPanel) {
+            const existing = document.getElementById('offlineBanner');
+            if (!existing) {
+              const b = document.createElement('div');
+              b.id='offlineBanner';
+              b.style.background = '#fff7ed';
+              b.style.border='1px solid #fcd34d';
+              b.style.color='#92400e';
+              b.style.padding='8px 10px';
+              b.style.borderRadius='8px';
+              b.style.marginTop='8px';
+              if (docData.status === 'paid') {
+                window.paymentReceivedFlag = true;
+                b.textContent = '💸 Payment Received — you can now select a booking slot.';
+              } else {
+                b.textContent = '📡 Offline Submission Detected — payment link sent, awaiting payment.';
+              }
+              resultPanel.appendChild(b);
+            }
+          }
+        } catch(e) { /* silent */ }
+      }
+      window.checkOfflineState = checkOfflineState;
+      document.getElementById('customerEmail')?.addEventListener('blur', () => { checkOfflineState(); });
+      // Initial check shortly after load (in case email prefilled)
+      setTimeout(() => { try { checkOfflineState(); } catch(_) {} }, 1200);
+
+      // --- Quote update helpers (ensure scheduler + admin reflect booking) ---
+      async function findQuoteDocIdByRefCode(refCode) {
+        if (!refCode) return null;
+        try {
+          const db = window.db; if (!db) return null;
+          const { collection, query, where, getDocs } = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+          const q = query(collection(db, 'quotes'), where('refCode', '==', refCode));
+          const snap = await getDocs(q);
+          for (const docSnap of snap.docs) {
+            return docSnap.id;
+          }
+          return null;
+        } catch (e) { console.warn('findQuoteDocIdByRefCode failed', e); return null; }
+      }
+
+      function broadcastQuotesUpdated(source) {
+        try {
+          const chan = new BroadcastChannel('swash-quotes-sync');
+          chan.postMessage({ type: 'quotes-updated', source: source || 'add-new-customer' });
+          chan.close();
+        } catch(_) {}
+        // Notify embedding parent window (rep log modal) for quick logging
+        try {
+          const isEmbedded = (function(){ try { return window.self !== window.top; } catch(_) { return true; } })();
+          if (isEmbedded && window.parent) {
+            let refCode = null;
+            try { refCode = document.getElementById('paymentRefValue')?.textContent?.trim() || null; } catch(_) {}
+            let form = {};
+            try { if (typeof getCustomerFormData === 'function') form = getCustomerFormData() || {}; } catch(_) {}
+            const payload = {
+              type: 'swash-signup-saved',
+              source: source || 'add-new-customer',
+              ref_code: refCode,
+              customer_name: form.name || '',
+              address: form.address || '',
+              email: form.email || '',
+            };
+            window.parent.postMessage(payload, location.origin);
+          }
+        } catch(_) {}
+      }
+
+      async function updateQuoteDocAfterBooking(refCode, { first, second, third, cleanerId, territoryId, pricePerClean }) {
+        let quoteId = await findQuoteDocIdByRefCode(refCode);
+        if (!quoteId) {
+          // Create a minimal quote so admin/scheduler reflect status
+          quoteId = await createOrLinkQuoteFromForm(refCode, { status: 'Booked - ' + new Date(first).toLocaleDateString('en-GB'), territoryId: territoryId || null, pricePerClean: pricePerClean });
+          if (!quoteId) return;
+        }
+        try {
+          const db = window.db; if (!db) return;
+          const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+          const ddmmyyyy = (d) => {
+            const date = new Date(d); return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
+          };
+          const payload = {
+            status: 'Booked - ' + ddmmyyyy(first),
+            bookedDate: first.toISOString(),
+            nextCleanDates: [ second.toISOString(), third.toISOString() ],
+            assignedCleaner: cleanerId || null
+          };
+          if (territoryId) payload.territoryId = territoryId;
+          if (Number.isFinite(pricePerClean)) payload.pricePerClean = pricePerClean;
+          await updateDoc(doc(db, 'quotes', quoteId), payload);
+          broadcastQuotesUpdated('add-new-customer');
+        } catch (e) { console.warn('updateQuoteDocAfterBooking failed', e); }
+      }
+
+      async function updateQuoteDocPending(refCode) {
+        let quoteId = await findQuoteDocIdByRefCode(refCode);
+        if (!quoteId) {
+          // Create a minimal quote with pending status
+          quoteId = await createOrLinkQuoteFromForm(refCode, { status: 'Pending Booking' });
+          if (!quoteId) return;
+        }
+        try {
+          const db = window.db; if (!db) return;
+          const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+          await updateDoc(doc(db, 'quotes', quoteId), {
+            status: 'Pending Booking'
+          });
+          broadcastQuotesUpdated('add-new-customer');
+        } catch (e) { console.warn('updateQuoteDocPending failed', e); }
+      }
+
+      // Create or merge a minimal quote in Firestore so admin/scheduler always see status
+      async function createOrLinkQuoteFromForm(refCode, overrides = {}) {
+        try {
+          const db = window.db; if (!db) return null;
+          const existingId = await findQuoteDocIdByRefCode(refCode);
+          const mod = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+          const { collection, addDoc, doc, setDoc, serverTimestamp } = mod;
+          const form = getCustomerFormData();
+          const repInput = document.getElementById('repCode');
+          const repCode = (repInput && repInput.value) ? String(repInput.value).trim() : (getRepName && getRepName()) || 'Website Quote';
+          const pricePerClean = parseGBP(form.pricePerCleanText);
+          const upfront = parseGBP(getTextUpfront()) || Number((pricePerClean * 3).toFixed(2));
+          const payload = {
+            repCode: (repCode || 'Website Quote').toUpperCase(),
+            customerName: form.name || 'Customer',
+            address: form.address || '',
+            mobile: form.mobile || '',
+            email: form.email || '',
+            tier: form.tier || 'silver',
+            houseType: form.houseType || '',
+            houseSize: form.houseSize || '',
+            pricePerClean: pricePerClean || 0,
+            price: upfront || 0,
+            refCode: refCode,
+            status: overrides.status || 'Pending Booking',
+            bookedDate: null,
+            nextCleanDates: [],
+            assignedCleaner: null,
+            date: serverTimestamp(),
+            deleted: false,
+          };
+          if (overrides.territoryId) payload.territoryId = overrides.territoryId;
+          if (typeof overrides.assignedCleaner === 'string') payload.assignedCleaner = overrides.assignedCleaner;
+          if (overrides.bookedDate) payload.bookedDate = overrides.bookedDate;
+          if (Array.isArray(overrides.nextCleanDates)) payload.nextCleanDates = overrides.nextCleanDates;
+          if (Number.isFinite(overrides.pricePerClean)) payload.pricePerClean = overrides.pricePerClean;
+          if (existingId) {
+            // Merge updates onto existing quote
+            await setDoc(doc(db, 'quotes', existingId), payload, { merge: true });
+            return existingId;
+          }
+          const created = await addDoc(collection(db, 'quotes'), payload);
+          return created?.id || null;
+        } catch (e) {
+          console.warn('createOrLinkQuoteFromForm failed', e);
+          return null;
+        }
+      }
+
+      // Thank-you overlay on successful booking
+      function showThankYouOverlay(customerName, dateNice) {
+        try {
+          let ov = document.getElementById('thanksOverlay');
+          if (!ov) return;
+          const name = customerName || 'Customer';
+          const when = dateNice || '';
+          const msg = ov.querySelector('.thanks__message');
+          if (msg) msg.innerHTML = `Thank you, <strong>${name}</strong>.<br>Your windows will be cleaned on <strong>${when}</strong>.<br>See you soon!`;
+          ov.hidden = false;
+          ov.style.display = 'flex';
+        } catch(_) {}
+      }
+    })();
+  </script>
+
+  <!-- Thank-you Overlay -->
+  <div id="thanksOverlay" hidden style="position: fixed; inset: 0; display:none; align-items:center; justify-content:center; z-index: 1200; background:#004a99;">
+    <div style="position:relative; background:#0078d7; border-radius:20px; padding:32px; width:min(92vw,520px); box-shadow:0 25px 45px rgba(0,0,0,0.35); text-align:center; color:#fff;">
+      <img src="../assets/swash-logo.png" alt="Swash" style="height:48px; margin-bottom: 12px; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.25));" />
+      <div class="thanks__message" style="font-size:1.2rem; line-height:1.7; color:#fff;"></div>
+      <div style="margin-top:20px;">
+        <button type="button" class="btn btn-secondary" style="background:#fff; color:#0078d7; border:none;" onclick="document.getElementById('thanksOverlay').style.display='none'; document.getElementById('thanksOverlay').hidden=true;">Close</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Post height to parent for dynamic iframe resizing
+    (function(){
+      function computeContentHeight(){
+        try {
+          const card = document.querySelector('main.page .card') || document.getElementById('quoteForm') || document.body;
+          const rect = card.getBoundingClientRect();
+          // Add a small buffer for margins/padding
+          const h = Math.ceil(rect.height + 24);
+          // Sanity clamp to avoid accidental huge values
+          return Math.max(300, Math.min(h, 2000));
+        } catch (_) {
+          return Math.max(300, Math.min(document.body.scrollHeight || 600, 2000));
+        }
+      }
+      function postHeight() {
+        try {
+          const h = computeContentHeight();
+          parent.postMessage({ type: 'SWASH_IFRAME_HEIGHT', height: h }, '*');
+        } catch (_) {}
+      }
+      if (window.self !== window.top) {
+        const ro = new ResizeObserver(() => postHeight());
+        ro.observe(document.documentElement);
+        window.addEventListener('load', postHeight);
+        setTimeout(postHeight, 400);
+        setTimeout(postHeight, 1200);
+        // Avoid long periodic growth – recalc only on orientation/resize
+        window.addEventListener('orientationchange', () => setTimeout(postHeight, 300));
+        window.addEventListener('resize', () => setTimeout(postHeight, 200));
+      }
+    })();
+  </script>
+  <script>
+    // Start offline watcher on load
+    (function(){
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => { try { window.startOfflineWatcher && window.startOfflineWatcher(); } catch(_) {} }, { once: true });
+      } else {
+        try { window.startOfflineWatcher && window.startOfflineWatcher(); } catch(_) {}
+      }
+    })();
+  </script>
+</body>
+</html>

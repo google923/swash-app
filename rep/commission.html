@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#0078d7" />
-  <title>PAY + Commission - Swash</title>
+  <title>Commission (Contractors) - Swash</title>
   <link rel="manifest" href="../manifest.json" />
   <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
   <link rel="stylesheet" href="../style.css" />
@@ -23,25 +23,25 @@
   <main class="page">
     <section class="card">
       <header class="card-header">
-        <h1>💰 PAY + Commission</h1>
-        <p class="text-muted">View your earnings, commission breakdown, and mileage reports.</p>
+        <h1>💰 Commission (Contractors)</h1>
+        <p class="text-muted">Commission-only model: £15 → £8 → £8. Monthly in arrears on verified cleans.</p>
       </header>
 
       <div style="padding: 20px;">
-        <p>Track your commission earnings, view mileage summaries, and access detailed payment history.</p>
+        <p>Track commission estimates based on your activity. Note: Contractors are commission-only; there is no hourly pay or mileage reimbursement.</p>
         
         <h3 style="margin-top: 24px; color: #0078d7;">This Month's Summary</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 12px;">
           <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
-            <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Total Miles</p>
+            <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Activity Miles (not reimbursed)</p>
             <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;" id="c_monthMiles">--</p>
           </div>
           <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
-            <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Commission Earned</p>
+            <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Estimated Commission (policy)</p>
             <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;" id="c_monthCommission">--</p>
           </div>
           <div style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
-            <p style="margin: 0; color: #64748b; font-size: 0.85rem;">New Customers</p>
+            <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Sign-ups Created (this month)</p>
             <p style="margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; color: #0078d7;" id="c_monthSignups">--</p>
           </div>
         </div>
@@ -52,18 +52,20 @@
         <h3 style="margin-top: 32px; color: #0078d7;">Commission Breakdown</h3>
         <div id="c_breakdown" style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px;">Loading…</div>
 
-        <h3 style="margin-top: 32px; color: #0078d7;">How These Numbers Are Calculated</h3>
+        <h3 style="margin-top: 32px; color: #0078d7;">Sign-ups & Status</h3>
+        <div id="c_signups" style="padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 12px;">Loading…</div>
+
+        <h3 style="margin-top: 32px; color: #0078d7;">How Commission Works</h3>
         <ul style="margin:12px 0 0 18px; color:#374151; line-height:1.5;">
-          <li><strong>Miles</strong> = sum of daily shift mileage across this calendar month.</li>
-          <li><strong>Pay (hourly)</strong> = active time × your hourly base rate.</li>
-          <li><strong>Mileage expense</strong> = miles × £0.45 (reimbursement).</li>
-          <li><strong>Total owed</strong> = base pay + mileage expense (commission may be paid separately).</li>
-          <li><strong>Commission (estimate)</strong> = £5 × number of sign ups (placeholder until policy finalised).</li>
-          <li><strong>Sign ups</strong> count comes from door logs you mark as SignUp.</li>
+          <li><strong>Commission-only</strong>: No hourly pay, no expenses or mileage reimbursement.</li>
+          <li><strong>Rates</strong>: £15 after 1st clean, £8 after 2nd, £8 after 3rd.</li>
+          <li><strong>Eligibility</strong>: Clean must be completed, paid, match your rep ID, and pass verification.</li>
+          <li><strong>Payout timing</strong>: Paid monthly in arrears for cleans completed in the month.</li>
+          <li><strong>Display</strong>: This page shows estimates; verified commission is based on cleans recorded in the system.</li>
         </ul>
 
         <p style="margin-top: 24px; padding: 16px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px;">
-          <strong>Note:</strong> This page will pull data from your submitted logs (repLogs collection) and quotes assigned to your rep code. Commission calculations will follow company policy rules.
+          <strong>Note:</strong> This page pulls activity from your logs. Commission is determined by verified cleans in the Swash system per the contractor policy.
         </p>
       </div>
     </section>

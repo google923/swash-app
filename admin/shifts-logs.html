@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shifts & Logs Manager - Swash Admin</title>
+  <link rel="manifest" href="../manifest.json">
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png">
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    .page { max-width: 1600px; }
+    .header-row { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+    .header-row h1 { margin:0; font-size:2rem; color:#0b63b5; }
+    .controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .controls input, .controls select { padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; }
+    .controls .btn { padding:8px 16px; font-size:14px; }
+    .stats-bar { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:20px; }
+    .stat-card { background:white; border:2px solid #e2e8f0; border-radius:12px; padding:14px 16px; text-align:center; }
+    .stat-card .num { font-size:1.5rem; font-weight:800; color:#0078d7; }
+    .stat-card .label { font-size:0.875rem; color:#64748b; margin-top:4px; }
+    .shifts-table-wrap { background:white; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; }
+  .shifts-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+    .shifts-table thead { background:#0078d7; color:white; position:sticky; top:0; z-index:10; }
+  .shifts-table th { padding:12px; text-align:left; font-weight:600; font-size:0.875rem; }
+  .shifts-table th:last-child { text-align:right; }
+  .shifts-table td, .shifts-table th { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .shifts-table td.actions-cell { overflow:visible; text-align:right; }
+  .shifts-table tbody tr { border-bottom:1px solid #f1f5f9; cursor:pointer; transition:background .15s; }
+    .shifts-table tbody tr:hover { background:#f8fafc; }
+    .shifts-table td { padding:12px; font-size:0.875rem; }
+    .shifts-table .expand-icon { font-size:1rem; user-select:none; transition:transform .2s; }
+    .shifts-table tr.expanded .expand-icon { transform:rotate(90deg); }
+    .logs-row { display:none; }
+    .logs-row.visible { display:table-row; }
+    .logs-row td { background:#f8fafc; padding:0; }
+    .logs-container { padding:16px 24px; }
+    .logs-container h4 { margin:0 0 12px 0; color:#0b63b5; font-size:1rem; }
+    .logs-grid { display:grid; gap:8px; }
+    .log-item { background:white; border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; display:grid; grid-template-columns:80px 1fr auto; gap:12px; align-items:center; font-size:0.8rem; }
+    .log-item .status-badge { padding:4px 10px; border-radius:12px; font-weight:600; font-size:0.75rem; text-align:center; }
+    .log-item .status-badge.x { background:#fee2e2; color:#b91c1c; }
+    .log-item .status-badge.o { background:#fed7aa; color:#9a3412; }
+    .log-item .status-badge.signup { background:#d1fae5; color:#065f46; }
+    .log-item .details { display:flex; flex-direction:column; gap:2px; }
+    .log-item .details strong { color:#1e293b; }
+    .log-item .details .meta { color:#64748b; font-size:0.75rem; }
+    .log-item .actions { display:flex; gap:6px; }
+    .log-item .btn-del { padding:4px 8px; background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600; }
+    .log-item .btn-del:hover { background:#fca5a5; }
+  .shift-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end; width:100%; }
+    .btn-del-shift { padding:6px 10px; background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600; }
+    .btn-del-shift:hover { background:#fca5a5; }
+  .btn-summary-shift { padding:6px 10px; background:#eaf3ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:6px; cursor:pointer; font-size:0.75rem; font-weight:600; }
+  .btn-summary-shift:hover { background:#dbeafe; }
+  .sales-link { background:transparent; border:none; color:#1d4ed8; text-decoration:underline; cursor:pointer; padding:0; font:inherit; }
+  .sales-link:hover { color:#1e40af; }
+    .empty-state { text-align:center; padding:60px 20px; color:#94a3b8; }
+    .empty-state .icon { font-size:3rem; margin-bottom:12px; }
+  .shift-map { width:100%; height:280px; border:1px solid #e2e8f0; border-radius:8px; margin-top:8px; }
+  .map-note { font-size:12px; color:#64748b; margin-top:6px; }
+  .first-last-label { background:rgba(255,255,255,0.9); color:#0f172a; font-weight:700; border:1px solid #cbd5e1; border-radius:4px; padding:2px 6px; box-shadow:0 1px 2px rgba(0,0,0,0.1); }
+    @media (max-width: 768px) {
+      .header-row { flex-direction:column; align-items:stretch; }
+      .controls { flex-direction:column; align-items:stretch; }
+      .controls input, .controls select, .controls .btn { width:100%; }
+      .shifts-table th, .shifts-table td { padding:8px; font-size:0.8rem; }
+      .log-item { grid-template-columns:1fr; gap:8px; }
+    }
+  </style>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="" crossorigin="" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html">🆕 New Quote</a>
+          <a href="/rep/scheduler.html" class="admin-rep">📅 Schedule</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="./users.html" class="admin-only">👥 Manage Users</a>
+          <a href="./stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="./shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="./message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="header-row">
+      <h1>📊 Shifts & Logs Manager</h1>
+      <div class="controls">
+        <input type="date" id="dateFrom" placeholder="From" />
+        <input type="date" id="dateTo" placeholder="To" />
+        <select id="repFilter">
+          <option value="">All Reps</option>
+        </select>
+        <button id="refreshBtn" class="btn btn-primary">🔄 Refresh</button>
+        <button id="importBtn" class="btn btn-secondary">⬆️ Import CSV Logs</button>
+        <input id="importFile" type="file" accept=".csv,text/csv" style="display:none" />
+        <button id="recoverBtn" class="btn btn-success">🔧 Recover Orphaned Logs</button>
+        <button id="bulkDeleteBtn" class="btn btn-danger">🗑️ Bulk Delete Test Data</button>
+        <button id="addShiftBtn" class="btn btn-success">➕ Add Shift</button>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-card"><div class="num" id="statTotalShifts">0</div><div class="label">Total Shifts</div></div>
+      <div class="stat-card"><div class="num" id="statTotalDoors">0</div><div class="label">Total Doors</div></div>
+      <div class="stat-card"><div class="num" id="statTotalSales">0</div><div class="label" title="Average per worked day in payroll period (20th→19th)">Avg Sales/Day</div></div>
+      <div class="stat-card"><div class="num" id="statTotalMiles">0</div><div class="label">Total Miles</div></div>
+      <div class="stat-card"><div class="num" id="statTotalOwed">£0.00</div><div class="label">Total Owed</div></div>
+    </div>
+
+    <div class="shifts-table-wrap">
+      <table class="shifts-table" id="shiftsTable">
+        <colgroup>
+          <col style="width:40px;">
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col style="width:220px;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th style="width:40px;"></th>
+            <th>Rep</th>
+            <th>Date</th>
+            <th>Start</th>
+            <th>First log</th>
+            <th>End</th>
+            <th>Last log</th>
+            <th>Doors</th>
+            <th>Sales</th>
+            <th>Miles</th>
+            <th>Hours</th>
+            <th>Owed (£)</th>
+            <th>Paid (hrs)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="shiftsTableBody">
+          <tr><td colspan="14" class="empty-state"><div class="icon">📭</div>No shifts found. Adjust filters or refresh.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <dialog id="confirmDialog" style="border:none;border-radius:12px;padding:24px;max-width:400px;">
+    <h3 style="margin:0 0 12px 0;color:#b91c1c;">⚠️ Confirm Delete</h3>
+    <p id="confirmMessage" style="color:#64748b;margin:0 0 16px 0;"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button id="confirmCancel" class="btn btn-secondary">Cancel</button>
+      <button id="confirmOk" class="btn btn-danger">Delete</button>
+    </div>
+  </dialog>
+
+  <!-- Shift Summary Dialog -->
+  <dialog id="shiftSummaryDialog" style="border:none;border-radius:12px;padding:22px;max-width:560px;width:calc(100% - 24px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;color:#0f172a;">Shift Summary</h3>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="shiftSummaryClose" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  <div id="shiftSummaryBody" style="max-height:65vh;overflow:auto;"></div>
+    <div id="shiftSummaryEditBar" style="display:none;margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-top:1px solid #e2e8f0;padding-top:12px;">
+      <div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:240px;">
+        <label style="font-size:12px;color:#475569;font-weight:600;">Start Time
+          <input type="time" id="editStartTime" style="margin-top:4px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;width:140px;" />
+        </label>
+        <label style="font-size:12px;color:#475569;font-weight:600;">Finish Time
+          <input type="time" id="editEndTime" style="margin-top:4px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;width:140px;" />
+        </label>
+        <label style="font-size:12px;color:#475569;font-weight:600;">Miles
+          <input type="number" step="0.01" min="0" id="editMiles" style="margin-top:4px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;width:140px;" />
+        </label>
+        <label style="font-size:12px;color:#475569;font-weight:600;">Auto inactivity (min)
+          <input type="number" step="1" min="0" id="editAutoInactivity" style="margin-top:4px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;width:140px;" />
+        </label>
+      </div>
+      <div style="flex:2;min-width:260px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <strong style="color:#0b63b5;font-size:13px;">Manual Pauses</strong>
+          <button id="addPauseBtn" class="btn btn-secondary" style="font-size:12px;padding:4px 10px;">＋ Add Pause</button>
+        </div>
+        <div id="pauseList" style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow:auto;border:1px solid #e2e8f0;padding:8px;border-radius:8px;background:#f8fafc;"></div>
+      </div>
+      <div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:4px;font-size:12px;color:#334155;">
+        <div><strong>Total span:</strong> <span id="calcTotalSpan">0</span> min</div>
+        <div><strong>Manual pauses:</strong> <span id="calcManualPauses">0</span> min</div>
+        <div><strong>Paid minutes:</strong> <span id="calcPaidMinutes">0</span> min</div>
+        <div><strong>Inactivity deducted:</strong> <span id="calcInactivity">0</span> min</div>
+        <div><strong>Pay:</strong> £<span id="calcPay">0.00</span></div>
+        <div><strong>Mileage:</strong> £<span id="calcMileage">0.00</span> <span style="color:#94a3b8;">(45p/mi)</span></div>
+        <div><strong>Total owed:</strong> £<span id="calcTotalOwed">0.00</span></div>
+        <div><strong>Doors / active hour:</strong> <span id="calcDph">0.0</span></div>
+      </div>
+      <div style="flex-basis:100%;display:flex;justify-content:flex-end;">
+        <button id="saveShiftChanges" class="btn btn-primary" style="display:none;">💾 Save Changes</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Confirm Save Changes Dialog -->
+  <dialog id="confirmEditDialog" style="border:none;border-radius:12px;padding:22px;max-width:420px;width:calc(100% - 24px);">
+    <h3 style="margin:0 0 10px 0;color:#0f172a;">Confirm Changes</h3>
+    <p id="confirmEditMessage" style="font-size:14px;color:#475569;white-space:pre-line;"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+      <button id="cancelEditBtn" class="btn btn-secondary">Cancel</button>
+      <button id="applyEditBtn" class="btn btn-success">Save</button>
+    </div>
+  </dialog>
+
+  <!-- Add Manual Shift Dialog -->
+  <dialog id="addShiftDialog" style="border:none;border-radius:14px;padding:22px;max-width:600px;width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;color:#0f172a;">Add Manual Shift</h3>
+      <button id="addShiftClose" class="btn btn-secondary">Close</button>
+    </div>
+    <form id="addShiftForm" style="display:flex;flex-direction:column;gap:16px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
+        <label style="font-size:12px;color:#475569;font-weight:600;">Rep
+          <select id="manualShiftRep" required style="margin-top:4px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;width:100%;"></select>
+        </label>
+        <label style="font-size:12px;color:#475569;font-weight:600;">Date
+          <input type="date" id="manualShiftDate" required style="margin-top:4px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;width:100%;" />
+        </label>
+        <label style="font-size:12px;color:#475569;font-weight:600;">Start Time
+          <input type="time" id="manualShiftStart" required style="margin-top:4px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;width:100%;" />
+        </label>
+        <label style="font-size:12px;color:#475569;font-weight:600;">End Time
+          <input type="time" id="manualShiftEnd" required style="margin-top:4px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;width:100%;" />
+        </label>
+        <label style="font-size:12px;color:#475569;font-weight:600;">Miles
+          <input type="number" step="0.01" min="0" id="manualShiftMiles" value="0" style="margin-top:4px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;width:100%;" />
+        </label>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <strong style="color:#0b63b5;font-size:13px;">Manual Pauses</strong>
+          <button type="button" id="manualAddPauseBtn" class="btn btn-secondary" style="font-size:12px;padding:4px 10px;">＋ Add Pause</button>
+        </div>
+        <div id="manualPauseList" style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow:auto;border:1px solid #e2e8f0;padding:8px;border-radius:8px;background:#f8fafc;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;font-size:12px;color:#334155;background:#f1f5f9;padding:10px 12px;border-radius:10px;">
+        <div><strong>Span:</strong> <span id="manualSpan">0</span> min</div>
+        <div><strong>Paused:</strong> <span id="manualPaused">0</span> min</div>
+        <div><strong>Paid:</strong> <span id="manualPaid">0</span> min</div>
+        <div><strong>Pay:</strong> £<span id="manualPay">0.00</span></div>
+        <div><strong>Mileage:</strong> £<span id="manualMileage">0.00</span></div>
+        <div><strong>Total owed:</strong> £<span id="manualTotalOwed">0.00</span></div>
+        <div><strong>Hours:</strong> <span id="manualHours">0.00</span></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button type="submit" id="createShiftBtn" class="btn btn-success">💾 Create Shift</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Link Sales Dialog -->
+  <dialog id="linkSalesDialog" style="border:none;border-radius:14px;padding:22px;max-width:520px;width:calc(100% - 28px);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h3 style="margin:0;color:#0f172a;">Link Sales to Shift</h3>
+      <button id="linkSalesClose" class="btn btn-secondary">Close</button>
+    </div>
+    <div id="linkSalesMeta" style="font-size:13px;color:#475569;margin-bottom:8px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <strong style="color:#0b63b5;font-size:13px;">Sales</strong>
+      <button id="addLinkedSaleBtn" class="btn btn-secondary" style="font-size:12px;padding:4px 10px;">＋ Add Sale</button>
+    </div>
+    <div id="linkedSalesList" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto;border:1px solid #e2e8f0;padding:8px;border-radius:8px;background:#f8fafc;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:13px;color:#334155;">
+      <div>Total linked: <strong id="linkedSalesCount">0</strong></div>
+      <button id="saveLinkedSalesBtn" class="btn btn-success">💾 Save</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="../auth-check.js"></script>
+  <script type="module" src="../nav.js"></script>
+  <script type="module" src="../firebase-init.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="" crossorigin=""></script>
+  <script type="module">
+    import { auth, db } from "../firebase-init.js";
+  import { collection, getDocs, query, where, doc, getDoc, deleteDoc, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    // State
+    const state = { shifts: [], users: {}, expandedRows: new Set() };
+
+    // DOM
+    const dateFromInput = document.getElementById('dateFrom');
+    const dateToInput = document.getElementById('dateTo');
+    const repFilterSelect = document.getElementById('repFilter');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const recoverBtn = document.getElementById('recoverBtn');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+  const addShiftBtn = document.getElementById('addShiftBtn');
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+    const shiftsTableBody = document.getElementById('shiftsTableBody');
+    const statTotalShifts = document.getElementById('statTotalShifts');
+    const statTotalDoors = document.getElementById('statTotalDoors');
+    const statTotalSales = document.getElementById('statTotalSales');
+    const statTotalMiles = document.getElementById('statTotalMiles');
+  const statTotalOwed = document.getElementById('statTotalOwed');
+    const confirmDialog = document.getElementById('confirmDialog');
+    const confirmMessage = document.getElementById('confirmMessage');
+    const confirmOk = document.getElementById('confirmOk');
+    const confirmCancel = document.getElementById('confirmCancel');
+  const shiftSummaryDialog = document.getElementById('shiftSummaryDialog');
+  const shiftSummaryBody = document.getElementById('shiftSummaryBody');
+  const shiftSummaryClose = document.getElementById('shiftSummaryClose');
+  const editStartTime = document.getElementById('editStartTime');
+  const editEndTime = document.getElementById('editEndTime');
+  const editMiles = document.getElementById('editMiles');
+  const pauseListEl = document.getElementById('pauseList');
+  const addPauseBtn = document.getElementById('addPauseBtn');
+  const editAutoInactivity = document.getElementById('editAutoInactivity');
+  const calcTotalSpanEl = document.getElementById('calcTotalSpan');
+  const calcManualEl = document.getElementById('calcManualPauses');
+  const calcPaidEl = document.getElementById('calcPaidMinutes');
+  const calcInactivityEl = document.getElementById('calcInactivity');
+  const calcPayEl = document.getElementById('calcPay');
+  const calcMileageEl = document.getElementById('calcMileage');
+  const calcTotalOwedEl = document.getElementById('calcTotalOwed');
+  const saveShiftChangesBtn = document.getElementById('saveShiftChanges');
+  const confirmEditDialog = document.getElementById('confirmEditDialog');
+  const confirmEditMessage = document.getElementById('confirmEditMessage');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const applyEditBtn = document.getElementById('applyEditBtn');
+  // Manual add shift elements
+  const addShiftDialog = document.getElementById('addShiftDialog');
+  const addShiftClose = document.getElementById('addShiftClose');
+  const addShiftForm = document.getElementById('addShiftForm');
+  const manualShiftRep = document.getElementById('manualShiftRep');
+  const manualShiftDate = document.getElementById('manualShiftDate');
+  const manualShiftStart = document.getElementById('manualShiftStart');
+  const manualShiftEnd = document.getElementById('manualShiftEnd');
+  const manualShiftMiles = document.getElementById('manualShiftMiles');
+  const manualAddPauseBtn = document.getElementById('manualAddPauseBtn');
+  const manualPauseList = document.getElementById('manualPauseList');
+  const manualSpanEl = document.getElementById('manualSpan');
+  const manualPausedEl = document.getElementById('manualPaused');
+  const manualPaidEl = document.getElementById('manualPaid');
+  const manualPayEl = document.getElementById('manualPay');
+  const manualMileageEl = document.getElementById('manualMileage');
+  const manualTotalOwedEl = document.getElementById('manualTotalOwed');
+  const manualHoursEl = document.getElementById('manualHours');
+  let newShiftPauses = [];
+  // Link Sales elements/state
+  const linkSalesDialog = document.getElementById('linkSalesDialog');
+  const linkSalesClose = document.getElementById('linkSalesClose');
+  const linkSalesMeta = document.getElementById('linkSalesMeta');
+  const addLinkedSaleBtn = document.getElementById('addLinkedSaleBtn');
+  const linkedSalesList = document.getElementById('linkedSalesList');
+  const linkedSalesCount = document.getElementById('linkedSalesCount');
+  const saveLinkedSalesBtn = document.getElementById('saveLinkedSalesBtn');
+  let linkingShift = null; // current shift for sales linking
+  let draftLinkedSales = []; // [{ref, value}]
+  let editingShift = null; // reference to current shift object
+  let originalMetrics = null; // store original span/active/inactivity for recalculation
+  let draftPauses = []; // working pauses array
+  let draftAutoInactivity = 0; // minutes
+
+    let pendingDeleteAction = null;
+
+    // Utility
+    function formatDate(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    }
+    function formatTime(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    }
+    function escapeHtml(str='') {
+      return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // Simple CSV parser (comma-separated, header row)
+    function parseCsv(text) {
+      const lines = text.replace(/\r\n?/g, '\n').split('\n').filter(l=>l.trim().length);
+      if (!lines.length) return [];
+      const headers = lines[0].split(',').map(h=>h.trim());
+      const rows = [];
+      for (let i=1;i<lines.length;i++) {
+        const raw = lines[i];
+        if (!raw.trim()) continue;
+        // naive split, fine for our simple export (no embedded commas)
+        const cols = raw.split(',');
+        const obj = {};
+        headers.forEach((h,idx)=>{ obj[h] = (cols[idx]||'').trim(); });
+        rows.push(obj);
+      }
+      return rows;
+    }
+
+    // Load users (for rep name lookup)
+    async function loadUsers() {
+      try {
+        const snap = await getDocs(collection(db, 'users'));
+        snap.forEach(d => {
+          const data = d.data();
+          state.users[d.id] = data.repName || data.displayName || data.name || d.id;
+        });
+      } catch(e) { console.warn('Failed to load users', e); }
+      // Populate rep filter
+      const reps = Object.entries(state.users).map(([uid,name])=>({uid,name})).sort((a,b)=>a.name.localeCompare(b.name));
+      repFilterSelect.innerHTML = '<option value="">All Reps</option>' + reps.map(r=>`<option value="${escapeHtml(r.uid)}">${escapeHtml(r.name)}</option>`).join('');
+    }
+
+    // Load shifts
+    async function loadShifts() {
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = '⏳ Loading...';
+      try {
+        const q = query(collection(db, 'repShifts'), orderBy('date', 'desc'));
+        const snap = await getDocs(q);
+        state.shifts = [];
+        for (const d of snap.docs) {
+          const shift = { id: d.id, ...d.data() };
+          // Load door logs for this shift
+          shift.logs = [];
+          try {
+            const logsSnap = await getDocs(collection(db, 'repLogs', shift.repId, 'dates', shift.date, 'doorLogs'));
+            logsSnap.forEach(ld => shift.logs.push({ id: ld.id, ...ld.data() }));
+            shift.logs.sort((a,b)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime());
+            // Time-bound view: show only logs within this shift's start/end window
+            const startMs = shift.startTime ? new Date(shift.startTime).getTime() : -Infinity;
+            const endMs = shift.endTime ? new Date(shift.endTime).getTime() : Infinity;
+            shift.logsInWindow = shift.logs.filter(l => {
+              const t = new Date(l.timestamp||0).getTime();
+              return t >= startMs && t <= endMs;
+            });
+          } catch(_) {}
+          state.shifts.push(shift);
+        }
+        applyFilters();
+      } catch(e) { console.error('Load shifts failed', e); alert('Failed to load shifts: ' + e.message); }
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = '🔄 Refresh';
+    }
+
+    function applyFilters() {
+      const from = dateFromInput.value ? new Date(dateFromInput.value).toISOString().slice(0,10) : '';
+      const to = dateToInput.value ? new Date(dateToInput.value).toISOString().slice(0,10) : '';
+      const repId = repFilterSelect.value;
+      let filtered = state.shifts.filter(s=>{
+        if (from && s.date < from) return false;
+        if (to && s.date > to) return false;
+        if (repId && s.repId !== repId) return false;
+        return true;
+      });
+      renderShifts(filtered);
+      updateStats(filtered);
+    }
+
+    function getPayrollPeriodBounds(refDate=new Date()){
+      const y = refDate.getFullYear();
+      const m = refDate.getMonth();
+      if (refDate.getDate() >= 20){
+        return { start: new Date(y,m,20), end: new Date(y,m+1,19,23,59,59,999) };
+      } else {
+        return { start: new Date(y,m-1,20), end: new Date(y,m,19,23,59,59,999) };
+      }
+    }
+
+    function updateStats(shifts) {
+      statTotalShifts.textContent = shifts.length;
+      const totalDoors = shifts.reduce((sum,s)=> (s.totals && typeof s.totals.doors==='number' ? s.totals.doors : 0) + sum,0);
+      const totalMiles = shifts.reduce((sum,s)=> (typeof s.miles==='number'?s.miles:0) + sum,0);
+      statTotalDoors.textContent = totalDoors;
+      statTotalMiles.textContent = totalMiles.toFixed(1);
+
+      // Avg Sales/Day for payroll period (20th→19th)
+      const { start, end } = getPayrollPeriodBounds(new Date());
+      const startStr = start.toISOString().slice(0,10);
+      const endStr = end.toISOString().slice(0,10);
+      const inPeriod = shifts.filter(s => s.date && s.date >= startStr && s.date <= endStr);
+      const sumSales = inPeriod.reduce((sum,s)=> (s.totals && typeof s.totals.sales==='number' ? s.totals.sales : 0) + sum,0);
+      const uniqueDays = new Set(inPeriod.map(s=>s.date)).size;
+      const avgSalesPerDay = uniqueDays ? (sumSales / uniqueDays) : 0;
+      statTotalSales.textContent = avgSalesPerDay.toFixed(1);
+
+      // Total Owed across shifts (use stored totalOwed when present, else derive)
+      const payRate = 12.21, expenseRate = 0.45;
+      const totalOwed = shifts.reduce((sum,s)=>{
+        if (typeof s.totalOwed === 'number') return sum + s.totalOwed;
+        let activeMin = (typeof s.activeMinutes === 'number') ? s.activeMinutes : 0;
+        if (typeof s.activeMinutes !== 'number'){
+          const logs = (s.logsInWindow && s.logsInWindow.length) ? s.logsInWindow : (s.logs||[]);
+          const startMs = s.startTime ? new Date(s.startTime).getTime() : 0;
+          const endMs = s.endTime ? new Date(s.endTime).getTime() : (logs.length ? new Date(logs[logs.length-1]?.timestamp||0).getTime() : Date.now());
+          const totalSpanMs = Math.max(0, endMs - startMs);
+          const manualPausedMs = (s.pauses||[]).reduce((acc,p)=>{ if(!p || p.reason !== 'manual' || !p.start) return acc; const ps=new Date(p.start).getTime(); const pe=p.end?new Date(p.end).getTime():endMs; if(!isNaN(ps)&&!isNaN(pe)) acc += Math.max(0, pe-ps); return acc; },0);
+          activeMin = Math.max(0, Math.round((totalSpanMs - manualPausedMs)/60000));
+        }
+        const milesVal = (typeof s.miles==='number') ? s.miles : 0;
+        const pay = (typeof s.pay==='number') ? s.pay : parseFloat(((activeMin/60)*payRate).toFixed(2));
+        const mileageExpense = (typeof s.mileageExpense==='number') ? s.mileageExpense : parseFloat((milesVal*expenseRate).toFixed(2));
+        return sum + pay + mileageExpense;
+      }, 0);
+      if (statTotalOwed) statTotalOwed.textContent = `£${totalOwed.toFixed(2)}`;
+    }
+
+    function renderShifts(shifts) {
+      if (!shifts.length) {
+        shiftsTableBody.innerHTML = '<tr><td colspan="14" class="empty-state"><div class="icon">📭</div>No shifts match your filters.</td></tr>';
+        return;
+      }
+      const rows = [];
+      shifts.forEach((shift,idx)=>{
+        const repName = state.users[shift.repId] || shift.repId;
+        const isExpanded = state.expandedRows.has(shift.id);
+        const logs = (shift.logsInWindow && shift.logsInWindow.length) ? shift.logsInWindow : shift.logs || [];
+        const firstTs = logs.length ? logs[0].timestamp : '';
+        const lastTs = logs.length ? logs[logs.length-1].timestamp : '';
+        // Compute Total Owed (£): prefer stored totalOwed, else derive from activeMinutes and miles
+        const payRate = 12.21, expenseRate = 0.45;
+        let derivedActiveMin = (typeof shift.activeMinutes === 'number') ? shift.activeMinutes : 0;
+        if (typeof shift.activeMinutes !== 'number') {
+          const startMs = shift.startTime ? new Date(shift.startTime).getTime() : 0;
+          const endMs = shift.endTime ? new Date(shift.endTime).getTime() : (logs.length ? new Date(logs[logs.length-1].timestamp).getTime() : Date.now());
+          const totalSpanMs = Math.max(0, endMs - startMs);
+          const manualPausedMs = (shift.pauses||[]).reduce((acc,p)=>{ if(!p || p.reason !== 'manual' || !p.start) return acc; const ps=new Date(p.start).getTime(); const pe=p.end?new Date(p.end).getTime():endMs; if(!isNaN(ps)&&!isNaN(pe)) acc += Math.max(0, pe-ps); return acc; },0);
+          derivedActiveMin = Math.max(0, Math.round((totalSpanMs - manualPausedMs)/60000));
+        }
+        const milesVal = (typeof shift.miles === 'number') ? shift.miles : 0;
+        const payVal = (typeof shift.pay === 'number') ? shift.pay : parseFloat(((derivedActiveMin/60)*payRate).toFixed(2));
+        const mileageExpenseVal = (typeof shift.mileageExpense === 'number') ? shift.mileageExpense : parseFloat((milesVal*expenseRate).toFixed(2));
+        const totalOwedVal = (typeof shift.totalOwed === 'number') ? shift.totalOwed : parseFloat((payVal + mileageExpenseVal).toFixed(2));
+        // Compute raw span hours from start/end
+        let spanHoursDisplay = '-';
+        if (shift.startTime && shift.endTime) {
+          const ms = Math.max(0, new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime());
+          spanHoursDisplay = (ms/3600000).toFixed(2);
+        }
+        // Format paid minutes as hours+minutes (e.g., 171 -> 2h 51m)
+        const activeMinVal = (typeof shift.activeMinutes === 'number') ? shift.activeMinutes : 0;
+        const paidHoursDisplay = `${Math.floor(activeMinVal/60)}h ${activeMinVal%60}m`;
+
+        rows.push(`
+          <tr class="${isExpanded?'expanded':''}" data-shift-id="${escapeHtml(shift.id)}">
+            <td><span class="expand-icon">▶</span></td>
+            <td>${escapeHtml(repName)}</td>
+            <td>${escapeHtml(shift.date)}</td>
+            <td>${formatTime(shift.startTime)}</td>
+            <td>${firstTs?formatTime(firstTs):'-'}</td>
+            <td>${shift.endTime?formatTime(shift.endTime):'<em>In progress</em>'}</td>
+            <td>${lastTs?formatTime(lastTs):'-'}</td>
+            <td>${(shift.manualEntry && (!shift.totals || typeof shift.totals.doors!=='number')) ? '---' : (shift.totals?.doors||0)}</td>
+            <td><button class="sales-link" data-shift-id="${escapeHtml(shift.id)}">${(shift.totals && typeof shift.totals.sales==='number') ? shift.totals.sales : (shift.manualEntry ? '---' : (shift.totals?.sales||0))}</button></td>
+            <td>${(shift.miles||0).toFixed(1)}</td>
+            <td>${spanHoursDisplay}</td>
+            <td>£${totalOwedVal.toFixed(2)}</td>
+            <td>${paidHoursDisplay}</td>
+            <td class="actions-cell"><div class="shift-actions">
+              <button class="btn-summary-shift" data-shift-id="${escapeHtml(shift.id)}">📄 Summary</button>
+              <button class="btn-del-shift" data-shift-id="${escapeHtml(shift.id)}">🗑️ Delete Shift</button>
+            </div></td>
+          </tr>
+          <tr class="logs-row ${isExpanded?'visible':''}" data-shift-id="${escapeHtml(shift.id)}">
+            <td colspan="14">
+              <div class="logs-container">
+                <h4>�️ Door Map (${(shift.logsInWindow||shift.logs).length})</h4>
+                <div id="shift-map-${escapeHtml(shift.id)}" class="shift-map" data-shift-id="${escapeHtml(shift.id)}"></div>
+                <div class="map-note">First door = green, Last door = red, others blue. Click markers for time & status.</div>
+              </div>
+            </td>
+          </tr>
+        `);
+      });
+      shiftsTableBody.innerHTML = rows.join('');
+      // After HTML injected, init maps for expanded rows
+      setupShiftMaps(shifts.filter(s=>state.expandedRows.has(s.id)));
+    }
+
+    function renderLogItem(shift, log) {
+      const statusClass = log.status==='X'?'x':log.status==='O'?'o':log.status==='SignUp'?'signup':'';
+      const statusLabel = log.status==='SignUp'?'Sale':log.status;
+      const addr = [log.houseNumber, log.roadName].filter(Boolean).join(' ') || '—';
+      const note = log.note || log.addressNotes || '';
+      return `
+        <div class="log-item">
+          <span class="status-badge ${statusClass}">${escapeHtml(statusLabel)}</span>
+          <div class="details">
+            <strong>${escapeHtml(addr)}</strong>
+            <div class="meta">${formatTime(log.timestamp)}${note?` • ${escapeHtml(note)}`:''}</div>
+          </div>
+          <div class="actions">
+            <button class="btn-del" data-shift-id="${escapeHtml(shift.id)}" data-log-id="${escapeHtml(log.id)}">Delete</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Map initialization
+    state.maps = state.maps || {};
+    function setupShiftMaps(expandedShifts){
+      if (!window.L) return; // Leaflet not loaded yet
+      expandedShifts.forEach(shift=>{
+        const mapEl = document.getElementById(`shift-map-${shift.id}`);
+        if (!mapEl) return;
+        // If a previous map instance was cached (from earlier render), remove it to allow re-init on fresh DOM
+        if (state.maps[shift.id]) {
+          try { state.maps[shift.id].remove(); } catch(_) {}
+          delete state.maps[shift.id];
+        }
+        const logs = (shift.logsInWindow && shift.logsInWindow.length) ? shift.logsInWindow : (shift.logs||[]);
+        const pts = logs.filter(l=> typeof l.gpsLat==='number' && typeof l.gpsLng==='number');
+        if (!pts.length){
+          mapEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-size:13px;">No GPS coordinates for this shift.</div>';
+          return;
+        }
+        const first = pts[0];
+        const last = pts[pts.length-1];
+        const avgLat = pts.reduce((a,p)=>a+p.gpsLat,0)/pts.length;
+        const avgLng = pts.reduce((a,p)=>a+p.gpsLng,0)/pts.length;
+        const map = L.map(mapEl).setView([avgLat, avgLng], 15);
+        state.maps[shift.id] = map;
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+        const mkFirst = L.circleMarker([first.gpsLat, first.gpsLng], { radius:14, color:'#16a34a', weight:2, fillColor:'#16a34a', fillOpacity:0.9 }).addTo(map);
+        mkFirst.bindPopup(`<strong>First</strong><br>${formatTime(first.timestamp)}<br>Status: ${escapeHtml(first.status||'')} `);
+        mkFirst.bindTooltip('FIRST', { permanent:true, direction:'top', className:'first-last-label' });
+        if (last !== first){
+          const mkLast = L.circleMarker([last.gpsLat, last.gpsLng], { radius:14, color:'#dc2626', weight:2, fillColor:'#dc2626', fillOpacity:0.9 }).addTo(map);
+          mkLast.bindPopup(`<strong>Last</strong><br>${formatTime(last.timestamp)}<br>Status: ${escapeHtml(last.status||'')} `);
+          mkLast.bindTooltip('LAST', { permanent:true, direction:'top', className:'first-last-label' });
+        }
+        pts.slice(1, pts.length-1).forEach(p=>{
+          if (p===last) return;
+          let col = '#1d4ed8';
+          if (p.status==='X') col='#dc2626';
+          else if (p.status==='O') col='#ea580c';
+          else if (p.status==='SignUp' || p.status==='Sale' || p.status==='Signup') col='#16a34a';
+          const mk = L.circleMarker([p.gpsLat, p.gpsLng], { radius:6, color:col, fillColor:col, fillOpacity:0.75 }).addTo(map);
+          mk.bindPopup(`${formatTime(p.timestamp)}<br>Status: ${escapeHtml(p.status||'')}`);
+        });
+        // Fit bounds
+        const bounds = L.latLngBounds(pts.map(p=>[p.gpsLat,p.gpsLng]));
+        map.fitBounds(bounds.pad(0.15));
+      });
+    }
+
+    // Event delegation
+    shiftsTableBody.addEventListener('click', async (e) => {
+      // Toggle expand
+      const expandIcon = e.target.closest('.expand-icon');
+      if (expandIcon) {
+        const row = e.target.closest('tr');
+        const shiftId = row.getAttribute('data-shift-id');
+        if (state.expandedRows.has(shiftId)) {
+          state.expandedRows.delete(shiftId);
+        } else {
+          state.expandedRows.add(shiftId);
+        }
+        applyFilters();
+        return;
+      }
+
+      // Open summary
+      const summaryBtn = e.target.closest('.btn-summary-shift');
+      if (summaryBtn) {
+        const shiftId = summaryBtn.getAttribute('data-shift-id');
+        const shift = state.shifts.find(s=>s.id===shiftId);
+        if (!shift) return;
+        try {
+          showShiftSummary(shift);
+        } catch (err) {
+          alert('Failed to build summary: ' + (err?.message||err));
+        }
+        return;
+      }
+
+      // Open Link Sales dialog
+      const salesBtn = e.target.closest('.sales-link');
+      if (salesBtn) {
+        const shiftId = salesBtn.getAttribute('data-shift-id');
+        const shift = state.shifts.find(s=>s.id===shiftId);
+        if (!shift) return;
+        openLinkSales(shift);
+        return;
+      }
+
+      // Delete log
+      const delLogBtn = e.target.closest('.btn-del');
+      if (delLogBtn) {
+        const shiftId = delLogBtn.getAttribute('data-shift-id');
+        const logId = delLogBtn.getAttribute('data-log-id');
+        const shift = state.shifts.find(s=>s.id===shiftId);
+        if (!shift) return;
+        pendingDeleteAction = async ()=>{
+          try {
+            await deleteDoc(doc(db, 'repLogs', shift.repId, 'dates', shift.date, 'doorLogs', logId));
+            await loadShifts();
+          } catch(e) { alert('Failed to delete log: '+e.message); }
+        };
+        confirmMessage.textContent = `Delete this door log? This cannot be undone.`;
+        confirmDialog.showModal();
+        return;
+      }
+
+      // Delete shift
+      const delShiftBtn = e.target.closest('.btn-del-shift');
+      if (delShiftBtn) {
+        const shiftId = delShiftBtn.getAttribute('data-shift-id');
+        const shift = state.shifts.find(s=>s.id===shiftId);
+        if (!shift) return;
+        pendingDeleteAction = async ()=>{
+          try {
+            // SAFETY: Delete ONLY the repShift summary document.
+            // Do NOT delete door logs; they remain in repLogs and pins remain on maps.
+            await deleteDoc(doc(db, 'repShifts', shiftId));
+            await loadShifts();
+          } catch(e) { alert('Failed to delete shift: '+e.message); }
+        };
+        const started = formatTime(shift.startTime) || '-';
+        const doors = shift.totals?.doors || 0;
+        const miles = (shift.miles||0).toFixed(1);
+        confirmMessage.textContent = `Delete shift summary for ${state.users[shift.repId]||shift.repId} on ${shift.date}?
+Start: ${started} | Doors: ${doors} | Miles: ${miles}
+
+Note: This removes the shift summary ONLY. Door pins and door-by-door logs remain.`;
+        confirmDialog.showModal();
+        return;
+      }
+    });
+
+    bulkDeleteBtn.addEventListener('click', ()=>{
+      pendingDeleteAction = async ()=>{
+        const keyword = prompt('Type "delete test data" to confirm bulk delete of all shifts and logs:');
+        if (keyword !== 'delete test data') { alert('Cancelled.'); return; }
+        refreshBtn.disabled = true; bulkDeleteBtn.disabled = true;
+        try {
+          let deleted = 0;
+          for (const shift of state.shifts) {
+            await deleteDoc(doc(db, 'repShifts', shift.id));
+            for (const log of shift.logs) {
+              await deleteDoc(doc(db, 'repLogs', shift.repId, 'dates', shift.date, 'doorLogs', log.id));
+            }
+            deleted++;
+          }
+          alert(`Deleted ${deleted} shifts and all associated logs.`);
+          await loadShifts();
+        } catch(e) { alert('Bulk delete failed: '+e.message); }
+        refreshBtn.disabled = false; bulkDeleteBtn.disabled = false;
+      };
+      confirmMessage.textContent = `This will DELETE ALL SHIFTS AND LOGS currently displayed (after filters). Proceed?`;
+      confirmDialog.showModal();
+    });
+
+    confirmOk.addEventListener('click', async ()=>{
+      confirmDialog.close();
+      if (pendingDeleteAction) { await pendingDeleteAction(); pendingDeleteAction = null; }
+    });
+    confirmCancel.addEventListener('click', ()=>{ confirmDialog.close(); pendingDeleteAction = null; });
+
+    // Import CSV -> repLogs + optional repShifts
+    importBtn.addEventListener('click', ()=> importFile.click());
+    importFile.addEventListener('change', async (e)=>{
+      const file = e.target.files?.[0];
+        if (!file) return;
+      try {
+        const text = await file.text();
+        const rows = parseCsv(text);
+        if (!rows.length) { alert('No rows found in CSV'); return; }
+        // Infer date from first timestamp (YYYY-MM-DD)
+        const firstTs = rows[0].timestamp || rows[0].Timestamp || rows[0].date || '';
+        const inferredDate = firstTs ? new Date(firstTs).toISOString().slice(0,10) : '';
+        // Require rep selection via filter
+        const repId = repFilterSelect.value || prompt('Enter repId to import for (or select in filter first):').trim();
+        if (!repId) { alert('Rep is required'); return; }
+        const date = prompt('Enter date (YYYY-MM-DD):', inferredDate) || inferredDate;
+        if (!date) { alert('Date is required'); return; }
+
+  // Additional metadata prompts
+  const isTraining = confirm('Was this a TRAINING shift? Click OK for Yes, Cancel for No');
+  const apMinutesStr = prompt('Auto-pause threshold minutes (used to reconstruct inactivity pauses). Enter 0 to skip:', '2');
+  const apMinutes = Math.max(0, parseInt(apMinutesStr||'2',10));
+  const doReconstruct = apMinutes>0 ? confirm(`Reconstruct inactivity pauses using gaps > ${apMinutes} minute(s)?`) : false;
+
+  // Confirm
+  const ok = confirm(`Import ${rows.length} logs for rep ${state.users[repId]||repId} on ${date}?\nThis will create door log documents and update/create the shift summary.`);
+        if (!ok) return;
+        importBtn.disabled = true; importBtn.textContent = '⬆️ Importing...';
+
+        // Write logs sequentially to avoid quota spikes
+           let doors=0, x=0, o=0, sales=0; let startIso=null, endIso=null; const importedLogs=[];
+        let index=0;
+        for (const r of rows) {
+          const ts = r.timestamp || r.Timestamp || r.time || r.ts;
+          if (!ts) continue;
+          const iso = new Date(ts).toISOString();
+          if (!startIso || iso < startIso) startIso = iso;
+          if (!endIso || iso > endIso) endIso = iso;
+            const status = (r.status||r.Status||'').trim();
+          const gpsLat = parseFloat(r.gpsLat||r.lat||r.latitude||'');
+          const gpsLng = parseFloat(r.gpsLng||r.lng||r.longitude||'');
+          const note = r.note || r.notes || '';
+            const houseNumber = r.houseNumber || r.house || '';
+            const roadName = r.roadName || r.road || '';
+            const drivingMode = r.drivingMode === '1' || r.drivingMode === 'true';
+            const training = r.training === '1' || r.training === 'true';
+          const id = `${Date.parse(iso)||Date.now()}_${index++}`;
+          const docRef = doc(collection(db, 'repLogs', repId, 'dates', date, 'doorLogs'), id);
+            const item = { id, repId, date, timestamp: iso, status, gpsLat, gpsLng, note, houseNumber, roadName, drivingMode, training };
+          await setDoc(docRef, item, { merge: true });
+            importedLogs.push(item);
+          doors++;
+          if (status==='X') x++; else if (status==='O') o++; else if (status==='SignUp' || status==='Signup' || status==='Sale') sales++;
+        }
+
+        // Derive driving intervals from drivingMode column
+        const drivingIntervals = [];
+        let openDrive = null;
+        for (const rec of importedLogs) {
+          if (rec.drivingMode && !openDrive) openDrive = { start: rec.timestamp };
+          if (!rec.drivingMode && openDrive) { openDrive.end = rec.timestamp; drivingIntervals.push(openDrive); openDrive=null; }
+        }
+        if (openDrive) drivingIntervals.push({ ...openDrive });
+
+        // Reconstruct inactivity pauses from gaps
+        const pauses = [];
+        if (doReconstruct && importedLogs.length > 1) {
+          const threshMs = apMinutes * 60000;
+          for (let i=1;i<importedLogs.length;i++) {
+            const prev = new Date(importedLogs[i-1].timestamp).getTime();
+            const cur = new Date(importedLogs[i].timestamp).getTime();
+            if (cur - prev > threshMs) {
+              pauses.push({ start: new Date(prev).toISOString(), end: new Date(cur).toISOString(), reason: 'inactive' });
+            }
+          }
+        }
+
+        // Create/update repShifts summary
+        const shiftId = `${repId}_${date}_import_${Date.now()}`;
+           // Reconstruct miles (rough straight-line accumulation)
+           let miles = 0;
+           for (let i=1;i<importedLogs.length;i++) {
+             const a = importedLogs[i-1], b = importedLogs[i];
+             if (a.gpsLat && a.gpsLng && b.gpsLat && b.gpsLng) {
+               const R=6371000, toRad=d=>d*Math.PI/180;
+               const dLat=toRad(b.gpsLat-a.gpsLat), dLng=toRad(b.gpsLng-a.gpsLng);
+               const la1=toRad(a.gpsLat), la2=toRad(b.gpsLat);
+               const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+               const c=2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
+               miles += (R*c)/1609.34;
+             }
+           }
+           miles = parseFloat(miles.toFixed(2));
+           await setDoc(doc(db, 'repShifts', shiftId), {
+          repId,
+          date,
+          territoryId: null,
+          startTime: startIso,
+          endTime: endIso,
+          pauses,
+            drivingIntervals,
+          totals: { doors, x, o, sales },
+            miles: miles,
+          activeMinutes: (startIso&&endIso) ? Math.max(0, Math.round(((new Date(endIso)-new Date(startIso)) - pauses.reduce((a,p)=>a+((new Date(p.end)-new Date(p.start))||0),0)) / 60000)) : 0,
+          shiftId,
+          recovered: true,
+          importedFromCsv: true,
+          training: !!isTraining,
+          autoPauseMs: apMinutes*60000
+        }, { merge: true });
+
+        alert(`Imported ${doors} logs and created shift ${shiftId}`);
+        await loadShifts();
+      } catch(err) {
+        console.error(err);
+        alert('Import failed: ' + err.message);
+      } finally {
+        importBtn.disabled = false; importBtn.textContent = '⬆️ Import CSV Logs';
+        importFile.value = '';
+      }
+    });
+
+    // Recover orphaned logs
+    recoverBtn.addEventListener('click', async ()=>{
+      if (!confirm('Scan all door logs and rebuild missing shift summaries?\n\nThis will:\n- Find door logs without matching shift documents\n- Clean up incomplete shift documents (no endTime)\n- Create recovered shifts for orphaned logs')) return;
+      recoverBtn.disabled = true;
+      recoverBtn.textContent = '⏳ Scanning...';
+      try {
+        let recovered = 0;
+        let cleaned = 0;
+        
+        // Get all users to scan their repLogs
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const repIds = usersSnap.docs.map(d=>d.id);
+        
+        for (const repId of repIds) {
+          try {
+            // Scan all dates in repLogs/{repId}/dates/
+            const datesSnap = await getDocs(collection(db, 'repLogs', repId, 'dates'));
+            for (const dateDoc of datesSnap.docs) {
+              const date = dateDoc.id;
+              // Get all door logs for this date
+              const logsSnap = await getDocs(collection(db, 'repLogs', repId, 'dates', date, 'doorLogs'));
+              if (logsSnap.empty) continue;
+              
+              const logs = [];
+              logsSnap.forEach(ld => logs.push({ id: ld.id, ...ld.data() }));
+              logs.sort((a,b)=>new Date(a.timestamp).getTime()-new Date(b.timestamp).getTime());
+              
+              // Get ALL shift documents for this rep/date (all ID formats)
+              const allShiftsSnap = await getDocs(collection(db, 'repShifts'));
+              const matchingShifts = allShiftsSnap.docs
+                .filter(d => d.id.startsWith(`${repId}_${date}`))
+                .map(d => ({ id: d.id, ...d.data() }));
+              
+              // Check for shifts with no endTime (incomplete/abandoned shifts)
+              for (const shift of matchingShifts) {
+                if (!shift.endTime) {
+                  // Incomplete shift - delete it so we can recover properly
+                  await deleteDoc(doc(db, 'repShifts', shift.id));
+                  cleaned++;
+                  console.log(`Cleaned incomplete shift: ${shift.id}`);
+                }
+              }
+              
+              // Re-check if any valid shifts exist after cleanup
+              const validShifts = matchingShifts.filter(s => s.endTime);
+              
+              // If no valid shift exists, create recovered shift from all logs
+              if (validShifts.length === 0 && logs.length > 0) {
+                const firstLog = logs[0];
+                const lastLog = logs[logs.length-1];
+                const shiftId = `${repId}_${date}_recovered_${Date.now()}`;
+                
+                await setDoc(doc(db, 'repShifts', shiftId), {
+                  repId,
+                  date,
+                  territoryId: null,
+                  startTime: firstLog.timestamp,
+                  endTime: lastLog.timestamp,
+                  pauses: [],
+                  totals: {
+                    doors: logs.length,
+                    x: logs.filter(l=>l.status==='X').length,
+                    o: logs.filter(l=>l.status==='O').length,
+                    sales: logs.filter(l=>l.status==='SignUp').length,
+                  },
+                  miles: 0,
+                  pay: 0,
+                  mileageExpense: 0,
+                  totalOwed: 0,
+                  activeMinutes: 0,
+                  shiftId,
+                  recovered: true
+                });
+                recovered++;
+                console.log(`Recovered shift for ${repId} on ${date} (${logs.length} logs)`);
+              }
+            }
+          } catch(e) { console.warn(`Failed to scan repId ${repId}:`, e); }
+        }
+        
+        alert(`Recovery complete!\n- Cleaned ${cleaned} incomplete shifts\n- Rebuilt ${recovered} shift summaries from orphaned logs`);
+        await loadShifts();
+      } catch(e) {
+        alert('Recovery failed: '+e.message);
+        console.error(e);
+      }
+      recoverBtn.disabled = false;
+      recoverBtn.textContent = '🔧 Recover Orphaned Logs';
+    });
+
+    refreshBtn.addEventListener('click', loadShifts);
+    dateFromInput.addEventListener('change', applyFilters);
+    dateToInput.addEventListener('change', applyFilters);
+    repFilterSelect.addEventListener('change', applyFilters);
+
+    shiftSummaryClose.addEventListener('click', ()=> shiftSummaryDialog.close());
+
+    // Helpers for summary
+    function haversineMiles(a, b) {
+      const toRad = d => (d*Math.PI)/180;
+      const R = 6371e3;
+      const φ1 = toRad(a.lat), φ2 = toRad(b.lat);
+      const Δφ = toRad(b.lat - a.lat);
+      const Δλ = toRad(b.lng - a.lng);
+      const s = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+      const d = 2*Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
+      return (R*d)/1609.34;
+    }
+
+    function computeMilesFromLogs(logs) {
+      let miles = 0;
+      if (!logs || logs.length < 2) return 0;
+      let prev = { lat: logs[0].gpsLat, lng: logs[0].gpsLng };
+      for (let i=1;i<logs.length;i++) {
+        const cur = { lat: logs[i].gpsLat, lng: logs[i].gpsLng };
+        if (typeof cur.lat==='number' && typeof cur.lng==='number' && typeof prev.lat==='number' && typeof prev.lng==='number') {
+          miles += haversineMiles(prev, cur);
+        }
+        prev = cur;
+      }
+      return parseFloat(miles.toFixed(2));
+    }
+
+    function showShiftSummary(shift) {
+  const repName = state.users[shift.repId] || shift.repId;
+      const logs = (shift.logsInWindow && shift.logsInWindow.length) ? shift.logsInWindow : shift.logs || [];
+      const doors = shift.totals?.doors ?? logs.length;
+      const x = shift.totals?.x ?? logs.filter(l=>l.status==='X').length;
+      const o = shift.totals?.o ?? logs.filter(l=>l.status==='O').length;
+      const sales = shift.totals?.sales ?? logs.filter(l=>l.status==='SignUp').length;
+      const conv = doors ? ((sales/doors)*100).toFixed(1) : '0.0';
+      const startMs = shift.startTime ? new Date(shift.startTime).getTime() : (logs[0]? new Date(logs[0].timestamp).getTime() : 0);
+      const endMs = shift.endTime ? new Date(shift.endTime).getTime() : (logs.length? new Date(logs[logs.length-1].timestamp).getTime() : Date.now());
+      const totalSpanMs = Math.max(0, endMs - startMs);
+      const manualPausedMs = (shift.pauses||[]).reduce((acc,p)=>{ if(!p || p.reason !== 'manual' || !p.start) return acc; const ps=new Date(p.start).getTime(); const pe=p.end?new Date(p.end).getTime():endMs; if(!isNaN(ps)&&!isNaN(pe)) acc+=Math.max(0,pe-ps); return acc; },0);
+      const activeMinutes = (typeof shift.activeMinutes === 'number') ? shift.activeMinutes : Math.max(0, Math.round((totalSpanMs - manualPausedMs)/60000));
+      const inactivityDedMs = Math.max(0, totalSpanMs - manualPausedMs - (activeMinutes*60000));
+      const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '-';
+      const fmtMin = ms => Math.round(ms/60000);
+      const miles = (typeof shift.miles === 'number') ? shift.miles : computeMilesFromLogs(logs);
+      const payRate = 12.21, expenseRate = 0.45;
+      const pay = (typeof shift.pay === 'number') ? shift.pay : parseFloat(((activeMinutes/60)*payRate).toFixed(2));
+      const mileageExpense = (typeof shift.mileageExpense === 'number') ? shift.mileageExpense : parseFloat((miles*expenseRate).toFixed(2));
+      const totalOwed = (typeof shift.totalOwed === 'number') ? shift.totalOwed : parseFloat((pay + mileageExpense).toFixed(2));
+      const dph = activeMinutes ? (doors / (activeMinutes/60)) : 0;
+
+      shiftSummaryBody.innerHTML = `
+        <table class="summary-table" style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:6px 8px;color:#475569;">Date</td><td style="padding:6px 8px;">${escapeHtml(shift.date||'')}</td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Rep</td><td style="padding:6px 8px;">${escapeHtml(repName)}</td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Doors</td><td style="padding:6px 8px;">${doors}</td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">X</td><td style="padding:6px 8px;">${x}</td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">O</td><td style="padding:6px 8px;">${o}</td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Sales</td><td style="padding:6px 8px;">${sales}</td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Conversion</td><td style="padding:6px 8px;">${conv}%</td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Start</td><td style="padding:6px 8px;"><span id="ssStart">${fmtTime(shift.startTime)}</span></td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Finish</td><td style="padding:6px 8px;"><span id="ssFinish">${shift.endTime?fmtTime(shift.endTime):'<em>In progress</em>'}</span></td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Total span (min)</td><td style="padding:6px 8px;"><span id="ssSpan">${fmtMin(totalSpanMs)}</span></td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Manual pauses (min)</td><td style="padding:6px 8px;"><span id="ssManual">${fmtMin(manualPausedMs)}</span></td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Inactivity deducted (min)</td><td style="padding:6px 8px;"><span id="ssInactive">${fmtMin(inactivityDedMs)}</span></td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Paid minutes</td><td style="padding:6px 8px;"><span id="ssPaid">${activeMinutes}</span></td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Miles</td><td style="padding:6px 8px;"><span id="ssMiles">${miles.toFixed(2)}</span></td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Pay (£${payRate}/hr)</td><td style="padding:6px 8px;">£<span id="ssPay">${pay.toFixed(2)}</span></td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Mileage (45p/mi)</td><td style="padding:6px 8px;">£<span id="ssMileage">${mileageExpense.toFixed(2)}</span></td></tr>
+          <tr><td style="padding:6px 8px;color:#0f172a;font-weight:700;">Total owed</td><td style="padding:6px 8px;font-weight:700;">£<span id="ssTotalOwed">${totalOwed.toFixed(2)}</span></td></tr>
+          <tr><td style="padding:6px 8px;color:#475569;">Doors / active hour</td><td style="padding:6px 8px;"><span id="ssDph">${dph.toFixed(1)}</span></td></tr>
+        </table>
+        <h4 style="margin:12px 0 8px 0;color:#0b63b5;">Pauses</h4>
+        <ul style="margin:0;padding-left:18px;">${(shift.pauses||[]).map(p=>`<li>${fmtTime(p.start)} - ${p.end?fmtTime(p.end):'ongoing'} (${p.reason||'inactive'})</li>`).join('') || '<li>None</li>'}</ul>
+      `;
+      shiftSummaryDialog.showModal();
+
+      // Enable editing interface
+      editingShift = shift;
+      // Derive original inactivity minutes
+      const origStartMs = shift.startTime ? new Date(shift.startTime).getTime() : (logs[0]? new Date(logs[0].timestamp).getTime() : 0);
+      const origEndMs = shift.endTime ? new Date(shift.endTime).getTime() : (logs.length? new Date(logs[logs.length-1].timestamp).getTime() : Date.now());
+      const origSpanMin = Math.round(Math.max(0, origEndMs - origStartMs)/60000);
+      const origManualPausedMin = (shift.pauses||[]).filter(p=>p && p.reason==='manual' && p.start && p.end).reduce((acc,p)=>{ const ps=new Date(p.start).getTime(); const pe=new Date(p.end).getTime(); if(!isNaN(ps)&&!isNaN(pe)&&pe>ps) acc += Math.round((pe-ps)/60000); return acc; },0);
+      const origActiveMin = shift.activeMinutes || Math.max(0, origSpanMin - origManualPausedMin);
+      const origInactivityMin = Math.max(0, origSpanMin - origManualPausedMin - origActiveMin);
+      originalMetrics = { origSpanMin, origManualPausedMin, origActiveMin, origInactivityMin };
+
+      // Populate editable inputs
+      const toTimeValue = iso => iso ? new Date(iso).toISOString().substring(11,16) : '';
+      editStartTime.value = toTimeValue(shift.startTime);
+      editEndTime.value = toTimeValue(shift.endTime);
+      editMiles.value = (typeof shift.miles === 'number') ? shift.miles.toFixed(2) : '0.00';
+      draftPauses = (shift.pauses||[]).map(p=>({ ...p }));
+      draftAutoInactivity = originalMetrics.origInactivityMin;
+      editAutoInactivity.value = String(draftAutoInactivity);
+      renderDraftPauses();
+      recalcDraftMetrics();
+      document.getElementById('shiftSummaryEditBar').style.display = 'flex';
+      saveShiftChangesBtn.style.display = 'inline-block';
+    }
+
+    function renderDraftPauses() {
+      pauseListEl.innerHTML = '';
+      if (!draftPauses.length) {
+        pauseListEl.innerHTML = '<div style="font-size:12px;color:#64748b;">No manual pauses.</div>';
+        return;
+      }
+      draftPauses.forEach((p, idx) => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;background:#fff;border:1px solid #e2e8f0;padding:6px 8px;border-radius:6px;';
+        wrap.innerHTML = `
+          <input type="time" data-field="start" data-idx="${idx}" value="${p.start ? new Date(p.start).toISOString().substring(11,16):''}" style="padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;" />
+          <span style="color:#94a3b8;">→</span>
+          <input type="time" data-field="end" data-idx="${idx}" value="${p.end ? new Date(p.end).toISOString().substring(11,16):''}" style="padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;" />
+          <select data-field="reason" data-idx="${idx}" style="padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;">
+            <option value="manual" ${p.reason==='manual'?'selected':''}>manual</option>
+            <option value="inactive" ${p.reason==='inactive'?'selected':''}>inactive</option>
+          </select>
+          <button data-action="delete" data-idx="${idx}" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;">✕</button>
+        `;
+        pauseListEl.appendChild(wrap);
+      });
+    }
+
+    pauseListEl.addEventListener('input', (e) => {
+      const idx = e.target.getAttribute('data-idx');
+      if (idx == null) return;
+      const field = e.target.getAttribute('data-field');
+      const pause = draftPauses[parseInt(idx,10)];
+      if (!pause) return;
+      if (field === 'start' || field === 'end') {
+        const datePrefix = editingShift.date; // YYYY-MM-DD
+        if (e.target.value) {
+          pause[field] = new Date(`${datePrefix}T${e.target.value}:00`).toISOString();
+        } else {
+          pause[field] = null;
+        }
+      } else if (field === 'reason') {
+        pause.reason = e.target.value;
+      }
+      recalcDraftMetrics();
+    });
+    pauseListEl.addEventListener('click', (e) => {
+      const idx = e.target.getAttribute('data-idx');
+      if (e.target.getAttribute('data-action') === 'delete' && idx != null) {
+        draftPauses.splice(parseInt(idx,10),1);
+        renderDraftPauses();
+        recalcDraftMetrics();
+      }
+    });
+    addPauseBtn.addEventListener('click', () => {
+      draftPauses.push({ start: null, end: null, reason: 'manual' });
+      renderDraftPauses();
+    });
+
+    function recalcDraftMetrics() {
+      if (!editingShift) return;
+      const datePrefix = editingShift.date;
+      // Build new start/end times
+      const startIso = editStartTime.value ? new Date(`${datePrefix}T${editStartTime.value}:00`).toISOString() : editingShift.startTime;
+      const endIso = editEndTime.value ? new Date(`${datePrefix}T${editEndTime.value}:00`).toISOString() : editingShift.endTime;
+      const startMs = startIso ? new Date(startIso).getTime() : 0;
+      const endMs = endIso ? new Date(endIso).getTime() : Date.now();
+      const spanMin = Math.max(0, Math.round((endMs - startMs)/60000));
+      const manualPausedMin = draftPauses.filter(p=>p.reason==='manual' && p.start && p.end).reduce((acc,p)=>{ const ps=new Date(p.start).getTime(); const pe=new Date(p.end).getTime(); if(!isNaN(ps)&&!isNaN(pe)&&pe>ps) acc+= Math.round((pe-ps)/60000); return acc; },0);
+      // Use editable auto-inactivity minutes
+      const inactivityMin = Math.max(0, parseInt(editAutoInactivity.value||draftAutoInactivity||0, 10));
+      const activeMin = Math.max(0, spanMin - manualPausedMin - inactivityMin);
+      const milesVal = parseFloat(editMiles.value||'0') || 0;
+      const pay = parseFloat(((activeMin/60)*12.21).toFixed(2));
+      const mileageExpense = parseFloat((milesVal*0.45).toFixed(2));
+      const totalOwed = parseFloat((pay + mileageExpense).toFixed(2));
+      const dph = activeMin ? ( (editingShift.totals?.doors || 0) / (activeMin/60) ) : 0;
+      // Update UI
+      calcTotalSpanEl.textContent = spanMin;
+      calcManualEl.textContent = manualPausedMin;
+      calcInactivityEl.textContent = inactivityMin;
+      calcPaidEl.textContent = activeMin;
+      calcPayEl.textContent = pay.toFixed(2);
+      calcMileageEl.textContent = mileageExpense.toFixed(2);
+      calcTotalOwedEl.textContent = totalOwed.toFixed(2);
+      document.getElementById('calcDph').textContent = dph.toFixed(1);
+      // Update top summary live
+      const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      setText('ssSpan', spanMin);
+      setText('ssManual', manualPausedMin);
+      setText('ssInactive', inactivityMin);
+      setText('ssPaid', activeMin);
+      setText('ssMiles', milesVal.toFixed(2));
+      setText('ssPay', pay.toFixed(2));
+      setText('ssMileage', mileageExpense.toFixed(2));
+      setText('ssTotalOwed', totalOwed.toFixed(2));
+      setText('ssDph', dph.toFixed(1));
+    }
+    editStartTime.addEventListener('input', recalcDraftMetrics);
+    editEndTime.addEventListener('input', recalcDraftMetrics);
+    editMiles.addEventListener('input', recalcDraftMetrics);
+    editAutoInactivity.addEventListener('input', recalcDraftMetrics);
+
+    saveShiftChangesBtn.addEventListener('click', () => {
+      if (!editingShift) return;
+      // Prepare diff summary
+      const changes = [];
+      if (editStartTime.value && editingShift.startTime) {
+        const newStartIso = new Date(`${editingShift.date}T${editStartTime.value}:00`).toISOString();
+        if (newStartIso !== editingShift.startTime) changes.push(`Start: ${editingShift.startTime} → ${newStartIso}`);
+      }
+      if (editEndTime.value) {
+        const newEndIso = new Date(`${editingShift.date}T${editEndTime.value}:00`).toISOString();
+        if (newEndIso !== editingShift.endTime) changes.push(`Finish: ${editingShift.endTime||'(in progress)'} → ${newEndIso}`);
+      }
+      const milesVal = parseFloat(editMiles.value||'0') || 0;
+      if (typeof editingShift.miles === 'number' && Math.abs(milesVal - editingShift.miles) > 0.009) changes.push(`Miles: ${editingShift.miles.toFixed(2)} → ${milesVal.toFixed(2)}`);
+      const manualPausedMin = draftPauses.filter(p=>p.reason==='manual' && p.start && p.end).length;
+      if (draftPauses.length !== (editingShift.pauses||[]).length) changes.push(`Pauses changed (${(editingShift.pauses||[]).length} → ${draftPauses.length})`);
+      if (!changes.length) changes.push('No field values changed, but recalculated metrics will still be written.');
+      confirmEditMessage.textContent = `Apply the following changes?\n\n${changes.join('\n')}`;
+      confirmEditDialog.showModal();
+    });
+    cancelEditBtn.addEventListener('click', () => confirmEditDialog.close());
+    applyEditBtn.addEventListener('click', async () => {
+      confirmEditDialog.close();
+      if (!editingShift) return;
+      try {
+        const datePrefix = editingShift.date;
+        const startIso = editStartTime.value ? new Date(`${datePrefix}T${editStartTime.value}:00`).toISOString() : editingShift.startTime;
+        const endIso = editEndTime.value ? new Date(`${datePrefix}T${editEndTime.value}:00`).toISOString() : editingShift.endTime;
+        const startMs = startIso ? new Date(startIso).getTime() : 0;
+        const endMs = endIso ? new Date(endIso).getTime() : Date.now();
+        const spanMin = Math.max(0, Math.round((endMs - startMs)/60000));
+  const inactivityMin = Math.max(0, parseInt(editAutoInactivity.value||draftAutoInactivity||0, 10));
+        const manualPausedMin = draftPauses.filter(p=>p.reason==='manual' && p.start && p.end).reduce((acc,p)=>{ const ps=new Date(p.start).getTime(); const pe=new Date(p.end).getTime(); if(!isNaN(ps)&&!isNaN(pe)&&pe>ps) acc+= Math.round((pe-ps)/60000); return acc; },0);
+        const activeMin = Math.max(0, spanMin - manualPausedMin - inactivityMin);
+        const milesVal = parseFloat(editMiles.value||'0') || 0;
+        const pay = parseFloat(((activeMin/60)*12.21).toFixed(2));
+        const mileageExpense = parseFloat((milesVal*0.45).toFixed(2));
+        const totalOwed = parseFloat((pay + mileageExpense).toFixed(2));
+        // Persist to Firestore
+        await setDoc(doc(db, 'repShifts', editingShift.id), {
+          startTime: startIso,
+          endTime: endIso || null,
+          miles: milesVal,
+          pauses: draftPauses,
+          activeMinutes: activeMin,
+          pay,
+          mileageExpense,
+          totalOwed
+        }, { merge: true });
+        // Update local state shift
+        Object.assign(editingShift, { startTime: startIso, endTime: endIso, miles: milesVal, pauses: draftPauses, activeMinutes: activeMin, pay, mileageExpense, totalOwed });
+        // Re-render shifts list for updated metrics
+        applyFilters();
+        alert('Shift changes saved.');
+        shiftSummaryDialog.close();
+      } catch (e) {
+        alert('Failed to save changes: ' + (e?.message||e));
+      }
+    });
+
+    // Link Sales dialog logic
+    function renderLinkedSalesList(){
+      linkedSalesList.innerHTML = '';
+      if (!draftLinkedSales.length){
+        linkedSalesList.innerHTML = '<div style="font-size:12px;color:#64748b;">No linked sales.</div>';
+      } else {
+        draftLinkedSales.forEach((s,idx)=>{
+          const row = document.createElement('div');
+          row.style.cssText='display:grid;grid-template-columns:1fr 120px auto;gap:6px;align-items:center;background:#fff;border:1px solid #e2e8f0;padding:6px 8px;border-radius:6px;font-size:12px;';
+          row.innerHTML = `
+            <input data-idx="${idx}" data-field="ref" placeholder="Sale ref" value="${escapeHtml(s.ref||'')}" style="padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;" />
+            <input type="number" step="0.01" min="0" data-idx="${idx}" data-field="value" placeholder="£ value (optional)" value="${(typeof s.value==='number'?s.value.toFixed(2):'')}" style="padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;" />
+            <button data-action="del" data-idx="${idx}" class="btn btn-danger" style="padding:4px 8px;font-size:11px;">✕</button>
+          `;
+          linkedSalesList.appendChild(row);
+        });
+      }
+      linkedSalesCount.textContent = String(draftLinkedSales.length);
+    }
+    linkedSalesList.addEventListener('input',(e)=>{
+      const idx = e.target.getAttribute('data-idx');
+      const field = e.target.getAttribute('data-field');
+      if (idx==null||!field) return;
+      const item = draftLinkedSales[parseInt(idx,10)];
+      if (!item) return;
+      if (field==='ref') item.ref = e.target.value;
+      if (field==='value') item.value = e.target.value ? parseFloat(e.target.value) : null;
+    });
+    linkedSalesList.addEventListener('click',(e)=>{
+      if (e.target.getAttribute('data-action')==='del'){
+        const idx = parseInt(e.target.getAttribute('data-idx'),10);
+        draftLinkedSales.splice(idx,1);
+        renderLinkedSalesList();
+      }
+    });
+    addLinkedSaleBtn.addEventListener('click',()=>{
+      draftLinkedSales.push({ ref:'', value:null });
+      renderLinkedSalesList();
+    });
+    linkSalesClose.addEventListener('click',()=> linkSalesDialog.close());
+
+    function openLinkSales(shift){
+      linkingShift = shift;
+      const repName = state.users[shift.repId] || shift.repId;
+      linkSalesMeta.textContent = `${repName} • ${shift.date}`;
+      draftLinkedSales = Array.isArray(shift.linkedSales) ? shift.linkedSales.map(s=>({ ...s })) : [];
+      renderLinkedSalesList();
+      linkSalesDialog.showModal();
+    }
+    saveLinkedSalesBtn.addEventListener('click', async ()=>{
+      if (!linkingShift) return;
+      try {
+        const salesCount = draftLinkedSales.length;
+        await setDoc(doc(db, 'repShifts', linkingShift.id), {
+          linkedSales: draftLinkedSales,
+          totals: { sales: salesCount }
+        }, { merge: true });
+        // Update local state
+        linkingShift.linkedSales = draftLinkedSales.map(s=>({ ...s }));
+        linkingShift.totals = Object.assign({}, linkingShift.totals||{}, { sales: salesCount });
+        applyFilters();
+        linkSalesDialog.close();
+      } catch(err){
+        alert('Failed to save linked sales: ' + (err?.message||err));
+      }
+    });
+
+    // Manual Add Shift UI logic
+    addShiftBtn.addEventListener('click', () => {
+      // Populate rep select (reuse users loaded)
+      manualShiftRep.innerHTML = '<option value="" disabled selected>Select rep...</option>' + Object.entries(state.users).map(([uid,name])=>`<option value="${escapeHtml(uid)}">${escapeHtml(name)}</option>`).join('');
+      // Default date to today
+      const today = new Date().toISOString().slice(0,10);
+      manualShiftDate.value = today;
+      manualShiftStart.value = '';
+      manualShiftEnd.value = '';
+      manualShiftMiles.value = '0';
+      newShiftPauses = [];
+      renderManualPauses();
+      recalcManualMetrics();
+      addShiftDialog.showModal();
+    });
+    addShiftClose.addEventListener('click', ()=> addShiftDialog.close());
+
+    function renderManualPauses() {
+      manualPauseList.innerHTML='';
+      if (!newShiftPauses.length) { manualPauseList.innerHTML = '<div style="font-size:12px;color:#64748b;">No pauses.</div>'; return; }
+      newShiftPauses.forEach((p,idx)=>{
+        const row = document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:6px;font-size:12px;background:#fff;border:1px solid #e2e8f0;padding:6px 8px;border-radius:6px;';
+        row.innerHTML = `
+          <input type="time" data-idx="${idx}" data-field="start" value="${p.start ? new Date(p.start).toISOString().substring(11,16):''}" style="padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;" />
+          <span style="color:#94a3b8;">→</span>
+          <input type="time" data-idx="${idx}" data-field="end" value="${p.end ? new Date(p.end).toISOString().substring(11,16):''}" style="padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;" />
+          <button data-action="del" data-idx="${idx}" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;">✕</button>
+        `;
+        manualPauseList.appendChild(row);
+      });
+    }
+    manualPauseList.addEventListener('input', (e)=>{
+      const idx = e.target.getAttribute('data-idx');
+      const field = e.target.getAttribute('data-field');
+      if (idx==null||!field) return;
+      const pause = newShiftPauses[parseInt(idx,10)];
+      if (!pause) return;
+      const datePrefix = manualShiftDate.value;
+      if (e.target.value) {
+        pause[field] = new Date(`${datePrefix}T${e.target.value}:00`).toISOString();
+      } else {
+        pause[field] = null;
+      }
+      recalcManualMetrics();
+    });
+    manualPauseList.addEventListener('click', (e)=>{
+      if (e.target.getAttribute('data-action')==='del') {
+        const idx = parseInt(e.target.getAttribute('data-idx'),10);
+        newShiftPauses.splice(idx,1);
+        renderManualPauses();
+        recalcManualMetrics();
+      }
+    });
+    manualAddPauseBtn.addEventListener('click', ()=>{
+      newShiftPauses.push({ start:null, end:null, reason:'manual' });
+      renderManualPauses();
+      recalcManualMetrics();
+    });
+
+    function recalcManualMetrics() {
+      const datePrefix = manualShiftDate.value;
+      const startIso = (manualShiftStart.value && datePrefix) ? new Date(`${datePrefix}T${manualShiftStart.value}:00`).toISOString() : null;
+      const endIso = (manualShiftEnd.value && datePrefix) ? new Date(`${datePrefix}T${manualShiftEnd.value}:00`).toISOString() : null;
+      const startMs = startIso ? new Date(startIso).getTime() : 0;
+      const endMs = endIso ? new Date(endIso).getTime() : startMs;
+      const spanMin = Math.max(0, Math.round((endMs - startMs)/60000));
+      const pausedMin = newShiftPauses.filter(p=>p.start && p.end).reduce((acc,p)=>{ const ps=new Date(p.start).getTime(); const pe=new Date(p.end).getTime(); if(!isNaN(ps)&&!isNaN(pe)&&pe>ps) acc += Math.round((pe-ps)/60000); return acc; },0);
+      const paidMin = Math.max(0, spanMin - pausedMin);
+      const milesVal = parseFloat(manualShiftMiles.value||'0')||0;
+      const pay = parseFloat(((paidMin/60)*12.21).toFixed(2));
+      const mileageExpense = parseFloat((milesVal*0.45).toFixed(2));
+      const totalOwed = parseFloat((pay + mileageExpense).toFixed(2));
+      manualSpanEl.textContent = spanMin;
+      manualPausedEl.textContent = pausedMin;
+      manualPaidEl.textContent = paidMin;
+      manualPayEl.textContent = pay.toFixed(2);
+      manualMileageEl.textContent = mileageExpense.toFixed(2);
+      manualTotalOwedEl.textContent = totalOwed.toFixed(2);
+      manualHoursEl.textContent = (spanMin/60).toFixed(2);
+    }
+    [manualShiftDate, manualShiftStart, manualShiftEnd, manualShiftMiles].forEach(el=> el.addEventListener('input', recalcManualMetrics));
+
+    addShiftForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      if (!manualShiftRep.value || !manualShiftDate.value || !manualShiftStart.value || !manualShiftEnd.value) { alert('All fields required'); return; }
+      const datePrefix = manualShiftDate.value;
+      const startIso = new Date(`${datePrefix}T${manualShiftStart.value}:00`).toISOString();
+      const endIso = new Date(`${datePrefix}T${manualShiftEnd.value}:00`).toISOString();
+      const startMs = new Date(startIso).getTime();
+      const endMs = new Date(endIso).getTime();
+      if (endMs <= startMs) { alert('End time must be after start time'); return; }
+      // Recalc metrics
+      const spanMin = Math.max(0, Math.round((endMs - startMs)/60000));
+      const pausedMin = newShiftPauses.filter(p=>p.start && p.end).reduce((acc,p)=>{ const ps=new Date(p.start).getTime(); const pe=new Date(p.end).getTime(); if(!isNaN(ps)&&!isNaN(pe)&&pe>ps) acc += Math.round((pe-ps)/60000); return acc; },0);
+      const activeMin = Math.max(0, spanMin - pausedMin);
+      const milesVal = parseFloat(manualShiftMiles.value||'0')||0;
+      const pay = parseFloat(((activeMin/60)*12.21).toFixed(2));
+      const mileageExpense = parseFloat((milesVal*0.45).toFixed(2));
+      const totalOwed = parseFloat((pay + mileageExpense).toFixed(2));
+      const repId = manualShiftRep.value;
+      const shiftId = `${repId}_${datePrefix}_manual_${Date.now()}`;
+      try {
+        await setDoc(doc(db, 'repShifts', shiftId), {
+          repId,
+          date: datePrefix,
+          startTime: startIso,
+          endTime: endIso,
+          miles: milesVal,
+          pauses: newShiftPauses.map(p=>({ ...p, reason:'manual' })),
+          activeMinutes: activeMin,
+          pay,
+          mileageExpense,
+          totalOwed,
+          manualEntry: true,
+          totals: null
+        }, { merge: true });
+        alert('Manual shift created.');
+        addShiftDialog.close();
+        await loadShifts();
+      } catch(err) {
+        alert('Failed to create shift: ' + (err?.message||err));
+      }
+    });
+
+    // Init
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { window.location.href = '/admin.html'; return; }
+      // Check admin role
+      try {
+        const roleDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!roleDoc.exists() || roleDoc.data().role !== 'admin') {
+          alert('Access denied: Admin only'); window.location.href = '/rep/rep-home.html'; return;
+        }
+      } catch(e) { alert('Auth check failed'); return; }
+      await loadUsers();
+      await loadShifts();
+    });
+  </script>
+</body>
+</html>

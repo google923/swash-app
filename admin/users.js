@@ -92,34 +92,68 @@ async function loadUsers() {
 
 // Render users as cards
 function renderUsers() {
-  if (state.users.length === 0) {
+  const allowedRoles = new Set(["rep", "cleaner"]);
+  const visibleUsers = state.users.filter((user) =>
+    allowedRoles.has((user.role || "rep").toLowerCase())
+  );
+
+  if (visibleUsers.length === 0) {
     usersContainer.innerHTML =
-      '<p style="color: #64748b; text-align: center; padding: 40px;">No users found.</p>';
+      '<p style="color: #64748b; text-align: center; padding: 40px;">No reps or cleaners found.</p>';
     return;
   }
 
-  usersContainer.innerHTML = state.users
+  usersContainer.innerHTML = visibleUsers
     .map((user) => {
-      const role = user.role || "rep";
+      const roleKey = (user.role || "rep").toLowerCase();
+      const roleClass = ["rep", "cleaner"].includes(roleKey) ? roleKey : "rep";
+      const roleLabelMap = { rep: "REP", cleaner: "CLEANER" };
+      const roleLabel = roleLabelMap[roleClass] || roleClass.toUpperCase();
+      const isRepLike = roleClass === "rep" || roleClass === "cleaner";
       return `
       <div class="user-card">
         <div class="user-card__header">
           <div class="user-card__name">${escapeHtml(user.name || "Unknown")}</div>
           <div class="user-card__header-right">
-            <div class="user-card__role user-card__role--${role}">${role}</div>
+            <div class="user-card__role user-card__role--${roleClass}">${roleLabel}</div>
             <button class="icon-btn" title="Delete ${escapeHtml(
               user.name || "user"
-            )}" aria-label="Delete ${escapeHtml(user.name || "user")}" onclick="window.deleteUser('${
+            )}" aria-label="Delete ${escapeHtml(user.name || "user")}" onclick="window.deleteUser(${JSON.stringify(
               user.id
-            }', '${escapeHtml(user.name || "this user")}')">&#215;</button>
+            )}, ${JSON.stringify(user.name || "this user")})">&times;</button>
           </div>
         </div>
         <div class="user-card__info">📧 ${escapeHtml(user.email || "No email")}</div>
         <div class="user-card__info">🆔 ${escapeHtml(user.id)}</div>
-        <div class="user-card__actions">
-          <button class="btn btn-secondary" onclick="window.editUser('${
-            user.id
-          }')">Edit</button>
+        <div class="user-card__disabled">
+          <label class="training-toggle">
+            <input type="checkbox" ${user.disabled ? 'checked' : ''} onchange="window.toggleDisabled('${user.id}', this.checked)" />
+            <span class="training-slider"></span>
+          </label>
+          <span>Disable User</span>
+          ${user.disabled ? '<span class="disabled-badge">Disabled</span>' : ''}
+        </div>
+        ${isRepLike ? `
+        <div class="user-card__training">
+          <label class="training-toggle">
+            <input type="checkbox" ${user.training ? 'checked' : ''} onchange="window.toggleTraining('${user.id}', this.checked)" />
+            <span class="training-slider"></span>
+          </label>
+          <span>Training Mode</span>
+          ${user.training ? '<span class="training-badge">In Training</span>' : ''}
+        </div>
+        <div class="user-card__contract-type">
+          <label for="contractType_${user.id}">Contract Type:</label>
+          <select id="contractType_${user.id}" onchange="window.updateContractType('${user.id}', this.value)">
+            <option value="freelance" ${user.contractType === 'freelance' ? 'selected' : ''}>Freelance</option>
+            <option value="paye" ${user.contractType === 'paye' ? 'selected' : ''}>PAYE</option>
+            <option value="commission" ${user.contractType === 'commission' ? 'selected' : ''}>Commission-Only</option>
+          </select>
+        </div>
+        ` : ''}
+        <div class="user-card__actions" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+          <button class="btn btn-secondary" onclick="window.editUser('${user.id}')">Edit</button>
+          ${isRepLike ? `<a class="btn btn-primary" href="/rep/contract.html?uid=${user.id}" target="_blank" rel="noopener">Contract</a>` : ''}
         </div>
       </div>`;
     })
@@ -133,6 +167,7 @@ async function handleAddUser(e) {
   const email = document.getElementById("newEmail").value.trim();
   const password = document.getElementById("newPassword").value;
   const name = document.getElementById("newName").value.trim();
+  const companyName = document.getElementById("newCompanyName").value.trim();
   const role = document.getElementById("newRole").value;
 
   if (!email || !password || !name || !role) {
@@ -155,13 +190,19 @@ async function handleAddUser(e) {
     const newUser = userCredential.user;
 
     // Store user metadata in Firestore
-    await setDoc(doc(db, "users", newUser.uid), {
+    const userData = {
       email: email,
       name: name,
       repName: name,
       role: role,
       createdAt: new Date().toISOString(),
-    });
+    };
+    
+    if (companyName && role === 'subscriber') {
+      userData.companyName = companyName;
+    }
+    
+    await setDoc(doc(db, "users", newUser.uid), userData);
 
     alert(`User "${name}" created successfully!`);
 
@@ -241,6 +282,51 @@ window.deleteUser = async function (userId, userName) {
   } catch (err) {
     console.error("Error deleting user:", err);
     alert(`Error deleting user: ${err.message}`);
+  }
+};
+
+// Toggle disabled status for a user
+window.toggleDisabled = async function (userId, isDisabled) {
+  try {
+    await updateDoc(doc(db, "users", userId), {
+      disabled: isDisabled,
+    });
+    console.log(`User ${isDisabled ? 'disabled' : 'enabled'}: ${userId}`);
+    await loadUsers();
+  } catch (err) {
+    console.error("Error toggling disabled status:", err);
+    alert(`Error updating disabled status: ${err.message}`);
+    await loadUsers(); // Reload to reset toggle state
+  }
+};
+
+// Toggle training mode for a rep
+window.toggleTraining = async function (userId, isTraining) {
+  try {
+    await updateDoc(doc(db, "users", userId), {
+      training: isTraining,
+    });
+    console.log(`Training mode ${isTraining ? 'enabled' : 'disabled'} for user ${userId}`);
+    await loadUsers();
+  } catch (err) {
+    console.error("Error toggling training mode:", err);
+    alert(`Error updating training mode: ${err.message}`);
+    await loadUsers(); // Reload to reset toggle state
+  }
+};
+
+// Update contract type for a rep
+window.updateContractType = async function (userId, contractType) {
+  try {
+    await updateDoc(doc(db, "users", userId), {
+      contractType: contractType,
+    });
+    console.log(`Contract type set to ${contractType} for user ${userId}`);
+    // Don't reload to avoid dropdown flickering
+  } catch (err) {
+    console.error("Error updating contract type:", err);
+    alert(`Error updating contract type: ${err.message}`);
+    await loadUsers(); // Reload to reset dropdown state
   }
 };
 

@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Admin Overview - Swash</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .page-header {
+      margin-bottom: 32px;
+    }
+    .page-header h1 {
+      margin: 0 0 8px 0;
+      color: #0078d7;
+      font-size: 32px;
+    }
+    .page-header p {
+      margin: 0;
+      color: #64748b;
+      font-size: 16px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: transform 0.2s;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    .stat-card__icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+    .stat-card__value {
+      font-size: 36px;
+      font-weight: 700;
+      color: #0078d7;
+      margin-bottom: 4px;
+    }
+    .stat-card__label {
+      font-size: 14px;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .quick-links-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    .quick-link-card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.2s;
+      display: block;
+    }
+    .quick-link-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      background: #f8fafc;
+    }
+    .quick-link-card__icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+    .quick-link-card__title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+    .quick-link-card__desc {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 20px;
+    }
+    .recent-activity {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 24px;
+    }
+    .activity-item {
+      padding: 16px 0;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+    .activity-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+    .activity-content {
+      flex: 1;
+    }
+    .activity-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 4px;
+    }
+    .activity-time {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #0078d7;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html">🆕 New Quote</a>
+          <a href="/rep/scheduler.html" class="admin-rep">📅 Schedule</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="page-header">
+      <h1>Admin Overview</h1>
+      <p>Your command center for managing quotes, subscribers, and team operations</p>
+    </div>
+
+    <div id="loadingState" class="loading">
+      <div class="spinner"></div>
+      <p>Loading dashboard...</p>
+    </div>
+
+    <div id="dashboardContent" style="display: none;">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card__icon">📊</div>
+          <div class="stat-card__value" id="totalQuotes">0</div>
+          <div class="stat-card__label">Total Quotes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__icon">✅</div>
+          <div class="stat-card__value" id="bookedQuotes">0</div>
+          <div class="stat-card__label">Booked</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__icon">🏢</div>
+          <div class="stat-card__value" id="totalSubscribers">0</div>
+          <div class="stat-card__label">Subscribers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__icon">💼</div>
+          <div class="stat-card__value" id="subscriberRevenue">£0</div>
+          <div class="stat-card__label">Subscriber Revenue</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__icon">💰</div>
+          <div class="stat-card__value" id="totalRoundTurnover">£0</div>
+          <div class="stat-card__label">Total Round Turnover</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__icon">👥</div>
+          <div class="stat-card__value" id="totalReps">0</div>
+          <div class="stat-card__label">Active Reps</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__icon">⏳</div>
+          <div class="stat-card__value" id="pendingQuotes">0</div>
+          <div class="stat-card__label">Pending</div>
+        </div>
+      </div>
+
+      <h2 class="section-title">Cleaner Round Turnover</h2>
+      <div class="stats-grid" id="cleanerStats">
+        <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #64748b;">
+          Loading cleaner turnovers...
+        </div>
+      </div>
+
+      <h2 class="section-title">Quick Links</h2>
+      <div class="quick-links-grid">
+        <a href="/admin.html" class="quick-link-card">
+          <div class="quick-link-card__icon">📋</div>
+          <div class="quick-link-card__title">New Customer Pipeline</div>
+          <div class="quick-link-card__desc">Review incoming quotes, confirm bookings, and manage customer status</div>
+        </a>
+        
+        <a href="/admin/subscribers.html" class="quick-link-card">
+          <div class="quick-link-card__icon">🏢</div>
+          <div class="quick-link-card__title">Subscribers</div>
+          <div class="quick-link-card__desc">Manage subscriber accounts, billing, and access controls</div>
+        </a>
+        
+        <a href="/admin/users.html" class="quick-link-card">
+          <div class="quick-link-card__icon">👥</div>
+          <div class="quick-link-card__title">Manage Users</div>
+          <div class="quick-link-card__desc">Add, edit, and manage reps, cleaners, and admin users</div>
+        </a>
+        
+        <a href="/admin/stats.html" class="quick-link-card">
+          <div class="quick-link-card__icon">📊</div>
+          <div class="quick-link-card__title">Stats & Analytics</div>
+          <div class="quick-link-card__desc">View performance metrics, revenue, and territory insights</div>
+        </a>
+        
+        <a href="/admin-tracking.html" class="quick-link-card">
+          <div class="quick-link-card__icon">🛰️</div>
+          <div class="quick-link-card__title">Rep Tracking</div>
+          <div class="quick-link-card__desc">Monitor rep locations and activity in real-time</div>
+        </a>
+        
+        <a href="/admin/message-log.html" class="quick-link-card">
+          <div class="quick-link-card__icon">📧</div>
+          <div class="quick-link-card__title">Message Log</div>
+          <div class="quick-link-card__desc">View all outbound emails and customer communications</div>
+        </a>
+      </div>
+
+      <h2 class="section-title">Recent Activity</h2>
+      <div class="recent-activity">
+        <div id="activityList">
+          <div class="activity-item">
+            <div class="activity-icon">📊</div>
+            <div class="activity-content">
+              <div class="activity-title">Loading recent activity...</div>
+              <div class="activity-time">Just now</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from '../firebase-init.js';
+    import {
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import {
+      collection,
+      query,
+      where,
+      getDocs,
+      orderBy,
+      limit
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    const loadingState = document.getElementById('loadingState');
+    const dashboardContent = document.getElementById('dashboardContent');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // Auth check
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = '../admin.html';
+        return;
+      }
+
+      // Check if admin
+      const userDoc = await getDocs(query(collection(db, 'users'), where('email', '==', user.email)));
+      if (userDoc.empty || userDoc.docs[0].data().role !== 'admin') {
+        alert('Access denied. Admin only.');
+        window.location.href = '../index.html';
+        return;
+      }
+
+      loadDashboard();
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', async () => {
+      await auth.signOut();
+      window.location.href = '../index.html';
+    });
+
+    async function loadDashboard() {
+      try {
+        // Load quotes stats
+        const quotesSnap = await getDocs(collection(db, 'quotes'));
+        const quotes = quotesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const totalQuotes = quotes.filter(q => !q.deleted).length;
+        const bookedQuotes = quotes.filter(q => !q.deleted && q.status && q.status.toLowerCase().includes('booked')).length;
+        const pendingQuotes = quotes.filter(q => !q.deleted && (!q.status || q.status.toLowerCase() === 'quoted' || q.status.toLowerCase() === 'pending')).length;
+
+        document.getElementById('totalQuotes').textContent = totalQuotes;
+        document.getElementById('bookedQuotes').textContent = bookedQuotes;
+        document.getElementById('pendingQuotes').textContent = pendingQuotes;
+
+        // Load subscribers stats
+        const subsSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'subscriber')));
+        const subscribers = subsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const totalSubscribers = subscribers.length;
+        const monthlyRevenue = subscribers
+          .filter(s => s.billingCompleted && !s.disabled)
+          .reduce((sum, s) => sum + (Number(s.monthlyTotal) || 0), 0);
+
+        document.getElementById('totalSubscribers').textContent = totalSubscribers;
+        document.getElementById('subscriberRevenue').textContent = `£${monthlyRevenue.toFixed(2)}`;
+
+        // Load reps stats
+        const repsSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'rep')));
+        const reps = repsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const totalReps = reps.filter(r => !r.disabled).length;
+        document.getElementById('totalReps').textContent = totalReps;
+
+        // Calculate round turnover per cleaner and total
+        await calculateCleanerTurnovers(quotes);
+
+        // Load recent activity
+        await loadRecentActivity(quotes, subscribers);
+
+        loadingState.style.display = 'none';
+        dashboardContent.style.display = 'block';
+      } catch (error) {
+        console.error('Error loading dashboard:', error);
+        loadingState.innerHTML = '<p style="color: #dc2626;">Failed to load dashboard. Please refresh.</p>';
+      }
+    }
+
+    async function loadRecentActivity(quotes, subscribers) {
+      const activityList = document.getElementById('activityList');
+      const activities = [];
+
+      // Recent quotes (last 5)
+      const recentQuotes = quotes
+        .filter(q => !q.deleted && q.date)
+        .sort((a, b) => {
+          const aTime = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+          const bTime = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+          return bTime - aTime;
+        })
+        .slice(0, 3);
+
+      recentQuotes.forEach(q => {
+        const time = q.date?.toDate ? q.date.toDate() : new Date(q.date);
+        activities.push({
+          icon: '📝',
+          title: `New quote from ${q.customerName || 'Unknown'}`,
+          time: formatRelativeTime(time)
+        });
+      });
+
+      // Recent subscribers (last 2)
+      const recentSubs = subscribers
+        .filter(s => s.createdAt)
+        .sort((a, b) => {
+          const aTime = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+          const bTime = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+          return bTime - aTime;
+        })
+        .slice(0, 2);
+
+      recentSubs.forEach(s => {
+        const time = s.createdAt?.toDate ? s.createdAt.toDate() : new Date(s.createdAt);
+        activities.push({
+          icon: '🏢',
+          title: `New subscriber: ${s.companyName || s.name || 'Unknown'}`,
+          time: formatRelativeTime(time)
+        });
+      });
+
+      // Sort all activities by time (most recent first)
+      activities.sort((a, b) => b.time.localeCompare(a.time));
+
+      if (activities.length === 0) {
+        activityList.innerHTML = '<div class="activity-item"><div class="activity-content"><div class="activity-title">No recent activity</div></div></div>';
+        return;
+      }
+
+      activityList.innerHTML = activities.slice(0, 5).map(a => `
+        <div class="activity-item">
+          <div class="activity-icon">${a.icon}</div>
+          <div class="activity-content">
+            <div class="activity-title">${a.title}</div>
+            <div class="activity-time">${a.time}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function calculateCleanerTurnovers(quotes) {
+      const cleanerStats = {};
+      let totalTurnover = 0;
+
+      // Calculate turnover for each cleaner from booked quotes
+      quotes.forEach(quote => {
+        if (quote.deleted || !quote.status || !quote.status.toLowerCase().includes('booked')) {
+          return;
+        }
+
+        const cleaner = quote.assignedCleaner || 'Unassigned';
+        const pricePerClean = Number(quote.pricePerClean) || 0;
+
+        if (!cleanerStats[cleaner]) {
+          cleanerStats[cleaner] = {
+            customers: 0,
+            monthlyTurnover: 0
+          };
+        }
+
+        cleanerStats[cleaner].customers++;
+        cleanerStats[cleaner].monthlyTurnover += pricePerClean;
+        totalTurnover += pricePerClean;
+      });
+
+      // Update total round turnover
+      document.getElementById('totalRoundTurnover').textContent = `£${totalTurnover.toFixed(2)}`;
+
+      // Render cleaner stats
+      const cleanerStatsContainer = document.getElementById('cleanerStats');
+      const sortedCleaners = Object.entries(cleanerStats)
+        .sort((a, b) => b[1].monthlyTurnover - a[1].monthlyTurnover);
+
+      if (sortedCleaners.length === 0) {
+        cleanerStatsContainer.innerHTML = `
+          <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #64748b;">
+            <div style="font-size: 48px; margin-bottom: 16px;">👷</div>
+            <p>No cleaner assignments yet</p>
+          </div>
+        `;
+        return;
+      }
+
+      cleanerStatsContainer.innerHTML = sortedCleaners.map(([cleaner, stats]) => `
+        <div class="stat-card">
+          <div class="stat-card__icon">👷</div>
+          <div class="stat-card__value">£${stats.monthlyTurnover.toFixed(2)}</div>
+          <div class="stat-card__label">${escapeHtml(cleaner)}</div>
+          <div style="font-size: 12px; color: #94a3b8; margin-top: 8px;">
+            ${stats.customers} customer${stats.customers !== 1 ? 's' : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatRelativeTime(date) {
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    // Menu toggle
+    const menuBtn = document.getElementById('menuBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
+    
+    menuBtn.addEventListener('click', () => {
+      const isOpen = menuBtn.getAttribute('aria-expanded') === 'true';
+      menuBtn.setAttribute('aria-expanded', !isOpen);
+      menuDropdown.style.display = isOpen ? 'none' : 'block';
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.menu-box')) {
+        menuBtn.setAttribute('aria-expanded', 'false');
+        menuDropdown.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

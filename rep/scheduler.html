@@ -9,6 +9,25 @@
   <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
   <link rel="stylesheet" href="../style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+  <style>
+    /* Assign Area Days mode visuals */
+    body.assign-mode .schedule-job, body.assign-mode .day-total, body.assign-mode .weekly-overview-bar, body.assign-mode .weekly-overview-job { filter: grayscale(1); }
+    body.assign-mode::after { content:''; position:fixed; inset:0; pointer-events:none; background:rgba(0,120,215,0.06); mix-blend-mode:multiply; }
+    .assign-days-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px; padding:8px 12px; background:#eff6ff; border-left:4px solid #0078d7; border-radius:6px; }
+    .assign-days-header h2 { margin:0; font-size:1rem; font-weight:600; color:#0f3d5d; }
+    #assignSetDaysBtn { float:right; }
+    .day-cell { position:relative; }
+    .assign-btn-inline { position:absolute; top:4px; right:4px; font-size:11px; padding:4px 6px; opacity:0; transition:opacity .15s; }
+    body.assign-mode .day-cell:hover .assign-btn-inline { opacity:1; }
+    .assigned-day { outline:2px solid var(--territory-color, #0078d7); background:rgba(0,120,215,0.10) !important; }
+    /* Multi-cleaner badge and summary */
+    .assign-multi-badge { position:absolute; top:4px; left:8px; background: var(--territory-color, #0078d7); color:#fff; font-weight:700; font-size:10px; padding:1px 5px; border-radius:10px; display:none; }
+    .assign-summary { position: fixed; top: 70px; left: 12px; z-index: 1200; background: rgba(255,255,255,0.98); border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; max-width: 280px; box-shadow: 0 8px 22px rgba(0,0,0,0.12); }
+    .assign-summary__title { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #0f3d5d; }
+    .assign-summary__list { margin: 0; padding: 0; list-style: none; max-height: 220px; overflow-y: auto; }
+    .assign-summary__item { font-size: 12px; color: #1f2937; padding: 2px 0; border-bottom: 1px dashed #e5e7eb; }
+    .assign-summary__item:last-child { border-bottom: none; }
+  </style>
 </head>
 <body>
   <header class="header">
@@ -22,11 +41,24 @@
         <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
-          <a id="rep-home-link" class="hidden" href="./rep-home.html">Rep Home</a>
-          <a id="schedule-link" class="hidden" href="./scheduler.html">Schedule</a>
-          <a id="add-customer-link" class="hidden" href="./quote.html">Add Customer</a>
-          <a id="admin-dashboard-link" class="hidden" href="/admin.html">Admin Dashboard</a>
-          <a id="manage-users-link" class="hidden" href="/admin/users.html">Manage Users</a>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="./scheduler.html" class="admin-rep">📅 Schedule</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+                  <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
+                  <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
+                  <a href="./scheduler.html" class="subscriber-only">📅 Schedule</a>
+                  <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
+                  <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
+                  <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
         </nav>
       </div>
     </div>
@@ -42,14 +74,26 @@
       <input id="loginPassword" type="password" autocomplete="current-password" required />
       <p id="loginError" class="status warning" hidden></p>
       <button type="submit" class="btn btn-primary">Sign in</button>
+      <a href="/index.html?redirect=%2Frep%2Fscheduler.html" id="openFullLogin" class="btn btn-secondary" style="margin-top:8px;text-align:center;">Open full login page</a>
     </form>
   </section>
 
   <main id="schedulerContent" class="page">
+    <div id="assignSummaryBox" class="assign-summary" hidden>
+      <div class="assign-summary__title">Selections</div>
+      <ul id="assignSummaryList" class="assign-summary__list"></ul>
+    </div>
     <section class="card">
-      <header class="card-header">
+      <header class="card-header" id="mainSchedulerHeader">
         <h2>4-week route planner</h2>
-        <p class="text-muted">Generate a rolling schedule from booked customers and plan upcoming cleans.</p>
+        <p class="text-muted" id="schedulerSubheading">Generate a rolling schedule from booked customers and plan upcoming cleans.</p>
+        <div id="assignModeBanner" class="assign-days-header" hidden>
+          <div>
+            <h2 id="assignModeTitle">Assigning Days</h2>
+            <p id="assignModeContext" style="margin:2px 0 0; font-size:12px; color:#1e3a5f;"></p>
+          </div>
+          <button type="button" id="assignSetDaysBtn" class="btn btn-primary" disabled>Set Days</button>
+        </div>
       </header>
       
       <div class="controls scheduler-controls" aria-label="Scheduler controls">
@@ -105,7 +149,17 @@
         <button type="button" id="clearAreaBtn" class="btn btn-secondary">🗑️ Clear</button>
         <button type="button" id="stopDrawingBtn" class="btn btn-secondary" hidden>⏹️ Stop Drawing</button>
       </div>
-      <div id="areasMap" style="width: 100%; height: 500px; border-radius: 8px; border: 2px solid #e5e7eb; margin-bottom: 16px;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #e5e7eb;border-bottom:none;border-radius:8px 8px 0 0;background:#f8fafc;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#334155;">
+            <input id="toggleAllPinsScheduler" type="checkbox" />
+            <span>Show all pins</span>
+          </label>
+          <span id="schedulerPinsHint" class="small" style="color:#64748b;">Last 60 days</span>
+        </div>
+        <div id="schedulerPinsLoading" class="small" style="display:none;color:#64748b;">Loading pins…</div>
+      </div>
+      <div id="areasMap" style="width: 100%; height: 500px; border-radius: 0 0 8px 8px; border: 2px solid #e5e7eb; border-top:none; margin-bottom: 16px;"></div>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
         <label class="modal__field">
           <span>Area Name (optional)</span>
@@ -213,6 +267,13 @@
               <button type="button" class="btn btn-secondary btn-sm" id="clearOrderBtn" style="flex: 1;">↻ Reset</button>
               <button type="button" class="btn btn-secondary btn-sm" id="trafficToggleBtn" title="Toggle live traffic" style="flex: 0.5; padding: 6px 8px;">🚦</button>
             </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;font-weight:600;">
+                <input type="checkbox" id="toggleAllPinsRoute" /> Show all pins
+              </label>
+              <span id="routePinsHint" class="small" style="color:#64748b;">Last 60 days</span>
+              <span id="routePinsLoading" class="small" style="display:none;color:#64748b;">Loading pins…</span>
+            </div>
           </div>
           
           <!-- Timeline List -->
@@ -241,7 +302,8 @@
   <!-- Shared navigation (dropdown + rep view + modals) -->
   <script type="module" src="../nav.js"></script>
   <script>window.initMapsCallback = () => console.log('[Maps] API loaded');</script>
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=geometry,drawing,places&callback=initMapsCallback"></script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=geometry,drawing,places&callback=initMapsCallback&loading=async"></script>
+  <script defer src="./components/CustomerChatModal.js"></script>
   <script type="module">
     import("./scheduler.js");
   </script>

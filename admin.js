@@ -6,6 +6,7 @@
 
 import { app, auth, db } from "./firebase-init.js";
 import { authStateReady, handlePageRouting } from "./auth-check.js";
+import { logOutboundEmailToFirestore } from "./lib/firestore-utils.js";
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 const EMAIL_SERVICE = window.EMAIL_SERVICE_ID ?? "service_cdy739m";
@@ -17,6 +18,14 @@ const EMAIL_PUBLIC_KEY = "7HZRYXz3JmMciex1L";
 const CLEANER_OPTIONS = Array.from({ length: 10 }, (_, index) => `Cleaner ${index + 1}`);
 const CLEANER_ALL = "ALL";
 const CLEANER_UNASSIGNED = "UNASSIGNED";
+const CLEANER_LABEL_OVERRIDES = {
+  "Cleaner 1": "Chris",
+};
+
+function getCleanerLabel(value) {
+  if (!value) return value;
+  return CLEANER_LABEL_OVERRIDES[value] || value;
+}
 
 const syncChannel =
   typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("swash-quotes-sync") : null;
@@ -59,7 +68,8 @@ function deriveCleanerPrefill(quotes = []) {
 }
 
 function getCleanerDisplay(value) {
-  return value ? value : "Unassigned";
+  if (!value) return "Unassigned";
+  return getCleanerLabel(value);
 }
 
 
@@ -250,7 +260,7 @@ function populateCleanerSelect(target, options = {}) {
     fragment.appendChild(createOption(CLEANER_ALL, "All cleaners"));
   }
   uniqueCleaners.forEach((label) => {
-    fragment.appendChild(createOption(label, label));
+    fragment.appendChild(createOption(label, getCleanerLabel(label)));
   });
   if (includeUnassigned && !uniqueCleaners.includes(CLEANER_UNASSIGNED)) {
     fragment.appendChild(createOption(CLEANER_UNASSIGNED, "Unassigned"));
@@ -1993,6 +2003,7 @@ function buildDetailsRow(quote, columnCount) {
   const extension = toBoolean(quote.extension);
   const conservatory = toBoolean(quote.conservatory);
   const alternating = toBoolean(quote.alternating);
+  const frontOnly = toBoolean(quote.frontOnly);
   const skylightsValue = escapeHtml(String(Math.max(0, Number(quote.skylights ?? 0))));
   const roofLanternsValue = escapeHtml(String(Math.max(0, Number(quote.roofLanterns ?? 0))));
   const partialValue = escapeHtml(
@@ -2120,8 +2131,11 @@ function buildDetailsRow(quote, columnCount) {
             <input type="number" name="pricePerClean" min="0" step="0.01" value="${pricePerCleanValue}" />
           </label>
           <label class="details-field">
-            <span>Upfront price (GBP)</span>
-            <input type="number" name="price" min="0" step="0.01" value="${priceValue}" />
+            <span>Front Only</span>
+            <select name="frontOnly">
+              <option value="false"${frontOnly ? "" : " selected"}>No</option>
+              <option value="true"${frontOnly ? " selected" : ""}>Yes</option>
+            </select>
           </label>
         </div>
         <div class="details-actions">
@@ -2515,6 +2529,16 @@ async function sendBookingEmails() {
       }
 
       const bookingEmailBody = `Clean scheduled at ${quote.address || "Unknown address"} on ${firstCleanStr}. Second: ${secondCleanStr}. Third: ${thirdCleanStr}.`;
+      try {
+        await logOutboundEmailToFirestore({
+          to: recipientEmail,
+          subject: `Booking confirmation for ${quote.customerName || "Customer"}`,
+          body: bookingEmailBody,
+          source: "admin-booking",
+        });
+      } catch (logError) {
+        console.warn("[Admin] Failed to log outbound booking email", logError);
+      }
       const sentByMeta = (function(){
         const u = (typeof auth !== 'undefined' && auth && auth.currentUser) ? auth.currentUser : null;
         return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: "admin" };

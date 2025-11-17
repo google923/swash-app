@@ -9,6 +9,15 @@
     { "src": "assets/**", "use": "@vercel/static" }
   ],
   "routes": [
+    { "src": "^/$", "dest": "/home.html" },
+    { "src": "/api/createInstantPayLink", "dest": "/api/createInstantPayLink.js" },
+    { "src": "/api/checkPaymentStatus", "dest": "/api/checkPaymentStatus.js" },
+    { "src": "/api/zohoInboundEmail", "dest": "/api/zohoInboundEmail.js" },
+    { "src": "/api/confirmBooking", "dest": "/api/confirmBooking.js" },
+    { "src": "/api/createSubscriberMandate", "dest": "/api/createSubscriberMandate.js" },
+    { "src": "/api/finaliseSubscriberMandate", "dest": "/api/finaliseSubscriberMandate.js" },
+    { "src": "/api/deleteSubscriber", "dest": "/api/deleteSubscriber.js" },
+    { "src": "/confirm-booking", "dest": "/api/confirmBooking.js" },
     { "handle": "filesystem" }
   ]
 }

@@ -3,7 +3,16 @@
 
 import { auth, db } from './firebase-init.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+// Cache last known role locally so we can tolerate offline role fetch failures
+const ROLE_CACHE_KEY = 'swash:lastRole';
+function loadCachedRole() {
+  try { return localStorage.getItem(ROLE_CACHE_KEY) || null; } catch(_) { return null; }
+}
+function saveCachedRole(role) {
+  try { localStorage.setItem(ROLE_CACHE_KEY, role); } catch(_) {}
+}
 
 // NOTE: This project does not have a shared config.js. We inline the config and reuse an existing app if present.
 const firebaseConfig = {
@@ -30,7 +39,8 @@ const adminOnly = [
   "quotes-link",
   "manage-users-link",
   "message-log-link",
-  "admin-tracking-link"
+  "admin-tracking-link",
+  "add-new-customer-link"
 ];
 const loginLink = "login-link";
 
@@ -121,6 +131,10 @@ const PAGE_TYPE = (() => {
   const path = (window.location && window.location.pathname) || "/";
   if (/\/(index|index-login)\.html?$/.test(path) || path === "/") return "login";
   if (/\/rep\/login\.html$/.test(path)) return "login";
+  if (/\/subscriber-login\.html$/.test(path)) return "subscriber-login";
+
+  // Subscriber pages - completely separate auth system
+  if (/\/subscriber-/.test(path)) return "subscriber";
 
   if (/\/admin\.html$/.test(path) || /\/admin\//.test(path)) return "admin";
   if (/\/rep\/scheduler\.html$/.test(path)) return "shared";
@@ -136,6 +150,30 @@ const PAGE_TYPE = (() => {
 })();
 
 console.log("[Auth] Awaiting Firebase auth...");
+
+async function ensureUserProfile(user) {
+  if (!user) return null;
+  const ref = doc(db, "users", user.uid);
+  try {
+    let snap = await getDoc(ref);
+    if (snap.exists()) return snap;
+    const payload = {
+      role: "rep",
+      email: user.email || "",
+      displayName: user.displayName || user.email || "",
+      repName: user.displayName || user.email || "",
+      autoProvisioned: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(ref, payload, { merge: true });
+    snap = await getDoc(ref);
+    return snap;
+  } catch (err) {
+    console.warn("[Auth] Failed to auto-provision user profile", err?.message || err);
+    return null;
+  }
+}
 
 function setHidden(id, hidden) {
   const el = document.getElementById(id);
@@ -245,6 +283,12 @@ export async function handlePageRouting(pageType = "login") {
     return status;
   }
 
+  // Subscriber pages use completely separate authentication - skip all routing
+  if (pageType === "subscriber" || pageType === "subscriber-login") {
+    console.log("[Auth] Subscriber page detected - using separate auth system");
+    return status;
+  }
+
   if (pageType === "login") {
     if (!user) return status;
     if (role === "admin") {
@@ -253,6 +297,10 @@ export async function handlePageRouting(pageType = "login") {
     }
     if (role === "rep") {
       status.redirected = scheduleRedirect("/rep/rep-home.html");
+      return status;
+    }
+    if (role === "subscriber") {
+      status.redirected = scheduleRedirect("/subscriber-dashboard.html");
       return status;
     }
     return status;
@@ -293,7 +341,15 @@ function attachLogoutListener() {
   const logoutBtn = document.getElementById("logoutBtn");
   if (!logoutBtn || logoutListenerAttached) return;
   logoutListenerAttached = true;
-  logoutBtn.addEventListener("click", () => {
+  logoutBtn.addEventListener("click", async () => {
+    // Check if there's an active shift that needs to be ended (rep-log.js specific)
+    if (typeof window.endShiftBeforeLogout === 'function') {
+      try {
+        await window.endShiftBeforeLogout();
+      } catch(e) {
+        console.warn('Failed to auto-end shift on logout', e);
+      }
+    }
     signOut(auth)
       .then(() => {
         scheduleRedirect("/index.html");
@@ -322,6 +378,24 @@ onAuthStateChanged(auth, async (user) => {
     window.userRole = undefined;
     hideAllMenuItems();
 
+    const offline = !navigator.onLine;
+    const cachedRole = loadCachedRole();
+
+    if (offline && (cachedRole === 'rep' || cachedRole === 'admin')) {
+      console.log(`[Auth] Offline with cached role '${cachedRole}'. Allowing offline session.`);
+      // Hide overlay if present and show appropriate menu
+      const overlay = document.getElementById("authOverlay");
+      if (overlay) { overlay.hidden = true; overlay.style.display = 'none'; }
+      if (cachedRole === 'admin') showAdminMenu(); else showRepMenu();
+
+      authStateManager.state.role = cachedRole;
+      window.userRole = cachedRole;
+      // Resolve as ready with cached role; user remains null but pages can proceed
+      authStateManager.resolveReady(null, cachedRole);
+      // Do not schedule any redirects while offline
+      return;
+    }
+
     // In embed mode, do not surface full-screen overlays or redirect away
     if (!IS_EMBED) {
       const overlay = document.getElementById("authOverlay");
@@ -344,7 +418,12 @@ onAuthStateChanged(auth, async (user) => {
         pendingLoginRedirectTimer = setTimeout(async () => {
           // Only redirect if still unauthorised
           if (!auth.currentUser) {
-            await handlePageRouting(PAGE_TYPE);
+            // If offline, skip redirect to keep page usable
+            if (!navigator.onLine) {
+              console.log('[Auth] Offline unauthorised; skipping redirect to keep page open');
+            } else {
+              await handlePageRouting(PAGE_TYPE);
+            }
           } else {
             console.log("[Auth] Session restored during grace; skip redirect");
           }
@@ -361,11 +440,28 @@ onAuthStateChanged(auth, async (user) => {
 
   let role = "unauthorised";
   try {
-    const snap = await getDoc(doc(db, "users", user.uid));
-    role = snap.exists() ? (snap.data().role || "rep") : "unauthorised";
+  const snap = await ensureUserProfile(user);
+  role = snap && snap.exists() ? (snap.data().role || "rep") : "unauthorised";
+    // Cache identity for offline use
+    try {
+      localStorage.setItem('swash:lastUid', user.uid);
+      const repName = (snap && snap.exists() && (snap.data().repName || snap.data().name)) || user.displayName || user.email || '';
+      if (repName) localStorage.setItem('swash:lastRepName', repName);
+      const assignedTerritoryId = snap && snap.exists() ? (snap.data().assignedTerritoryId || snap.data().territoryId || '') : '';
+      if (assignedTerritoryId) localStorage.setItem('swash:lastAssignedTerritoryId', assignedTerritoryId);
+    } catch(_) {}
+    // Successful fetch -> update cache
+    if (role !== 'unauthorised') saveCachedRole(role);
   } catch (error) {
-    console.error("Failed to load user role", error);
-    role = "unauthorised";
+    console.warn("Failed to load user role (network?)", error?.message || error);
+    // Use cached role if available (allows offline continuation)
+    const cached = loadCachedRole();
+    if (cached === 'rep' || cached === 'admin' || cached === 'subscriber') {
+      role = cached;
+      console.log(`[Auth] Using cached role '${cached}' due to fetch failure`);
+    } else {
+      role = "unauthorised";
+    }
   }
 
   authStateManager.state.role = role;
@@ -390,6 +486,9 @@ onAuthStateChanged(auth, async (user) => {
     showAdminMenu();
   } else if (role === "rep") {
     showRepMenu();
+  } else if (role === "subscriber") {
+    // Subscribers have their own pages with separate auth - don't manage menu here
+    console.log("[Auth] Subscriber role detected - skipping menu management");
   } else {
     hideAllMenuItems();
   }
@@ -397,6 +496,12 @@ onAuthStateChanged(auth, async (user) => {
   authStateManager.resolveReady(user, role);
 
   if (!IS_EMBED && PAGE_TYPE) {
-    await handlePageRouting(PAGE_TYPE);
+    // When offline and we only have a cached role, suppress forced redirects to login
+    const offline = !navigator.onLine;
+    if (offline) {
+      console.log('[Auth] Offline detected; skipping routing redirects to preserve offline session');
+    } else {
+      await handlePageRouting(PAGE_TYPE);
+    }
   }
 });

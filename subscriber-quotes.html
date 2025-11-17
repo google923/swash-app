@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Quotes - Swash Subscriber</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .admin-only, .rep-only, .admin-rep { display: none !important; }
+    .subscriber-only { display: block !important; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <h1 style="margin: 0 0 0 12px; font-size: 1.2rem;">📋 Quotes</h1>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
+          <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
+          <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
+          <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
+          <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we verify your account.</p>
+    </div>
+  </section>
+
+  <main id="quotesContent" class="page" style="display:none;">
+    <section class="card">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h2>Your Quotes</h2>
+          <p class="text-muted">Manage customer quotes and convert to bookings</p>
+        </div>
+        <div class="card-header-actions">
+          <a href="/rep/add-new-customer.html" class="btn btn-primary">+ New Quote</a>
+        </div>
+      </header>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Ref</th>
+              <th>Customer</th>
+              <th>Address</th>
+              <th>Tier</th>
+              <th>Price</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="quotesTableBody">
+            <tr>
+              <td colspan="8" style="text-align:center;padding:40px;color:#64748b;">Loading quotes...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Quote Details Modal -->
+  <div id="quoteModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:20px;">
+    <div class="modal-content" style="background:#fff; border-radius:12px; padding:20px; width:min(96vw,640px); box-shadow:0 20px 40px rgba(0,0,0,0.25);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <h3 id="quoteModalTitle" style="margin:0; font-size:1.2rem;">Quote Details</h3>
+        <button type="button" id="quoteModalClose" class="btn btn-secondary" style="min-width:auto; padding:6px 10px;">×</button>
+      </div>
+      <div class="form-grid">
+        <label>
+          <span>Reference</span>
+          <input id="qRef" readonly />
+        </label>
+        <label>
+          <span>Customer</span>
+          <input id="qCustomer" readonly />
+        </label>
+        <label>
+          <span>Address</span>
+          <input id="qAddress" readonly />
+        </label>
+        <label>
+          <span>Tier</span>
+          <input id="qTier" readonly />
+        </label>
+        <label>
+          <span>Price</span>
+          <input id="qPrice" readonly />
+        </label>
+        <label>
+          <span>Status</span>
+          <input id="qStatus" readonly />
+        </label>
+      </div>
+      <hr style="margin:16px 0; border:none; border-top:1px solid #e5e7eb;" />
+      <h4 style="margin:0 0 8px 0;">Convert to Booking</h4>
+      <div class="form-grid">
+        <label>
+          <span>First Clean Date</span>
+          <input id="qFirstDate" type="date" />
+        </label>
+        <label>
+          <span>Assign Cleaner</span>
+          <select id="qCleaner"></select>
+        </label>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button type="button" id="markPendingBtn" class="btn btn-secondary">Mark Pending</button>
+        <button type="button" id="markCancelledBtn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="saveBookingBtn" class="btn btn-primary">Save Booking</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './firebase-init.js';
+    import {
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import {
+      doc,
+      getDoc,
+      collection,
+      getDocs,
+      query,
+      orderBy,
+      updateDoc
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    let subscriberId = null;
+
+    const authOverlay = document.getElementById('authOverlay');
+    const quotesContent = document.getElementById('quotesContent');
+    const quotesTableBody = document.getElementById('quotesTableBody');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
+    const quoteModal = document.getElementById('quoteModal');
+    const quoteModalClose = document.getElementById('quoteModalClose');
+    const saveBookingBtn = document.getElementById('saveBookingBtn');
+    const markPendingBtn = document.getElementById('markPendingBtn');
+    const markCancelledBtn = document.getElementById('markCancelledBtn');
+    let currentQuoteId = null;
+    let cleanersCache = [];
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './subscriber-login.html';
+        return;
+      }
+
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewingUid = urlParams.get('uid');
+
+        const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!currentUserDoc.exists()) throw new Error('User not found');
+
+        const currentUserData = currentUserDoc.data();
+
+        if (viewingUid && currentUserData.role === 'admin') {
+          subscriberId = viewingUid;
+        } else {
+          subscriberId = user.uid;
+          if (currentUserData.role !== 'subscriber') {
+            throw new Error('Access denied');
+          }
+          if (!currentUserData.billingCompleted) {
+            window.location.href = './subscriber-billing.html';
+            return;
+          }
+        }
+
+        authOverlay.style.display = 'none';
+        quotesContent.style.display = 'block';
+
+        await loadQuotes();
+
+      } catch (error) {
+        console.error('Auth error:', error);
+        alert(error.message);
+        await signOut(auth);
+        window.location.href = './subscriber-login.html';
+      }
+    });
+
+    async function loadQuotes() {
+      try {
+        const quotesRef = collection(db, `subscribers/${subscriberId}/quotes`);
+        const q = query(quotesRef, orderBy('createdAt', 'desc'));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          quotesTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#64748b;">No quotes yet. Create your first quote!</td></tr>';
+          return;
+        }
+
+        quotesTableBody.innerHTML = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return `
+            <tr>
+              <td><strong>${escapeHtml(data.refCode || 'N/A')}</strong></td>
+              <td>${escapeHtml(data.customerName || 'N/A')}</td>
+              <td>${escapeHtml(data.address || 'N/A')}</td>
+              <td><span class="badge badge-info">${escapeHtml(data.tier || 'N/A')}</span></td>
+              <td><strong>£${(data.price || 0).toFixed(2)}</strong></td>
+              <td><span class="badge ${getStatusClass(data.status)}">${escapeHtml(data.status || 'Pending')}</span></td>
+              <td>${formatDate(data.createdAt)}</td>
+              <td>
+                <button class="btn btn-sm btn-secondary" onclick="viewQuote('${doc.id}')">View</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error loading quotes:', error);
+        quotesTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#dc2626;">Failed to load quotes</td></tr>';
+      }
+    }
+
+    function getStatusClass(status) {
+      if (!status) return 'badge-secondary';
+      const s = status.toLowerCase();
+      if (s.includes('booked')) return 'badge-success';
+      if (s.includes('pending')) return 'badge-warning';
+      if (s.includes('cancelled')) return 'badge-danger';
+      return 'badge-secondary';
+    }
+
+    function formatDate(timestamp) {
+      if (!timestamp) return 'N/A';
+      try {
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString('en-GB');
+      } catch (e) {
+        return 'N/A';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function openQuoteModal(data) {
+      document.getElementById('qRef').value = data.refCode || '';
+      document.getElementById('qCustomer').value = data.customerName || '';
+      document.getElementById('qAddress').value = data.address || '';
+      document.getElementById('qTier').value = data.tier || '';
+      document.getElementById('qPrice').value = data.price != null ? `£${Number(data.price||0).toFixed(2)}` : '';
+      document.getElementById('qStatus').value = data.status || '';
+      quoteModal.style.display = 'flex';
+    }
+
+    function closeQuoteModal() {
+      quoteModal.style.display = 'none';
+      currentQuoteId = null;
+      document.getElementById('qFirstDate').value = '';
+      document.getElementById('qCleaner').innerHTML = '';
+    }
+
+    async function loadCleaners() {
+      if (cleanersCache.length) return cleanersCache;
+      try {
+        const snap = await getDocs(collection(db, `subscribers/${subscriberId}/cleaners`));
+        cleanersCache = snap.docs.map(d => ({ id: d.id, ...(d.data()||{}) })).filter(c => (c.status||'active') === 'active');
+      } catch (_) { cleanersCache = []; }
+      return cleanersCache;
+    }
+
+    async function populateCleanerSelect() {
+      const sel = document.getElementById('qCleaner');
+      sel.innerHTML = '';
+      const cleaners = await loadCleaners();
+      const opt0 = document.createElement('option');
+      opt0.value = '';
+      opt0.textContent = cleaners.length ? 'Choose cleaner…' : 'No active cleaners';
+      sel.appendChild(opt0);
+      cleaners.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id;
+        o.textContent = c.name || `Cleaner ${c.id.slice(0,5)}`;
+        sel.appendChild(o);
+      });
+    }
+
+    function ddmmyyyy(date) {
+      const d = new Date(date);
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yy = d.getFullYear();
+      return `${dd}/${mm}/${yy}`;
+    }
+
+    function computeNextDates(firstIso) {
+      const first = new Date(firstIso);
+      const second = new Date(first); second.setDate(first.getDate()+28);
+      const third = new Date(first); third.setDate(first.getDate()+56);
+      return { first, second, third };
+    }
+
+    window.viewQuote = async (quoteId) => {
+      try {
+        const snap = await getDoc(doc(db, `subscribers/${subscriberId}/quotes`, quoteId));
+        if (!snap.exists()) { alert('Quote not found'); return; }
+        currentQuoteId = quoteId;
+        await populateCleanerSelect();
+        openQuoteModal(snap.data());
+      } catch (e) {
+        console.error('Load quote failed', e);
+        alert('Failed to load quote');
+      }
+    };
+
+    quoteModalClose.addEventListener('click', closeQuoteModal);
+
+    saveBookingBtn.addEventListener('click', async () => {
+      if (!currentQuoteId) return;
+      const dateVal = document.getElementById('qFirstDate').value;
+      const cleanerId = document.getElementById('qCleaner').value || null;
+      if (!dateVal) { alert('Select a first clean date'); return; }
+      try {
+        const first = new Date(dateVal + 'T00:00:00');
+        const { second, third } = computeNextDates(first.toISOString());
+        let cleanerName = null;
+        if (cleanerId) {
+          const c = (cleanersCache||[]).find(x => x.id === cleanerId);
+          cleanerName = c ? (c.name || null) : null;
+        }
+        await updateDoc(doc(db, `subscribers/${subscriberId}/quotes`, currentQuoteId), {
+          status: 'Booked - ' + ddmmyyyy(first),
+          bookedDate: first.toISOString(),
+          nextCleanDates: [second.toISOString(), third.toISOString()],
+          assignedCleaner: cleanerName || null,
+          assignedCleanerId: cleanerId || null
+        });
+        closeQuoteModal();
+        await loadQuotes();
+        alert('Booking saved');
+      } catch (e) {
+        console.error('Save booking failed', e);
+        alert('Failed to save booking');
+      }
+    });
+
+    markPendingBtn.addEventListener('click', async () => {
+      if (!currentQuoteId) return;
+      try {
+        await updateDoc(doc(db, `subscribers/${subscriberId}/quotes`, currentQuoteId), { status: 'Paid - Scheduling Soon' });
+        closeQuoteModal();
+        await loadQuotes();
+        alert('Marked as pending');
+      } catch (e) {
+        console.error('Mark pending failed', e);
+        alert('Failed to update status');
+      }
+    });
+
+    markCancelledBtn.addEventListener('click', async () => {
+      if (!currentQuoteId) return;
+      if (!confirm('Cancel this quote?')) return;
+      try {
+        await updateDoc(doc(db, `subscribers/${subscriberId}/quotes`, currentQuoteId), { status: 'Cancelled' });
+        closeQuoteModal();
+        await loadQuotes();
+        alert('Quote cancelled');
+      } catch (e) {
+        console.error('Cancel failed', e);
+        alert('Failed to cancel');
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = './subscriber-login.html';
+    });
+
+    menuBtn.addEventListener('click', () => {
+      menuDropdown.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.menu-box')) {
+        menuDropdown.classList.remove('show');
+      }
+    });
+  </script>
+
+</body>
+</html>

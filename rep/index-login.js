@@ -1,7 +1,8 @@
 // Login page handler
-import { auth } from '../firebase-init.js';
+import { auth, db } from '../firebase-init.js';
 import { authStateReady, handlePageRouting } from '../auth-check.js';
 import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const els = {
   form: document.getElementById("loginForm"),
@@ -38,11 +39,29 @@ async function initLoginPage() {
     els.errorMessage.classList.remove("show");
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const user = result.user;
+
+      // Check if user is disabled
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnapshot = await getDoc(userDocRef);
+        if (userDocSnapshot.exists() && userDocSnapshot.data().disabled) {
+          await auth.signOut();
+          showError('Your account has been disabled. Please contact administrator.');
+          els.submitBtn.disabled = false;
+          els.loadingMessage.classList.remove("show");
+          return;
+        }
+      } catch (disabledCheckErr) {
+        console.warn('Could not check disabled status:', disabledCheckErr);
+        // Continue with login if check fails
+      }
+
       // Give auth state and user doc time to load before routing
       await delay(800);
-      const result = await handlePageRouting("login");
-      if (!result.redirected) {
+      const routing = await handlePageRouting("login");
+      if (!routing.redirected) {
         // Retry once more in case user doc was still loading
         await delay(700);
         const retry = await handlePageRouting("login");

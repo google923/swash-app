@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Schedule - Swash Subscriber</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .admin-only, .rep-only, .admin-rep { display: none !important; }
+    .subscriber-only { display: block !important; }
+    
+    .schedule-grid {
+      display: grid;
+      grid-template-columns: 120px repeat(5, 1fr);
+      gap: 2px;
+      background: #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .schedule-header {
+      background: #0078d7;
+      color: white;
+      padding: 16px 12px;
+      font-weight: 600;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    
+    .week-label {
+      background: #f1f5f9;
+      padding: 12px;
+      font-weight: 600;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+    }
+    
+    .day-cell {
+      background: white;
+      padding: 8px;
+      min-height: 120px;
+      position: relative;
+    }
+    
+    .day-date {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    
+    .schedule-job {
+      background: #f0f9ff;
+      border-left: 3px solid #0078d7;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.8rem;
+    }
+    
+    .schedule-job:hover {
+      background: #e0f2fe;
+      transform: translateX(2px);
+      box-shadow: 0 2px 8px rgba(0,120,215,0.2);
+    }
+    
+    .job-name {
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 2px;
+    }
+    
+    .job-meta {
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+    
+    .cleaner-badge {
+      display: inline-block;
+      background: #dcfce7;
+      color: #166534;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    
+    .day-total {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #cbd5e1;
+      font-size: 0.75rem;
+      color: #64748b;
+      font-weight: 600;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .modal.show {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .modal-header h3 {
+      margin: 0;
+      font-size: 1.3rem;
+      color: #1e293b;
+    }
+    
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .info-label {
+      color: #64748b;
+      font-weight: 600;
+    }
+    
+    .info-value {
+      color: #1e293b;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <h1 style="margin: 0 0 0 12px; font-size: 1.2rem;">📅 Schedule</h1>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
+          <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
+          <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
+          <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
+          <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we verify your account.</p>
+    </div>
+  </section>
+
+  <main id="scheduleContent" class="page" style="display:none;">
+    <section class="card">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h2>4-Week Schedule</h2>
+          <p class="text-muted">Manage your booking schedule and assign cleaners</p>
+        </div>
+      </header>
+
+      <div class="controls scheduler-controls" style="padding:16px;border-bottom:1px solid #e5e7eb;">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <label for="startWeek" style="font-size:0.9rem;color:#64748b;">Start week:</label>
+            <input id="startWeek" type="date" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;" />
+          </div>
+          
+          <button id="generate" class="btn btn-primary" type="button">Generate</button>
+          <button id="viewToday" class="btn btn-secondary" type="button">📅 Today</button>
+          
+          <div style="display:flex;gap:8px;align-items:center;margin-left:auto;">
+            <label for="cleanerFilter" style="font-size:0.9rem;color:#64748b;">Filter:</label>
+            <select id="cleanerFilter" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;">
+              <option value="">All Cleaners</option>
+            </select>
+          </div>
+          
+          <input type="search" id="scheduleSearch" placeholder="Search customers..." style="padding:8px 16px;border:1px solid #cbd5e1;border-radius:6px;min-width:200px;" />
+        </div>
+      </div>
+
+      <div id="scheduleContainer" style="padding:20px;overflow-x:auto;">
+        <div id="schedule" style="min-width:800px;">
+          <p style="text-align:center;color:#64748b;padding:40px;">Click "Generate" to view your schedule</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="jobDetailsModal" class="modal">
+    <div class="modal-content" style="max-width:600px;">
+      <div class="modal-header">
+        <h3 id="jobModalTitle">Job Details</h3>
+        <button class="modal-close" id="closeJobModal" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">&times;</button>
+      </div>
+      <div id="jobModalBody" style="max-height:400px;overflow-y:auto;">
+      </div>
+      <div style="margin-top:20px;display:flex;gap:12px;justify-content:flex-end;">
+        <button id="cancelJobModal" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './firebase-init.js';
+    import {
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import {
+      doc,
+      getDoc,
+      collection,
+      getDocs,
+      updateDoc,
+      query,
+      where
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    let subscriberId = null;
+    let allCustomers = [];
+    let allCleaners = [];
+    let state = {
+      quotes: [],
+      startDate: null,
+      searchTerm: "",
+      cleanerFilter: "",
+      weeksVisible: 4
+    };
+
+    const authOverlay = document.getElementById('authOverlay');
+    const scheduleContent = document.getElementById('scheduleContent');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
+    const startWeekInput = document.getElementById('startWeek');
+    const generateBtn = document.getElementById('generate');
+    const viewTodayBtn = document.getElementById('viewToday');
+    const cleanerFilterSelect = document.getElementById('cleanerFilter');
+    const searchInput = document.getElementById('scheduleSearch');
+    const scheduleDiv = document.getElementById('schedule');
+    const jobModal = document.getElementById('jobDetailsModal');
+    const closeJobModalBtn = document.getElementById('closeJobModal');
+    const cancelJobModalBtn = document.getElementById('cancelJobModal');
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './subscriber-login.html';
+        return;
+      }
+
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewingUid = urlParams.get('uid');
+
+        const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!currentUserDoc.exists()) throw new Error('User not found');
+
+        const currentUserData = currentUserDoc.data();
+
+        if (viewingUid && currentUserData.role === 'admin') {
+          subscriberId = viewingUid;
+        } else {
+          subscriberId = user.uid;
+          if (currentUserData.role !== 'subscriber') {
+            throw new Error('Access denied');
+          }
+          if (!currentUserData.billingCompleted) {
+            window.location.href = './subscriber-billing.html';
+            return;
+          }
+        }
+
+        authOverlay.style.display = 'none';
+        scheduleContent.style.display = 'block';
+
+        await initializeScheduler();
+
+      } catch (error) {
+        console.error('Auth error:', error);
+        alert(error.message);
+        await signOut(auth);
+        window.location.href = './subscriber-login.html';
+      }
+    });
+
+    async function initializeScheduler() {
+      await loadCleaners();
+      await loadCustomers();
+      populateCleanerFilter();
+      
+      // Set default start date to current Monday
+      const today = new Date();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
+      startWeekInput.valueAsDate = monday;
+      state.startDate = monday;
+    }
+
+    async function loadCleaners() {
+      try {
+        const cleanersRef = collection(db, `subscribers/${subscriberId}/cleaners`);
+        const snapshot = await getDocs(cleanersRef);
+        allCleaners = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(c => c.status === 'active');
+      } catch (error) {
+        console.error('Error loading cleaners:', error);
+        allCleaners = [];
+      }
+    }
+
+    async function loadCustomers() {
+      try {
+        const customersRef = collection(db, `subscribers/${subscriberId}/customers`);
+        const bookedQuery = query(customersRef, where('status', '==', 'booked'));
+        const snapshot = await getDocs(bookedQuery);
+        
+        state.quotes = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            customerName: data.name,
+            address: data.address,
+            mobile: data.mobile,
+            email: data.email,
+            tier: data.tier,
+            price: data.price,
+            pricePerClean: data.pricePerClean,
+            bookedDate: data.bookedDate,
+            nextCleanDates: data.nextCleanDates || [],
+            assignedCleaner: data.assignedCleaner,
+            status: data.status
+          };
+        });
+      } catch (error) {
+        console.error('Error loading customers:', error);
+        state.quotes = [];
+      }
+    }
+
+    function populateCleanerFilter() {
+      cleanerFilterSelect.innerHTML = '<option value="">All Cleaners</option>';
+      cleanerFilterSelect.innerHTML += '<option value="UNASSIGNED">Unassigned</option>';
+      
+      allCleaners.forEach(cleaner => {
+        const option = document.createElement('option');
+        option.value = cleaner.id;
+        option.textContent = cleaner.name;
+        cleanerFilterSelect.appendChild(option);
+      });
+    }
+
+    function normalizeStartDate(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(d.setDate(diff));
+    }
+
+    function formatDate(date) {
+      if (!date) return '';
+      const d = typeof date === 'string' ? new Date(date) : date;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    function getOccurrences(bookedDate, nextCleanDates, startDate, endDate) {
+      const occurrences = [];
+      const start = startDate.getTime();
+      const end = endDate.getTime();
+
+      if (bookedDate) {
+        const firstClean = new Date(bookedDate);
+        if (firstClean.getTime() >= start && firstClean.getTime() <= end) {
+          occurrences.push(firstClean);
+        }
+      }
+
+      if (nextCleanDates && nextCleanDates.length > 0) {
+        nextCleanDates.forEach(dateStr => {
+          const cleanDate = new Date(dateStr);
+          if (cleanDate.getTime() >= start && cleanDate.getTime() <= end) {
+            occurrences.push(cleanDate);
+          }
+        });
+      }
+
+      // Generate recurring 28-day intervals if needed
+      if (bookedDate) {
+        let currentDate = new Date(bookedDate);
+        while (currentDate.getTime() <= end) {
+          if (currentDate.getTime() >= start && currentDate.getTime() <= end) {
+            if (!occurrences.some(d => d.toDateString() === currentDate.toDateString())) {
+              occurrences.push(new Date(currentDate));
+            }
+          }
+          currentDate.setDate(currentDate.getDate() + 28);
+        }
+      }
+
+      return occurrences.sort((a, b) => a - b);
+    }
+
+    function generateSchedule() {
+      if (!state.startDate) return;
+
+      const startDate = normalizeStartDate(state.startDate);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + (state.weeksVisible * 7) - 1);
+
+      // Filter quotes
+      let filtered = state.quotes;
+      
+      if (state.searchTerm) {
+        const term = state.searchTerm.toLowerCase();
+        filtered = filtered.filter(q =>
+          (q.customerName || '').toLowerCase().includes(term) ||
+          (q.address || '').toLowerCase().includes(term)
+        );
+      }
+
+      if (state.cleanerFilter) {
+        if (state.cleanerFilter === 'UNASSIGNED') {
+          filtered = filtered.filter(q => !q.assignedCleaner);
+        } else {
+          filtered = filtered.filter(q => q.assignedCleaner === state.cleanerFilter);
+        }
+      }
+
+      // Build schedule grid
+      const grid = document.createElement('div');
+      grid.className = 'schedule-grid';
+
+      // Headers
+      grid.innerHTML = '<div class="schedule-header">Week</div>';
+      ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
+        grid.innerHTML += `<div class="schedule-header">${day}</div>`;
+      });
+
+      // Build week by week
+      for (let week = 0; week < state.weeksVisible; week++) {
+        const weekStart = new Date(startDate);
+        weekStart.setDate(weekStart.getDate() + (week * 7));
+
+        // Week label
+        const weekLabel = document.createElement('div');
+        weekLabel.className = 'week-label';
+        weekLabel.textContent = `Week ${week + 1}`;
+        grid.appendChild(weekLabel);
+
+        // Days of week
+        for (let day = 0; day < 5; day++) {
+          const currentDate = new Date(weekStart);
+          currentDate.setDate(currentDate.getDate() + day);
+
+          const dayCell = document.createElement('div');
+          dayCell.className = 'day-cell';
+          dayCell.dataset.date = currentDate.toISOString().split('T')[0];
+
+          const dateLabel = document.createElement('div');
+          dateLabel.className = 'day-date';
+          dateLabel.textContent = formatDate(currentDate);
+          dayCell.appendChild(dateLabel);
+
+          // Find jobs for this day
+          const jobsThisDay = [];
+          filtered.forEach(quote => {
+            const occurrences = getOccurrences(
+              quote.bookedDate,
+              quote.nextCleanDates,
+              currentDate,
+              currentDate
+            );
+            if (occurrences.length > 0) {
+              jobsThisDay.push(quote);
+            }
+          });
+
+          // Render jobs
+          let totalPrice = 0;
+          jobsThisDay.forEach(quote => {
+            const jobDiv = document.createElement('div');
+            jobDiv.className = 'schedule-job';
+            jobDiv.dataset.quoteId = quote.id;
+            jobDiv.onclick = () => showJobDetails(quote);
+
+            const jobName = document.createElement('div');
+            jobName.className = 'job-name';
+            jobName.textContent = quote.customerName || 'Unknown';
+            jobDiv.appendChild(jobName);
+
+            const jobMeta = document.createElement('div');
+            jobMeta.className = 'job-meta';
+            jobMeta.textContent = `£${quote.pricePerClean || quote.price || 0}`;
+            jobDiv.appendChild(jobMeta);
+
+            if (quote.assignedCleaner) {
+              const cleanerName = allCleaners.find(c => c.id === quote.assignedCleaner)?.name || 'Unknown';
+              const badge = document.createElement('div');
+              badge.className = 'cleaner-badge';
+              badge.textContent = cleanerName;
+              jobDiv.appendChild(badge);
+            }
+
+            dayCell.appendChild(jobDiv);
+            totalPrice += parseFloat(quote.pricePerClean || quote.price || 0);
+          });
+
+          // Day total
+          if (jobsThisDay.length > 0) {
+            const totalDiv = document.createElement('div');
+            totalDiv.className = 'day-total';
+            totalDiv.textContent = `${jobsThisDay.length} jobs • £${totalPrice.toFixed(2)}`;
+            dayCell.appendChild(totalDiv);
+          }
+
+          grid.appendChild(dayCell);
+        }
+      }
+
+      scheduleDiv.innerHTML = '';
+      scheduleDiv.appendChild(grid);
+    }
+
+    function showJobDetails(quote) {
+      const modalBody = document.getElementById('jobModalBody');
+      
+      modalBody.innerHTML = `
+        <div class="info-row">
+          <span class="info-label">Customer:</span>
+          <span class="info-value">${escapeHtml(quote.customerName || 'N/A')}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Address:</span>
+          <span class="info-value">${escapeHtml(quote.address || 'N/A')}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Mobile:</span>
+          <span class="info-value">${escapeHtml(quote.mobile || 'N/A')}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Email:</span>
+          <span class="info-value">${escapeHtml(quote.email || 'N/A')}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Tier:</span>
+          <span class="info-value">${escapeHtml(quote.tier || 'N/A')}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Price per clean:</span>
+          <span class="info-value">£${quote.pricePerClean || quote.price || 0}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">First clean:</span>
+          <span class="info-value">${formatDate(quote.bookedDate)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Assigned cleaner:</span>
+          <span class="info-value">${getCleanerName(quote.assignedCleaner)}</span>
+        </div>
+      `;
+
+      jobModal.classList.add('show');
+    }
+
+    function getCleanerName(cleanerId) {
+      if (!cleanerId) return 'Unassigned';
+      const cleaner = allCleaners.find(c => c.id === cleanerId);
+      return cleaner ? cleaner.name : 'Unknown';
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Event listeners
+    generateBtn.addEventListener('click', () => {
+      state.startDate = startWeekInput.valueAsDate;
+      generateSchedule();
+    });
+
+    viewTodayBtn.addEventListener('click', () => {
+      const today = new Date();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
+      startWeekInput.valueAsDate = monday;
+      state.startDate = monday;
+      generateSchedule();
+    });
+
+    cleanerFilterSelect.addEventListener('change', (e) => {
+      state.cleanerFilter = e.target.value;
+      generateSchedule();
+    });
+
+    searchInput.addEventListener('input', (e) => {
+      state.searchTerm = e.target.value;
+      generateSchedule();
+    });
+
+    closeJobModalBtn.addEventListener('click', () => {
+      jobModal.classList.remove('show');
+    });
+
+    cancelJobModalBtn.addEventListener('click', () => {
+      jobModal.classList.remove('show');
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = './subscriber-login.html';
+    });
+
+    menuBtn.addEventListener('click', () => {
+      menuDropdown.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.menu-box')) {
+        menuDropdown.classList.remove('show');
+      }
+      if (e.target === jobModal) {
+        jobModal.classList.remove('show');
+      }
+    });
+  </script>
+
+</body>
+</html>

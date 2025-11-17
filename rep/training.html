@@ -34,7 +34,7 @@
                     <a href="./policy.html">📘 Policy Handbook</a>
                     <a href="./holiday.html">📅 Book Holiday</a>
                     <a href="./sickness.html">🤒 Report Sickness</a>
-                    <a href="./commission.html">💷 Commission & Mileage</a>
+                    <a href="./commission.html">💷 Commission</a>
                     <a href="./map.html">🗺️ Territory Map</a>
                     <a href="./feedback.html">💡 Feedback / Ideas</a>
                     <a href="./performance.html">🎯 Performance Dashboard</a>
@@ -49,29 +49,256 @@
             <h1>📚 Rep Training & Support</h1>
             <p class="section-subtitle">Master the Swash approach. Help great people get great cleaning.</p>
 
+            <!-- Change Log (summary of updates) -->
+            <details class="training-changelog" style="margin:12px 0 20px;">
+                <summary style="cursor:pointer;font-weight:600;">📝 Changelog — Conversational Sales System integration (Nov 2025)</summary>
+                <ul style="margin-top:12px; line-height:1.7;">
+                    <li>Added <a href="#interest-gauge">Gauging Customer Interest (1–10)</a> module under The Approach.</li>
+                    <li>Added <a href="#rapport-5-10">Turning a 5 into a 10 — Advanced Rapport</a> directly after Interest Gauge.</li>
+                    <li>Added <a href="#sell-the-sizzle">Sell the Sizzle — Creating Emotion in Every Conversation</a> after Advanced Rapport.</li>
+                    <li>Inserted cross‑references in The Approach and Objections to link to these modules.</li>
+                    <li>Kept styling, headings, and emojis consistent; included example dialogues and checklists.</li>
+                </ul>
+            </details>
+
+            <!-- Course Outline / Module Navigation -->
+            <div id="course-outline" style="border:2px solid #e2e8f0;padding:16px;border-radius:8px;background:#f8fafc;">
+                <h2 style="margin-top:0;">🎓 Swash Rep Course: Mastery Path</h2>
+                <p style="margin:8px 0 14px;">Work through each module in order. Answer the questions to unlock the next. Target: <strong>100% comprehension</strong>. You can retake modules anytime to raise your score.</p>
+                <ol style="margin-left:20px;line-height:1.9;">
+                    <li><a href="#module-orientation" class="course-link">Orientation & Field Workflow</a></li>
+                    <li><a href="#module-mindset" class="course-link">Mindset & Preparation</a></li>
+                    <li><a href="#interest-gauge" class="course-link">Gauging Customer Interest (1–10)</a></li>
+                    <li><a href="#rapport-5-10" class="course-link">Turning a 5 into a 10 — Advanced Rapport</a></li>
+                    <li><a href="#sell-the-sizzle" class="course-link">Sell the Sizzle — Emotion & Imagery</a></li>
+                    <li><a href="#approach" class="course-link">Initial Approach & Golden Lines</a></li>
+                    <li><a href="#objections" class="course-link">Handling Objections</a></li>
+                    <li><a href="#psychology" class="course-link">Sales Psychology Triggers</a></li>
+                    <li><a href="#resilience" class="course-link">Resilience & Consistency</a></li>
+                    <li><a href="#resources" class="course-link">Tools & Resources</a></li>
+                    <li><a href="#final-assessment" class="course-link">Final Assessment & Certification</a></li>
+                </ol>
+                <div id="overall-score-box" style="margin-top:12px;padding:12px;border:1px solid #cbd5e1;border-radius:6px;background:#ffffff;">
+                    <strong>📈 Overall Course Score:</strong> <span id="overall-score">0%</span>
+                    <div style="height:8px;background:#e2e8f0;border-radius:4px;margin-top:8px;overflow:hidden;">
+                        <div id="overall-score-bar" style="height:8px;width:0%;background:#0078d7;transition:width .4s;"></div>
+                    </div>
+                    <p style="font-size:12px;color:#555;margin-top:8px;">Aim for 100%. Retake any module below 90%.</p>
+                </div>
+            </div>
+
+            <!-- Course Mode Container: Start / Runner / Results -->
+            <div id="course-mode" style="margin-bottom:20px;">
+                <!-- Home View -->
+                <div id="course-home" style="border:2px solid #e2e8f0;padding:16px;border-radius:8px;background:#ffffff;">
+                    <h2 style="margin-top:0;">🎓 Start Course — Conversational Sales Mastery</h2>
+                    <p style="margin:8px 0 12px;">Go module by module. Read first, then answer the questions. You can’t go back during a quiz. Aim for 100%.</p>
+                    <div id="last-results" style="margin-top:10px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:12px; display:none;"></div>
+                    <button id="start-course-btn" class="btn btn-primary" style="margin-top:12px;">▶️ Start Course</button>
+                </div>
+
+                <!-- Runner View -->
+                <div id="course-runner" style="display:none; margin-top:16px; border:2px solid #e2e8f0; border-radius:8px; background:#ffffff;">
+                    <div style="padding:12px 16px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong id="runner-title">Module</strong>
+                            <div style="height:8px;background:#e2e8f0;border-radius:4px;margin-top:8px;overflow:hidden;">
+                                <div id="runner-progress" style="height:8px;width:0%;background:#0078d7;transition:width .3s;"></div>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span id="runner-step-label" style="font-size:12px;color:#555;">Reading</span>
+                        </div>
+                    </div>
+                    <div id="runner-content" style="padding:16px;"></div>
+                </div>
+
+                <!-- Results View -->
+                <div id="course-results" style="display:none; margin-top:16px; border:2px solid #e2e8f0; border-radius:8px; background:#ffffff; padding:16px;">
+                    <h2 style="margin-top:0;">📊 Course Results</h2>
+                    <p><strong>Overall:</strong> <span id="results-overall">0%</span></p>
+                    <div id="results-by-module" style="margin-top:8px;"></div>
+                    <div id="results-actions" style="margin-top:12px;">
+                        <button id="results-back-home" class="btn btn-secondary">Back to Start</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Quick Navigation -->
             <div class="training-nav">
-                <button class="training-nav-btn active" data-section="quick-start">⚡ Quick Start</button>
+                <button class="training-nav-btn active" data-section="field-workflow">🚶 Field Workflow</button>
+                <button class="training-nav-btn" data-section="quick-start">⚡ Quick Start</button>
                 <button class="training-nav-btn" data-section="mindset">🧠 Mindset & Prep</button>
                 <button class="training-nav-btn" data-section="approach">👋 The Approach</button>
                 <button class="training-nav-btn" data-section="objections">💬 Handling Objections</button>
                 <button class="training-nav-btn" data-section="psychology">🧩 Sales Psychology</button>
                 <button class="training-nav-btn" data-section="resilience">💪 Resilience Tips</button>
                 <button class="training-nav-btn" data-section="resources">🛠️ Tools & Resources</button>
-                <button class="training-nav-btn" data-section="field-workflow">🚶 Field Workflow</button>
                 <button class="training-nav-btn" data-section="faq">❓ FAQ</button>
             </div>
 
             <div class="training-content">
 
+                <!-- FIELD WORKFLOW (Step-by-step) - MOVED TO TOP -->
+                <section id="field-workflow" class="training-section active">
+                    <h2>🚶 Step-by-step: From Territory to Log</h2>
+                    <a id="module-orientation"></a>
+
+                    <div class="training-card">
+                        <h3>1) Pick where to go (Territory Map)</h3>
+                        <p>Open the <a href="./map.html" style="color:#0078d7;font-weight:600">Territory Map</a>. You can see:</p>
+                        <ul class="checklist">
+                            <li>🗺️ All territories and their colours</li>
+                            <li>👥 Which reps are assigned to each territory</li>
+                            <li>📅 Focus period badges (dates to prioritise that area)</li>
+                        </ul>
+                        <p class="text-muted" style="margin-top:8px">Tip: Zoom to your assigned areas first. Work one road fully before moving on.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>2) Travel to your chosen road</h3>
+                        <ul class="checklist">
+                            <li>🚗 Park so you can cover the street end-to-end</li>
+                            <li>📶 Make sure your phone has battery/signal (offline still works)</li>
+                            <li>📍 Turn on location if you want mileage and live stats accurate</li>
+                        </ul>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>3) Open the Rep Log & Start Your Day</h3>
+                        <p>Go to <a href="./rep-log.html" style="color:#0078d7;font-weight:600">Rep Log</a> and press <strong>Start Day</strong>. This will:</p>
+                        <ul class="checklist">
+                            <li>🕒 Start timing your shift (tracked for pay calculation)</li>
+                            <li>📍 Track your current position (for mileage and map pins)</li>
+                            <li>📊 Prepare live stats for the day (doors/hour, conversion rate)</li>
+                        </ul>
+                        <div class="highlight-box" style="margin-top: 16px;">
+                            <h4 style="margin-top: 0;">📊 How the Rep Log Tracks Your Pay</h4>
+                            <p><strong>Activity Tracking:</strong> The system tracks your shift activity (start/finish, doors/hour, optional GPS for context). As a commission-only contractor there is no hourly pay.</p>
+                            <p style="margin-top: 12px;"><strong>Activity Miles:</strong> If location is enabled, miles are recorded for your own stats and planning only. Expenses are not reimbursed under the contractor policy. See your <a href="./commission.html" style="color:#0078d7;">Commission</a> page for earnings.</p>
+                            <p style="margin-top: 12px;"><strong>Commission:</strong> Per verified customer: £15 after 1st clean, £8 after 2nd, £8 after 3rd. Paid monthly in arrears on completed and paid cleans that match your rep ID. See <a href="./commission.html" style="color:#0078d7;">Commission</a>.</p>
+                        </div>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>4) Log every door (address modal)</h3>
+                        <p>For each door you knock, tap one of the three buttons:</p>
+                        <ul class="checklist">
+                            <li>🔴 <strong>X</strong> — Not interested</li>
+                            <li>🟠 <strong>O</strong> — Out / No answer</li>
+                            <li>🟢 <strong>Sign Up</strong> — Customer joined</li>
+                        </ul>
+                        <p>When you tap a status, a small form pops up asking for <strong>House No.</strong>, <strong>Road Name</strong>, and <strong>Notes</strong>. For Sign Ups, you'll also see a quick <strong>plan/price</strong> box.</p>
+                        <p class="text-muted" style="margin-top:8px">Why? Address notes help you and other reps avoid duplicates and build the round faster.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>5) Using the Quote Form at the Door</h3>
+                        <p>When a customer is interested, open the <a href="./quote.html" style="color:#0078d7;font-weight:600">Quote Form</a> and fill it out <strong>as you chat</strong>. This keeps the conversation natural and shows professionalism.</p>
+                        
+                        <div class="highlight-box" style="margin-top: 16px;">
+                            <h4 style="margin-top: 0;">📝 Best Practice: Fill Out While Talking</h4>
+                            <p><strong>1. Get basics first:</strong> "Let me just grab your name and address..." (tap into form)</p>
+                            <p style="margin-top: 8px;"><strong>2. Ask to see the back:</strong> "Can I quickly see your back windows to make sure I get the quote right?"</p>
+                            <p style="margin-top: 8px;"><strong>3. Check access & add notes:</strong> Note down any gates, locked side access, or special requests (e.g., "Knock first," "Dog in garden," "Key under mat").</p>
+                            <p style="margin-top: 8px;"><strong>4. Explain service tiers clearly:</strong></p>
+                            <ul style="margin-top: 8px; margin-left: 20px;">
+                                <li><strong>Silver:</strong> Window panes only, no live tracking, no reminder messages. Budget option.</li>
+                                <li><strong>Gold:</strong> All windows, frames, sills, and doors. Includes live tracking and SMS/email reminders before each clean. Most popular.</li>
+                            </ul>
+                            <p style="margin-top: 12px;"><strong>5. Handle access concerns:</strong> If a customer says they need to be home, reassure them: <em>"Swash can provide cleaning to all accessible windows. We'll add a note to knock first, but if no one's home, your cleaner will clean only the windows they can safely access. You grant permission per clean, so you're always in control."</em></p>
+                        </div>
+
+                        <div class="highlight-box" style="margin-top: 16px; background: #fff3cd;">
+                            <h4 style="margin-top: 0;">💳 Payment Process Explained</h4>
+                            <p><strong>Customers can optionally pay for 3 cleans in advance.</strong> When a customer signs up, they receive an email with:</p>
+                            <ul style="margin-top: 8px; margin-left: 20px;">
+                                <li>Their unique payment reference code</li>
+                                <li>Bank transfer details (SWASH CLEANING LTD, Sort: 23-01-20, Acc: 65069359)</li>
+                                <li>Payment options (pay per clean or pay for 3 cleans upfront)</li>
+                            </ul>
+                            <p style="margin-top: 12px;"><strong>Payment Options:</strong></p>
+                            <ul style="margin-top: 8px; margin-left: 20px;">
+                                <li><strong>Bank Transfer (BACS):</strong> Customer pays every 3 months manually using the reference code in their email.</li>
+                                <li><strong>GoCardless Direct Debit:</strong> Customer sets up a recurring Direct Debit. Every 3 months, the payment is collected automatically before their last clean of the period. No manual payments needed.</li>
+                            </ul>
+                            <p style="margin-top: 12px;"><strong>What is GoCardless?</strong> GoCardless is a secure Direct Debit platform that Swash uses to collect recurring payments. Customers give permission once, and payments are taken automatically every 3 months. It's hassle-free for the customer and ensures Swash gets paid on time. Customers can cancel anytime via their GoCardless dashboard or by contacting Swash.</p>
+                        </div>
+
+                        <div class="highlight-box" style="margin-top: 16px; background: #e7f3ff;">
+                            <h4 style="margin-top: 0;">📅 When Will Their First Clean Happen?</h4>
+                            <p>Once a customer signs up (with or without upfront payment), Swash will book them in for their first clean <strong>when we next have a cleaner in their area on the round</strong>.</p>
+                            <p style="margin-top: 8px;">This can be anywhere from <strong>1 week to 4 weeks</strong> depending on where we are in the round cycle. If we've just completed their area, they'll wait closer to 4 weeks. If we're about to start their area, it could be as soon as next week.</p>
+                            <p style="margin-top: 8px;"><strong>Tip to tell customers:</strong> <em>"Once you've signed up, we'll book you in for your first clean when our cleaner is next in your area — usually within 1–4 weeks. You'll get a reminder message a day before."</em></p>
+                        </div>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>6) Watch your stats live</h3>
+                        <ul class="checklist">
+                            <li>📊 <strong>Total / X / O / Sales</strong> update instantly</li>
+                            <li>⏱️ <strong>Doors per hour</strong> shows your pace (last 60 mins)</li>
+                            <li>🛣️ <strong>Miles</strong> auto‑track as you move between doors</li>
+                        </ul>
+                        <p>Your map pins show each door you logged (colour-coded). Tap any pin to re‑read your notes.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>7) Finish and submit</h3>
+                        <p>When you're done, press <strong>Submit Log</strong>. The app summarises:</p>
+                        <ul class="checklist">
+                            <li>🕒 <strong>Shift activity</strong> (time on shift, doors logged)</li>
+                            <li>🛣️ <strong>Activity miles</strong> (for context; not reimbursed)</li>
+                            <li>✅ A shift summary popup with your figures</li>
+                        </ul>
+                        <p>These totals sync to your account and feed the <a href="./commission.html" style="color:#0078d7;font-weight:600">Commission</a> page.</p>
+                    </div>
+
+                    <div class="training-card">
+                        <h3>8) Where your numbers go</h3>
+                        <ul class="checklist">
+                            <li>🧮 <strong>Commission</strong> — £15/£8/£8 per verified customer (1st/2nd/3rd cleans)</li>
+                            <li>⛽ <strong>Activity miles</strong> — recorded for context only (no reimbursement)</li>
+                            <li>📈 <strong>Performance Dashboard</strong> — trends, weekly targets, and conversion rates</li>
+                        </ul>
+                        <p class="text-muted">You can revisit your month and individual days anytime from your Rep Home or Commission pages.</p>
+                    </div>
+                    <!-- Module Quiz: Orientation -->
+                    <div class="training-card module-quiz" data-module="orientation" style="border:2px dashed #cbd5e1;">
+                        <h3>📝 Quick Check — Orientation & Workflow</h3>
+                        <form class="quiz-form">
+                            <div class="quiz-q" data-question="orientation-q1">
+                                <p><strong>1.</strong> Why do we log every door?</p>
+                                <label><input type="radio" name="orientation-q1" value="a"> To remember which houses looked nice</label><br>
+                                <label><input type="radio" name="orientation-q1" value="b"> To build round data & avoid duplicates</label><br>
+                                <label><input type="radio" name="orientation-q1" value="c"> For marketing emails</label>
+                            </div>
+                            <div class="quiz-q" data-question="orientation-q2" style="margin-top:12px;">
+                                <p><strong>2.</strong> What does Start Day begin tracking immediately?</p>
+                                <label><input type="radio" name="orientation-q2" value="a"> Only mileage</label><br>
+                                <label><input type="radio" name="orientation-q2" value="b"> Shift activity and optional GPS</label><br>
+                                <label><input type="radio" name="orientation-q2" value="c"> Commission rate</label>
+                            </div>
+                            <div class="quiz-q" data-question="orientation-q3" style="margin-top:12px;">
+                                <p><strong>3.</strong> When should you submit your log?</p>
+                                <label><input type="radio" name="orientation-q3" value="a"> After every 5 doors</label><br>
+                                <label><input type="radio" name="orientation-q3" value="b"> When shift ends</label><br>
+                                <label><input type="radio" name="orientation-q3" value="c"> Before lunch</label>
+                            </div>
+                            <button type="button" class="btn btn-primary quiz-submit" style="margin-top:14px;" data-module-submit="orientation">Submit Module</button>
+                            <p class="quiz-result" style="margin-top:8px;font-weight:600;"></p>
+                        </form>
+                    </div>
+                </section>
+
                 <!-- QUICK START -->
-                <section id="quick-start" class="training-section active">
+                <section id="quick-start" class="training-section">
                     <h2>⚡ Quick Start: Your First Hour</h2>
                     
                     <div class="training-card">
                         <h3>Before You Leave</h3>
                         <ul class="checklist">
-                            <li>✅ Clean uniform, lanyard visible</li>
+                            <li>✅ Clean uniform</li>
                             <li>✅ Phone fully charged</li>
                             <li>✅ Territory map reviewed</li>
                             <li>✅ Swash app open and ready</li>
@@ -113,6 +340,7 @@
                 <!-- MINDSET & PREP -->
                 <section id="mindset" class="training-section">
                     <h2>🧠 Pre-Door Mindset & Preparation</h2>
+                    <a id="module-mindset"></a>
                     
                     <div class="training-card">
                         <h3>Mental Reset (Do This Every Shift)</h3>
@@ -149,6 +377,7 @@
                                 </div>
                             </div>
                         </div>
+                        <p class="text-muted" style="margin-top:12px;">Tip: Keep your tone warm and confident. For emotional phrasing ideas, see <a href="#sell-the-sizzle" style="color:#0078d7;font-weight:600;">Sell the Sizzle</a>.</p>
                     </div>
 
                     <div class="training-card">
@@ -159,6 +388,32 @@
                             <li>✅ Note which streets or objections come up most</li>
                             <li>✅ This intel helps future reps and improves your round</li>
                         </ul>
+                    </div>
+                    <!-- Module Quiz: Mindset -->
+                    <div class="training-card module-quiz" data-module="mindset" style="border:2px dashed #cbd5e1;">
+                        <h3>📝 Quick Check — Mindset & Preparation</h3>
+                        <form class="quiz-form">
+                            <div class="quiz-q" data-question="mindset-q1">
+                                <p><strong>1.</strong> What’s the purpose mindset before shifting?</p>
+                                <label><input type="radio" name="mindset-q1" value="a"> "I must persuade everyone"</label><br>
+                                <label><input type="radio" name="mindset-q1" value="b"> "I'm here to help"</label><br>
+                                <label><input type="radio" name="mindset-q1" value="c"> "Hope someone answers"</label>
+                            </div>
+                            <div class="quiz-q" data-question="mindset-q2" style="margin-top:12px;">
+                                <p><strong>2.</strong> Why step back 1–2 steps after knocking?</p>
+                                <label><input type="radio" name="mindset-q2" value="a"> To look shorter</label><br>
+                                <label><input type="radio" name="mindset-q2" value="b"> To give space & feel non‑threatening</label><br>
+                                <label><input type="radio" name="mindset-q2" value="c"> To avoid camera</label>
+                            </div>
+                            <div class="quiz-q" data-question="mindset-q3" style="margin-top:12px;">
+                                <p><strong>3.</strong> Rejection should be reframed as?</p>
+                                <label><input type="radio" name="mindset-q3" value="a"> Proof it’s not working</label><br>
+                                <label><input type="radio" name="mindset-q3" value="b"> A step closer to a yes</label><br>
+                                <label><input type="radio" name="mindset-q3" value="c"> Waste of time</label>
+                            </div>
+                            <button type="button" class="btn btn-primary quiz-submit" style="margin-top:14px;" data-module-submit="mindset">Submit Module</button>
+                            <p class="quiz-result" style="margin-top:8px;font-weight:600;"></p>
+                        </form>
                     </div>
                 </section>
 
@@ -171,7 +426,7 @@
                         <div class="highlight-box">
                             <p style="font-size: 16px;"><strong>"Hi, we're cleaning windows at your neighbours locally — would you like us to clean your windows too?"</strong></p>
                         </div>
-                        <p style="margin-top: 12px; color: #666;">Why it works: Simple, honest, friendly. Tells them who you are, what you do, and invites a "yes."</p>
+                        <p style="margin-top: 12px; color: #666;">Why it works: Simple, honest, friendly. Tells them who you are, what you do, and invites a "yes." <span style="display:block;margin-top:8px;">Reading the room matters — see <a href="#interest-gauge" style="color:#0078d7;font-weight:600;">Gauging Customer Interest</a> to match your energy fast.</span></p>
                     </div>
 
                     <div class="training-card">
@@ -210,6 +465,267 @@
                                 <p style="margin-top: 8px;">Don't assume they have everyone locked in — half are waiting for someone better.</p>
                             </div>
                         </div>
+                        <p class="text-muted" style="margin-top:12px;">If they stall, build trust first: see <a href="#rapport-5-10" style="color:#0078d7;font-weight:600;">Turning a 5 into a 10</a>. When you answer, use emotional wording from <a href="#sell-the-sizzle" style="color:#0078d7;font-weight:600;">Sell the Sizzle</a>.</p>
+                    </div>
+
+                    <!-- Module Quiz: Approach -->
+                    <div class="training-card module-quiz" data-module="approach" style="border:2px dashed #cbd5e1;">
+                        <h3>📝 Quick Check — Initial Approach</h3>
+                        <form class="quiz-form">
+                            <div class="quiz-q" data-question="approach-q1">
+                                <p><strong>1.</strong> Best default opener?</p>
+                                <label><input type="radio" name="approach-q1" value="a"> "Do you need a window cleaner?"</label><br>
+                                <label><input type="radio" name="approach-q1" value="b"> "Hi, we're cleaning windows at your neighbours locally — would you like us to clean your windows too?"</label><br>
+                                <label><input type="radio" name="approach-q1" value="c"> "How much do you pay now?"</label>
+                            </div>
+                            <div class="quiz-q" data-question="approach-q2" style="margin-top:12px;">
+                                <p><strong>2.</strong> Social proof improvement?</p>
+                                <label><input type="radio" name="approach-q2" value="a"> "We might have someone nearby"</label><br>
+                                <label><input type="radio" name="approach-q2" value="b"> "We clean for Sarah at No. 22 — would you like yours done too?"</label><br>
+                                <label><input type="radio" name="approach-q2" value="c"> "We can undercut anyone"</label>
+                            </div>
+                            <div class="quiz-q" data-question="approach-q3" style="margin-top:12px;">
+                                <p><strong>3.</strong> Golden line purpose?</p>
+                                <label><input type="radio" name="approach-q3" value="a"> To keep chatting forever</label><br>
+                                <label><input type="radio" name="approach-q3" value="b"> Assume the yes and move to setup</label><br>
+                                <label><input type="radio" name="approach-q3" value="c"> To ask for discount</label>
+                            </div>
+                            <button type="button" class="btn btn-primary quiz-submit" data-module-submit="approach" style="margin-top:14px;">Submit Module</button>
+                            <p class="quiz-result" style="margin-top:8px;font-weight:600;"></p>
+                        </form>
+                    </div>
+
+                    <!-- New Module: Interest Gauge (1-10 System) -->
+                    <div class="training-card" id="interest-gauge">
+                        <h3>🧭 Gauging Customer Interest (1–10 System)</h3>
+                        <p style="font-style: italic; color:#555;">This section draws on proven conversational selling principles inspired by Benjamin Denehy’s frame-control techniques and Elmer Wheeler’s ‘Sell the Sizzle’ emotional-connection methods.</p>
+                        <p>Read the person before you talk too much. Scan quickly and adapt your pace.</p>
+
+                        <div class="highlight-box" style="margin-top: 12px;">
+                            <h4 style="margin-top:0;">🔍 The 3-Point Scan (Rule: Eyes – Feet – Tone)</h4>
+                            <ul class="checklist">
+                                <li><strong>Eyes:</strong> Locked on you = engaged. Glancing away = distracted.</li>
+                                <li><strong>Feet:</strong> Towards you = open. Pointed away = wants out.</li>
+                                <li><strong>Tone:</strong> Warm/curious = green light. Flat/short = proceed lightly.</li>
+                            </ul>
+                            <p class="text-muted" style="margin-top:8px;">Rule of 3: Scan three cues, make one decision, move forward.</p>
+                        </div>
+
+                        <div style="overflow-x:auto; margin-top: 14px;">
+                            <table style="width:100%; border-collapse: collapse;">
+                                <tr style="background:#f5f5f5;">
+                                    <th style="padding:10px; border:1px solid #ddd; text-align:left;">Level</th>
+                                    <th style="padding:10px; border:1px solid #ddd; text-align:left;">Cues (Body • Tone • Energy)</th>
+                                    <th style="padding:10px; border:1px solid #ddd; text-align:left;">Your Action</th>
+                                </tr>
+                                <tr>
+                                    <td style="padding:10px; border:1px solid #ddd;">1–2 (Closed)</td>
+                                    <td style="padding:10px; border:1px solid #ddd;">Arms crossed • One-word replies • Door half‑closed</td>
+                                    <td style="padding:10px; border:1px solid #ddd;">Respect, smile, exit. Don’t chase.</td>
+                                </tr>
+                                <tr style="background:#f9f9f9;">
+                                    <td style="padding:10px; border:1px solid #ddd;">3–4 (Low)</td>
+                                    <td style="padding:10px; border:1px solid #ddd;">Low eye contact • Feet angled away • Neutral/flat</td>
+                                    <td style="padding:10px; border:1px solid #ddd;">Short value line, leave card. Move on confidently.</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:10px; border:1px solid #ddd;">5–6 (Neutral)</td>
+                                    <td style="padding:10px; border:1px solid #ddd;">Listening • Open stance • Light curiosity</td>
+                                    <td style="padding:10px; border:1px solid #ddd;">Warm them up. Use <a href="#rapport-5-10" style="color:#0078d7;font-weight:600;">5→10 Rapport</a> + one micro‑close.</td>
+                                </tr>
+                                <tr style="background:#f9f9f9;">
+                                    <td style="padding:10px; border:1px solid #ddd;">7–8 (Interested)</td>
+                                    <td style="padding:10px; border:1px solid #ddd;">Nods • Questions • Door opens wider</td>
+                                    <td style="padding:10px; border:1px solid #ddd;">Open the quote form. Use binary choices. Keep momentum.</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:10px; border:1px solid #ddd;">9–10 (Buying)</td>
+                                    <td style="padding:10px; border:1px solid #ddd;">Leans in • Smiles • Future‑talk</td>
+                                    <td style="padding:10px; border:1px solid #ddd;">Soft, silent close. Confirm details. Stop overselling.</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <ul class="checklist" style="margin-top:12px;">
+                            <li>👀 Read fast. Adapt instantly. Never chase.</li>
+                            <li>🎚️ Match their energy — one notch above, never below.</li>
+                            <li>🧭 If they’re a 5–6, apply the 5→10 method next.</li>
+                        </ul>
+
+                        <blockquote style="margin-top:12px; color:#334155;">
+                            <strong>Example:</strong> "No worries — we’re just finishing up nearby. Quick one: would you prefer reminders by text or email?" (If they answer, they’re moving up the scale.)
+                        </blockquote>
+                        <!-- Module Quiz: Interest Gauge -->
+                        <div class="module-quiz" data-module="interest" style="border:2px dashed #cbd5e1;margin-top:16px;padding:12px;border-radius:6px;">
+                            <h4 style="margin-top:0;">📝 Quick Check — Interest Gauge</h4>
+                            <form class="quiz-form">
+                                <div class="quiz-q" data-question="interest-q1">
+                                    <p><strong>1.</strong> Feet pointed away usually signal?</p>
+                                    <label><input type="radio" name="interest-q1" value="a"> Buying intent</label><br>
+                                    <label><input type="radio" name="interest-q1" value="b"> Wants out / low engagement</label><br>
+                                    <label><input type="radio" name="interest-q1" value="c"> Cold temperature</label>
+                                </div>
+                                <div class="quiz-q" data-question="interest-q2" style="margin-top:12px;">
+                                    <p><strong>2.</strong> A 5–6 level response needs?</p>
+                                    <label><input type="radio" name="interest-q2" value="a"> Hard close immediately</label><br>
+                                    <label><input type="radio" name="interest-q2" value="b"> Warm up with 5→10 rapport</label><br>
+                                    <label><input type="radio" name="interest-q2" value="c"> Leave instantly</label>
+                                </div>
+                                <div class="quiz-q" data-question="interest-q3" style="margin-top:12px;">
+                                    <p><strong>3.</strong> Rule of 3 means?</p>
+                                    <label><input type="radio" name="interest-q3" value="a"> Ask 3 prices</label><br>
+                                    <label><input type="radio" name="interest-q3" value="b"> Scan eyes, feet, tone then act</label><br>
+                                    <label><input type="radio" name="interest-q3" value="c"> Knock 3 times loudly</label>
+                                </div>
+                                <button type="button" class="btn btn-primary quiz-submit" data-module-submit="interest" style="margin-top:14px;">Submit Module</button>
+                                <p class="quiz-result" style="margin-top:8px;font-weight:600;"></p>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- New Module: Turning a 5 into a 10 -->
+                    <div class="training-card" id="rapport-5-10">
+                        <h3>🤝 Turning a 5 into a 10 — Advanced Rapport Techniques</h3>
+                        <p style="font-style: italic; color:#555;">This section draws on proven conversational selling principles inspired by Benjamin Denehy’s frame-control techniques and Elmer Wheeler’s ‘Sell the Sizzle’ emotional-connection methods.</p>
+                        <p>Neutral prospects can become committed sign‑ups with calm authority and curiosity.</p>
+
+                        <ul class="checklist">
+                            <li><strong>Match energy:</strong> Meet their pace; lift it slightly.</li>
+                            <li><strong>One deeper question:</strong> "What makes you say that?" (Opens the real issue.)</li>
+                            <li><strong>Reflect their words:</strong> "So it’s the reminders you like — got it."</li>
+                            <li><strong>Paint life with Swash:</strong> Simple, reliable, no chasing cleaners.</li>
+                            <li><strong>Micro‑closes:</strong> "Would you want reminders too?"</li>
+                            <li><strong>Quote form = authority:</strong> Filling it shows process, not pressure.</li>
+                            <li><strong>Binary choices:</strong> "Text or email?" not yes/no.</li>
+                            <li><strong>Anchor value to lifestyle:</strong> Pride, time back, no hassle — not pennies.</li>
+                            <li><strong>Soft, silent close:</strong> Ask, then pause. Let them choose.</li>
+                            <li><strong>Exit confidently:</strong> If it’s not a fit, smile and move on.</li>
+                        </ul>
+
+                        <div class="highlight-box" style="margin-top: 12px;">
+                            <h4 style="margin-top:0;">🧰 Mini Script (Use as needed)</h4>
+                            <p><em>"Fair enough — what makes you say that?"</em> … "Right, so reminders matter. Most people choose text — <strong>would you want reminders too?</strong>"</p>
+                            <p style="margin-top:8px;">Open the form while talking: <em>"Let me pop your name in — text or email best for you?"</em> Then continue with binary choices.</p>
+                        </div>
+
+                        <blockquote style="margin-top:12px; color:#334155;">
+                            <strong>Example:</strong> "Totally get it. Quick one — do you prefer a heads‑up by text or email?" (They answer) "Perfect. I’ll set that now — we clean every 4 weeks, all frames and sills included. Sound good?"
+                        </blockquote>
+                        <!-- Module Quiz: 5→10 Rapport -->
+                        <div class="module-quiz" data-module="rapport" style="border:2px dashed #cbd5e1;margin-top:16px;padding:12px;border-radius:6px;">
+                            <h4 style="margin-top:0;">📝 Quick Check — 5→10 Rapport</h4>
+                            <form class="quiz-form">
+                                <div class="quiz-q" data-question="rapport-q1">
+                                    <p><strong>1.</strong> Best single deeper curiosity question?</p>
+                                    <label><input type="radio" name="rapport-q1" value="a"> "Why are you like that?"</label><br>
+                                    <label><input type="radio" name="rapport-q1" value="b"> "What makes you say that?"</label><br>
+                                    <label><input type="radio" name="rapport-q1" value="c"> "Would you pay now?"</label>
+                                </div>
+                                <div class="quiz-q" data-question="rapport-q2" style="margin-top:12px;">
+                                    <p><strong>2.</strong> Using the quote form mid‑chat signals?</p>
+                                    <label><input type="radio" name="rapport-q2" value="a"> Pressure</label><br>
+                                    <label><input type="radio" name="rapport-q2" value="b"> Authority & process</label><br>
+                                    <label><input type="radio" name="rapport-q2" value="c"> Indecision</label>
+                                </div>
+                                <div class="quiz-q" data-question="rapport-q3" style="margin-top:12px;">
+                                    <p><strong>3.</strong> Binary choice example?</p>
+                                    <label><input type="radio" name="rapport-q3" value="a"> "Do you want reminders?"</label><br>
+                                    <label><input type="radio" name="rapport-q3" value="b"> "Text or email reminders?"</label><br>
+                                    <label><input type="radio" name="rapport-q3" value="c"> "Reminders? Yes?"</label>
+                                </div>
+                                <button type="button" class="btn btn-primary quiz-submit" data-module-submit="rapport" style="margin-top:14px;">Submit Module</button>
+                                <p class="quiz-result" style="margin-top:8px;font-weight:600;"></p>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- New Module: Sell the Sizzle -->
+                    <div class="training-card" id="sell-the-sizzle">
+                        <h3>✨ Sell the Sizzle — Creating Emotion in Every Conversation</h3>
+                        <p>Emotion beats logic. Make them feel the results before they decide.</p>
+
+                        <div class="training-subcard">
+                            <h4>Wheeler’s 5 Rules (Swash Summary)</h4>
+                            <ol style="margin-left:18px; line-height:1.7;">
+                                <li><strong>Sell the sizzle, not the steak:</strong> Talk pride, relief, comfort — not litres of water.</li>
+                                <li><strong>Don’t ask if — ask which:</strong> "Text or email?" not "Do you want reminders?"</li>
+                                <li><strong>Watch your words:</strong> Choose emotive, everyday language.</li>
+                                <li><strong>Say it with flowers:</strong> Use simple, vivid phrases.</li>
+                                <li><strong>Don’t ask if they want it — make them want it:</strong> Paint the result they’ll enjoy.</li>
+                            </ol>
+                        </div>
+
+                        <div class="training-subcard" style="margin-top:12px;">
+                            <h4>Swap Dull for Sizzling</h4>
+                            <table style="width:100%; border-collapse: collapse;">
+                                <tr style="background:#f5f5f5;">
+                                    <th style="padding:10px; border:1px solid #ddd; text-align:left;">Dull</th>
+                                    <th style="padding:10px; border:1px solid #ddd; text-align:left;">Sizzle</th>
+                                </tr>
+                                <tr>
+                                    <td style="padding:10px; border:1px solid #ddd;">"Purified water system"
+                                    </td>
+                                    <td style="padding:10px; border:1px solid #ddd;">"No spots, just clear glass that makes the room feel brighter"</td>
+                                </tr>
+                                <tr style="background:#f9f9f9;">
+                                    <td style="padding:10px; border:1px solid #ddd;">"We clean frames and sills"
+                                    </td>
+                                    <td style="padding:10px; border:1px solid #ddd;">"Your whole front looks crisp and looked‑after"
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:10px; border:1px solid #ddd;">"We’re insured"
+                                    </td>
+                                    <td style="padding:10px; border:1px solid #ddd;">"You can relax — we handle everything properly"
+                                    </td>
+                                </tr>
+                                <tr style="background:#f9f9f9;">
+                                    <td style="padding:10px; border:1px solid #ddd;">"4‑weekly schedule"
+                                    </td>
+                                    <td style="padding:10px; border:1px solid #ddd;">"It stays looking good all month without you thinking about it"
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <div class="highlight-box" style="margin-top:12px; background:#fff3cd;">
+                            <h4 style="margin-top:0;">🧼 Swash Principle: Sell the Sizzle</h4>
+                            <ul class="checklist">
+                                <li><strong>Relief:</strong> No chasing cleaners or remembering payments.</li>
+                                <li><strong>Pride:</strong> Front of house looks cared for.</li>
+                                <li><strong>Comfort:</strong> Friendly reminders and predictable visits.</li>
+                            </ul>
+                        </div>
+
+                        <blockquote style="margin-top:12px; color:#334155;">
+                            <strong>Example:</strong> "We pop by every 4 weeks — you’ll get a quick text the day before. Next morning you look out and it’s just <em>clear</em>. Looks smart, no effort. Shall I set you up with text reminders or email?"
+                        </blockquote>
+                        <!-- Module Quiz: Sell the Sizzle -->
+                        <div class="module-quiz" data-module="sizzle" style="border:2px dashed #cbd5e1;margin-top:16px;padding:12px;border-radius:6px;">
+                            <h4 style="margin-top:0;">📝 Quick Check — Sell the Sizzle</h4>
+                            <form class="quiz-form">
+                                <div class="quiz-q" data-question="sizzle-q1">
+                                    <p><strong>1.</strong> "Sell the sizzle" mainly means?</p>
+                                    <label><input type="radio" name="sizzle-q1" value="a"> List technical specs</label><br>
+                                    <label><input type="radio" name="sizzle-q1" value="b"> Lead with emotional outcome</label><br>
+                                    <label><input type="radio" name="sizzle-q1" value="c"> Offer discounts first</label>
+                                </div>
+                                <div class="quiz-q" data-question="sizzle-q2" style="margin-top:12px;">
+                                    <p><strong>2.</strong> Which phrase is the “sizzle” version?</p>
+                                    <label><input type="radio" name="sizzle-q2" value="a"> "Purified water system"</label><br>
+                                    <label><input type="radio" name="sizzle-q2" value="b"> "No spots, just clear glass that makes the room brighter"</label><br>
+                                    <label><input type="radio" name="sizzle-q2" value="c"> "Frame chemicals included"</label>
+                                </div>
+                                <div class="quiz-q" data-question="sizzle-q3" style="margin-top:12px;">
+                                    <p><strong>3.</strong> A choice close example?</p>
+                                    <label><input type="radio" name="sizzle-q3" value="a"> "Do you want reminders?"</label><br>
+                                    <label><input type="radio" name="sizzle-q3" value="b"> "Text or email reminders?"</label><br>
+                                    <label><input type="radio" name="sizzle-q3" value="c"> "Reminders yes right?"</label>
+                                </div>
+                                <button type="button" class="btn btn-primary quiz-submit" data-module-submit="sizzle" style="margin-top:14px;">Submit Module</button>
+                                <p class="quiz-result" style="margin-top:8px;font-weight:600;"></p>
+                            </form>
+                        </div>
                     </div>
                 </section>
 
@@ -223,6 +739,7 @@
                             <p style="font-size: 16px;"><strong>"Could you explain what you mean a little more please?"</strong></p>
                         </div>
                         <p style="margin-top: 12px; color: #666;">Keeps it calm, respectful, and puts you in problem-solver mode. You only solve their real problem — not random guesses.</p>
+                        <p class="text-muted" style="margin-top:8px;">Before you price or push, build trust: remember the <a href="#rapport-5-10" style="color:#0078d7;font-weight:600;">5→10 Rapport Method</a>.</p>
                     </div>
 
                     <div class="training-card">
@@ -262,6 +779,32 @@
                                 <td>"No worries — lovely to meet you. If anything changes, keep our number." (Smile, move on.)</td>
                             </tr>
                         </table>
+                    </div>
+                    <!-- Module Quiz: Objections -->
+                    <div class="training-card module-quiz" data-module="objections" style="border:2px dashed #cbd5e1;">
+                        <h3>📝 Quick Check — Objections</h3>
+                        <form class="quiz-form">
+                            <div class="quiz-q" data-question="objections-q1">
+                                <p><strong>1.</strong> First response to vague objection?</p>
+                                <label><input type="radio" name="objections-q1" value="a"> Offer discount</label><br>
+                                <label><input type="radio" name="objections-q1" value="b"> "Could you explain what you mean a little more please?"</label><br>
+                                <label><input type="radio" name="objections-q1" value="c"> Walk away silently</label>
+                            </div>
+                            <div class="quiz-q" data-question="objections-q2" style="margin-top:12px;">
+                                <p><strong>2.</strong> Price concern flexible option?</p>
+                                <label><input type="radio" name="objections-q2" value="a"> Front one month, back next</label><br>
+                                <label><input type="radio" name="objections-q2" value="b"> Skip frames</label><br>
+                                <label><input type="radio" name="objections-q2" value="c"> Clean only doors</label>
+                            </div>
+                            <div class="quiz-q" data-question="objections-q3" style="margin-top:12px;">
+                                <p><strong>3.</strong> "I need to think about it" best follow?</p>
+                                <label><input type="radio" name="objections-q3" value="a"> Repeat price louder</label><br>
+                                <label><input type="radio" name="objections-q3" value="b"> "What would help you make a decision?"</label><br>
+                                <label><input type="radio" name="objections-q3" value="c"> Ask for payment now</label>
+                            </div>
+                            <button type="button" class="btn btn-primary quiz-submit" data-module-submit="objections" style="margin-top:14px;">Submit Module</button>
+                            <p class="quiz-result" style="margin-top:8px;font-weight:600;"></p>
+                        </form>
                     </div>
                 </section>
 
@@ -310,6 +853,32 @@
                             <li>If they hesitate, mention you're filling up fast. (Scarcity.)</li>
                             <li>If they want to know you're legit, lead with your experience. (Authority.)</li>
                         </ul>
+                    </div>
+                    <!-- Module Quiz: Psychology -->
+                    <div class="training-card module-quiz" data-module="psychology" style="border:2px dashed #cbd5e1;">
+                        <h3>📝 Quick Check — Psychology</h3>
+                        <form class="quiz-form">
+                            <div class="quiz-q" data-question="psychology-q1">
+                                <p><strong>1.</strong> Social proof line?</p>
+                                <label><input type="radio" name="psychology-q1" value="a"> "We use purified water"</label><br>
+                                <label><input type="radio" name="psychology-q1" value="b"> "We already clean for Sarah at No. 22"</label><br>
+                                <label><input type="radio" name="psychology-q1" value="c"> "We might be insured"</label>
+                            </div>
+                            <div class="quiz-q" data-question="psychology-q2" style="margin-top:12px;">
+                                <p><strong>2.</strong> Scarcity example?</p>
+                                <label><input type="radio" name="psychology-q2" value="a"> "We’re just filling up last few spaces"</label><br>
+                                <label><input type="radio" name="psychology-q2" value="b"> "We have infinite space"</label><br>
+                                <label><input type="radio" name="psychology-q2" value="c"> "We might add you some day"</label>
+                            </div>
+                            <div class="quiz-q" data-question="psychology-q3" style="margin-top:12px;">
+                                <p><strong>3.</strong> Authority trigger?</p>
+                                <label><input type="radio" name="psychology-q3" value="a"> "We guess a price"</label><br>
+                                <label><input type="radio" name="psychology-q3" value="b"> "We're fully insured with 15+ years’ experience"</label><br>
+                                <label><input type="radio" name="psychology-q3" value="c"> "We sometimes clean"</label>
+                            </div>
+                            <button type="button" class="btn btn-primary quiz-submit" data-module-submit="psychology" style="margin-top:14px;">Submit Module</button>
+                            <p class="quiz-result" style="margin-top:8px;font-weight:600;"></p>
+                        </form>
                     </div>
                 </section>
 
@@ -368,6 +937,32 @@
                             </div>
                         </div>
                         <p style="margin-top: 16px; background: #fff3cd; padding: 12px; border-radius: 6px; color: #555;"><strong>Pro tip:</strong> Log notes in the app or voice-record them. Improvement compounds daily.</p>
+                    </div>
+                    <!-- Module Quiz: Resilience -->
+                    <div class="training-card module-quiz" data-module="resilience" style="border:2px dashed #cbd5e1;">
+                        <h3>📝 Quick Check — Resilience</h3>
+                        <form class="quiz-form">
+                            <div class="quiz-q" data-question="resilience-q1">
+                                <p><strong>1.</strong> Post-no action?</p>
+                                <label><input type="radio" name="resilience-q1" value="a"> Frown & pause</label><br>
+                                <label><input type="radio" name="resilience-q1" value="b"> Smile reset</label><br>
+                                <label><input type="radio" name="resilience-q1" value="c"> Argue</label>
+                            </div>
+                            <div class="quiz-q" data-question="resilience-q2" style="margin-top:12px;">
+                                <p><strong>2.</strong> 3‑Second Rule means?</p>
+                                <label><input type="radio" name="resilience-q2" value="a"> Wait 3 mins</label><br>
+                                <label><input type="radio" name="resilience-q2" value="b"> Move to next door within 3 seconds</label><br>
+                                <label><input type="radio" name="resilience-q2" value="c"> Knock 3 times</label>
+                            </div>
+                            <div class="quiz-q" data-question="resilience-q3" style="margin-top:12px;">
+                                <p><strong>3.</strong> Celebrate activity because?</p>
+                                <label><input type="radio" name="resilience-q3" value="a"> Activity creates opportunities</label><br>
+                                <label><input type="radio" name="resilience-q3" value="b"> It reduces pay</label><br>
+                                <label><input type="radio" name="resilience-q3" value="c"> It ends the shift early</label>
+                            </div>
+                            <button type="button" class="btn btn-primary quiz-submit" data-module-submit="resilience" style="margin-top:14px;">Submit Module</button>
+                            <p class="quiz-result" style="margin-top:8px;font-weight:600;"></p>
+                        </form>
                     </div>
                 </section>
 
@@ -435,6 +1030,32 @@
                             <li>✅ Compare week-on-week — spot improvements</li>
                         </ul>
                     </div>
+                    <!-- Module Quiz: Resources -->
+                    <div class="training-card module-quiz" data-module="resources" style="border:2px dashed #cbd5e1;">
+                        <h3>📝 Quick Check — Tools & Resources</h3>
+                        <form class="quiz-form">
+                            <div class="quiz-q" data-question="resources-q1">
+                                <p><strong>1.</strong> Logging notes helps?</p>
+                                <label><input type="radio" name="resources-q1" value="a"> Future reps & avoid duplicates</label><br>
+                                <label><input type="radio" name="resources-q1" value="b"> Phone battery</label><br>
+                                <label><input type="radio" name="resources-q1" value="c"> Weather forecast</label>
+                            </div>
+                            <div class="quiz-q" data-question="resources-q2" style="margin-top:12px;">
+                                <p><strong>2.</strong> Performance Dashboard weekly check includes?</p>
+                                <label><input type="radio" name="resources-q2" value="a"> Favourite colour</label><br>
+                                <label><input type="radio" name="resources-q2" value="b"> Doors, sign‑ups, conversion rate</label><br>
+                                <label><input type="radio" name="resources-q2" value="c"> Lunch cost</label>
+                            </div>
+                            <div class="quiz-q" data-question="resources-q3" style="margin-top:12px;">
+                                <p><strong>3.</strong> Territory map helps you?</p>
+                                <label><input type="radio" name="resources-q3" value="a"> Pick systematic street coverage</label><br>
+                                <label><input type="radio" name="resources-q3" value="b"> Change pay rate</label><br>
+                                <label><input type="radio" name="resources-q3" value="c"> Charge mileage manually</label>
+                            </div>
+                            <button type="button" class="btn btn-primary quiz-submit" data-module-submit="resources" style="margin-top:14px;">Submit Module</button>
+                            <p class="quiz-result" style="margin-top:8px;font-weight:600;"></p>
+                        </form>
+                    </div>
                 </section>
 
                 <!-- FIELD WORKFLOW (Step-by-step) -->
@@ -495,21 +1116,20 @@
 
                     <div class="training-card">
                         <h3>6) Finish and submit</h3>
-                        <p>When you’re done, press <strong>Submit Log</strong>. The app calculates:</p>
+                        <p>When you’re done, press <strong>Submit Log</strong>. The app summarises:</p>
                         <ul class="checklist">
-                            <li>🕒 <strong>Paid minutes</strong> (active time)</li>
-                            <li>💷 <strong>Pay</strong> at the current hourly rate</li>
-                            <li>🛣️ <strong>Mileage</strong> and <strong>mileage expense</strong> (45p/mi)</li>
-                            <li>✅ A shift summary popup with all figures</li>
+                            <li>🕒 <strong>Shift activity</strong> (time on shift, doors logged)</li>
+                            <li>🛣️ <strong>Activity miles</strong> (for context; not reimbursed)</li>
+                            <li>✅ A shift summary popup with your figures</li>
                         </ul>
-                        <p>These totals sync to your account and feed the <a href="./commission.html" style="color:#0078d7;font-weight:600">Commission & Mileage</a> page.</p>
+                        <p>These totals sync to your account and feed the <a href="./commission.html" style="color:#0078d7;font-weight:600">Commission</a> page.</p>
                     </div>
 
                     <div class="training-card">
                         <h3>7) Where your numbers go</h3>
                         <ul class="checklist">
                             <li>🧮 <strong>Commission</strong> — from successful Sign Ups and converted quotes</li>
-                            <li>⛽ <strong>Mileage reimbursement</strong> — from your daily miles</li>
+                            <li>⛽ <strong>Activity miles</strong> — recorded for context only (no reimbursement)</li>
                             <li>📈 <strong>Performance Dashboard</strong> — trends and weekly targets</li>
                         </ul>
                         <p class="text-muted">You can revisit your month and individual days anytime from your Rep Home or Commission pages.</p>
@@ -520,49 +1140,51 @@
                 <section id="faq" class="training-section">
                     <h2>❓ Frequently Asked Questions</h2>
                     
-                    <div class="faq-item">
-                        <h4>Q: What if they don't open the door?</h4>
-                        <p>Log it as "Out." Come back another time. Or drop a leaflet if you have one. Don't take it personally — they might be sleeping, showering, or just busy.</p>
-                    </div>
+                    <div class="training-card" style="background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div class="faq-item">
+                            <h4 style="color: #0078d7;">Q: What if they don't open the door?</h4>
+                            <p style="color: #1e293b;">Log it as "Out." Come back another time. Or drop a leaflet if you have one. Don't take it personally — they might be sleeping, showering, or just busy.</p>
+                        </div>
 
-                    <div class="faq-item">
-                        <h4>Q: How do I handle a really grumpy person?</h4>
-                        <p>Stay calm and friendly. "Okay, I hear you — have a lovely day." Then move on. Your smile might be the nicest thing they see that day, but your job is to be professional, not change their mood.</p>
-                    </div>
+                        <div class="faq-item">
+                            <h4 style="color: #0078d7;">Q: How do I handle a really grumpy person?</h4>
+                            <p style="color: #1e293b;">Stay calm and friendly. "Okay, I hear you — have a lovely day." Then move on. Your smile might be the nicest thing they see that day, but your job is to be professional, not change their mood.</p>
+                        </div>
 
-                    <div class="faq-item">
-                        <h4>Q: Is it okay to do repeat visits to the same street?</h4>
-                        <p>Yes, but space them out. If someone said "no" today, they might say "yes" in 3 months. Log it and note when you'll try again. Different reps can have different success with the same doors.</p>
-                    </div>
+                        <div class="faq-item">
+                            <h4 style="color: #0078d7;">Q: Is it okay to do repeat visits to the same street?</h4>
+                            <p style="color: #1e293b;">Yes, but space them out. If someone said "no" today, they might say "yes" in 3 months. Log it and note when you'll try again. Different reps can have different success with the same doors.</p>
+                        </div>
 
-                    <div class="faq-item">
-                        <h4>Q: How long should each door visit take?</h4>
-                        <p>Aim for 2–3 minutes max per door. If someone's interested, the form takes 1–2 minutes. If they say no quickly, move on. Momentum matters.</p>
-                    </div>
+                        <div class="faq-item">
+                            <h4 style="color: #0078d7;">Q: How long should each door visit take?</h4>
+                            <p style="color: #1e293b;">Aim for 2–3 minutes max per door. If someone's interested, the form takes 1–2 minutes. If they say no quickly, move on. Momentum matters.</p>
+                        </div>
 
-                    <div class="faq-item">
-                        <h4>Q: What if I mess up the details on the form?</h4>
-                        <p>Chris will review it before the first clean. If something's wrong, he'll call the customer to confirm. Don't stress — mistakes happen, and they're fixable.</p>
-                    </div>
+                        <div class="faq-item">
+                            <h4 style="color: #0078d7;">Q: What if I mess up the details on the form?</h4>
+                            <p style="color: #1e293b;">Chris will review it before the first clean. If something's wrong, he'll call the customer to confirm. Don't stress — mistakes happen, and they're fixable.</p>
+                        </div>
 
-                    <div class="faq-item">
-                        <h4>Q: How do I build confidence for my first shift?</h4>
-                        <p>Remember: your first 3 doors are "warm-up doors." They don't have to be perfect. By door 4–5, you'll find your rhythm. The app, the approach, and your smile — that's all you need.</p>
-                    </div>
+                        <div class="faq-item">
+                            <h4 style="color: #0078d7;">Q: How do I build confidence for my first shift?</h4>
+                            <p style="color: #1e293b;">Remember: your first 3 doors are "warm-up doors." They don't have to be perfect. By door 4–5, you'll find your rhythm. The app, the approach, and your smile — that's all you need.</p>
+                        </div>
 
-                    <div class="faq-item">
-                        <h4>Q: What's the best time of day to knock doors?</h4>
-                        <p>Weekday afternoons (3–6 PM) and Saturday mornings (9 AM–12 PM) tend to have better answer rates. Avoid meal times (12–1 PM, 5–6 PM). But track what works in your territory.</p>
-                    </div>
+                        <div class="faq-item">
+                            <h4 style="color: #0078d7;">Q: What's the best time of day to knock doors?</h4>
+                            <p style="color: #1e293b;">Weekday afternoons (3–6 PM) and Saturday mornings (9 AM–12 PM) tend to have better answer rates. Avoid meal times (12–1 PM, 5–6 PM). But track what works in your territory.</p>
+                        </div>
 
-                    <div class="faq-item">
-                        <h4>Q: Can I text or call leads if they ask for more time?</h4>
-                        <p>If they give you their number and say "call me later," absolutely follow up after a few days. But respect their preference. If they say "no thanks," move on gracefully.</p>
-                    </div>
+                        <div class="faq-item">
+                            <h4 style="color: #0078d7;">Q: Can I text or call leads if they ask for more time?</h4>
+                            <p style="color: #1e293b;">If they give you their number and say "call me later," absolutely follow up after a few days. But respect their preference. If they say "no thanks," move on gracefully.</p>
+                        </div>
 
-                    <div class="faq-item">
-                        <h4>Q: How do I stay positive after lots of rejections?</h4>
-                        <p>Use the 3-second rule and smile resets. Log your activity (doors knocked = wins). Talk to other reps. Remember: most of your future customers said "no" to someone else first. You're building long-term relationships, not just collecting quick yeses.</p>
+                        <div class="faq-item">
+                            <h4 style="color: #0078d7;">Q: How do I stay positive after lots of rejections?</h4>
+                            <p style="color: #1e293b;">Use the 3-second rule and smile resets. Log your activity (doors knocked = wins). Talk to other reps. Remember: most of your future customers said "no" to someone else first. You're building long-term relationships, not just collecting quick yeses.</p>
+                        </div>
                     </div>
                 </section>
 
@@ -580,6 +1202,18 @@
                     <p style="margin-top: 20px; font-size: 16px; font-weight: 600;">We don't just clean windows — We build trust, pride, and repeat business.</p>
                     <p style="margin-top: 8px; font-size: 18px;">Keep it simple. Stay positive. <strong>Swash on.</strong> 💦</p>
                 </div>
+
+                <!-- Final Assessment & Certification -->
+                <section id="final-assessment" class="training-section" style="margin-top:40px;">
+                    <h2>🏁 Final Assessment & Certification</h2>
+                    <p>Complete all module quizzes with 100% to finish the course. Your highest score is stored locally — retake any module to improve.</p>
+                    <button type="button" id="recalculate-score" class="btn btn-primary" style="margin-top:12px;">Recalculate Overall Score</button>
+                    <p id="course-status" style="margin-top:12px;font-weight:600;color:#0078d7;">Progress pending…</p>
+                    <div id="certificate-box" style="display:none;margin-top:16px;padding:16px;border:2px solid #16a34a;background:#f0fdf4;border-radius:8px;">
+                        <h3 style="margin-top:0;">🎉 Swash Rep Conversational Sales Certificate</h3>
+                        <p>You achieved 100% comprehension across all modules. Keep revisiting to stay sharp.</p>
+                    </div>
+                </section>
 
             </div>
         </section>
@@ -618,6 +1252,303 @@
                 if (btn) btn.click();
             }
         });
+
+        // ==== Course Quiz Logic ==== //
+        const answerKey = {
+            orientation: { 'orientation-q1':'b','orientation-q2':'b','orientation-q3':'b' },
+            mindset: { 'mindset-q1':'b','mindset-q2':'b','mindset-q3':'b' },
+            approach: { 'approach-q1':'b','approach-q2':'b','approach-q3':'b' },
+            interest: { 'interest-q1':'b','interest-q2':'b','interest-q3':'b' },
+            rapport: { 'rapport-q1':'b','rapport-q2':'b','rapport-q3':'b' },
+            sizzle: { 'sizzle-q1':'b','sizzle-q2':'b','sizzle-q3':'b' },
+            objections: { 'objections-q1':'b','objections-q2':'a','objections-q3':'b' },
+            psychology: { 'psychology-q1':'b','psychology-q2':'a','psychology-q3':'b' },
+            resilience: { 'resilience-q1':'b','resilience-q2':'b','resilience-q3':'a' },
+            resources: { 'resources-q1':'a','resources-q2':'b','resources-q3':'a' }
+        };
+        const STORAGE_KEY = 'swashCourseProgress';
+        let progress = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+
+        function gradeModuleFrom(root, moduleId){
+            const key = answerKey[moduleId];
+            if(!key) return { score: 0, correct: 0, total: 0, wrong: [] };
+            let correct = 0; let total = Object.keys(key).length; let wrong = [];
+            Object.entries(key).forEach(([qId, ans])=>{
+                const checked = root.querySelector(`input[name="${qId}"]:checked`);
+                const val = checked ? checked.value : null;
+                if(val === ans) correct++; else wrong.push(qId);
+            });
+            const score = Math.round((correct/total)*100);
+            progress[moduleId] = { score, timestamp: Date.now() };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+            return { score, correct, total, wrong };
+        }
+
+        function gradeModule(moduleId){
+            const res = gradeModuleFrom(document, moduleId);
+            return res.score;
+        }
+
+        function calculateOverall(){
+            const modules = Object.keys(answerKey);
+            if(modules.some(m=>!progress[m])) return 0;
+            const sum = modules.reduce((acc,m)=> acc + (progress[m].score||0),0);
+            return Math.round(sum / modules.length);
+        }
+
+        function updateOverallUI(){
+            const overall = calculateOverall();
+            document.getElementById('overall-score').textContent = overall + '%';
+            document.getElementById('overall-score-bar').style.width = overall + '%';
+            const statusEl = document.getElementById('course-status');
+            if(!statusEl) return;
+            if(overall === 100){
+                statusEl.textContent = '✅ All modules at 100%. Course complete!';
+                document.getElementById('certificate-box').style.display='block';
+            } else if(overall === 0){
+                statusEl.textContent = 'Progress pending — complete each module quiz.';
+            } else {
+                statusEl.textContent = `Overall comprehension: ${overall}%. Retake any module below 90%.`;
+            }
+        }
+
+        // Attach submit handlers (inline quizzes)
+        document.querySelectorAll('.quiz-submit').forEach(btn=>{
+            btn.addEventListener('click', ()=>{
+                const moduleId = btn.getAttribute('data-module-submit');
+                const container = btn.closest('.module-quiz') || document;
+                const { score } = gradeModuleFrom(container, moduleId);
+                const resultEl = btn.parentElement.querySelector('.quiz-result');
+                if(resultEl){
+                    if(score === 100){ resultEl.textContent = `✅ ${score}% — Perfect!`; resultEl.style.color = '#16a34a'; }
+                    else { resultEl.textContent = `📊 ${score}% — Review and retake for mastery.`; resultEl.style.color = '#dc2626'; }
+                }
+                updateOverallUI();
+            });
+        });
+
+        document.getElementById('recalculate-score').addEventListener('click', updateOverallUI);
+        updateOverallUI();
+
+        // ==== Course Mode (sequential flow) ==== //
+        const LAST_ATTEMPT_KEY = 'swashCourseLastAttempt';
+        const courseModules = [
+            { id:'orientation', title:'Orientation & Field Workflow', learn: ()=>document.querySelectorAll('section#field-workflow.training-section')[0] },
+            { id:'mindset', title:'Mindset & Preparation', learn: ()=>document.querySelector('section#mindset.training-section') },
+            { id:'interest', title:'Gauging Customer Interest (1–10)', learn: ()=>document.querySelector('#interest-gauge') },
+            { id:'rapport', title:'Turning a 5 into a 10 — Rapport', learn: ()=>document.querySelector('#rapport-5-10') },
+            { id:'sizzle', title:'Sell the Sizzle — Emotion & Imagery', learn: ()=>document.querySelector('#sell-the-sizzle') },
+            { id:'approach', title:'Initial Approach & Golden Lines', learn: ()=>document.querySelector('section#approach.training-section') },
+            { id:'objections', title:'Handling Objections', learn: ()=>document.querySelector('section#objections.training-section') },
+            { id:'psychology', title:'Sales Psychology', learn: ()=>document.querySelector('section#psychology.training-section') },
+            { id:'resilience', title:'Resilience & Consistency', learn: ()=>document.querySelector('section#resilience.training-section') },
+            { id:'resources', title:'Tools & Resources', learn: ()=>document.querySelector('section#resources.training-section') }
+        ];
+
+        const brushUp = {
+            'orientation-q1':'Field Workflow → Log every door (why it matters).',
+            'orientation-q2':'Field Workflow → Start Day tracks shift activity and optional GPS.',
+            'orientation-q3':'Field Workflow → Submit at end of shift.',
+            'mindset-q1':'Mindset → Purpose: I’m here to help.',
+            'mindset-q2':'Mindset → Door Setup: Step back 1–2 steps.',
+            'mindset-q3':'Mindset → Reframe rejection: closer to a yes.',
+            'approach-q1':'Approach → Standard opening line.',
+            'approach-q2':'Approach → Social proof example.',
+            'approach-q3':'Approach → Golden line purpose.',
+            'interest-q1':'Interest Gauge → Feet pointed away = wants out.',
+            'interest-q2':'Interest Gauge → Warm 5–6 using 5→10 rapport.',
+            'interest-q3':'Interest Gauge → Rule of 3: eyes, feet, tone.',
+            'rapport-q1':'5→10 Rapport → Deeper question.',
+            'rapport-q2':'5→10 Rapport → Quote form shows authority.',
+            'rapport-q3':'5→10 Rapport → Binary choice close.',
+            'sizzle-q1':'Sell the Sizzle → Emotion over specs.',
+            'sizzle-q2':'Sell the Sizzle → Sizzling phrase swap.',
+            'sizzle-q3':'Sell the Sizzle → Choice close.',
+            'objections-q1':'Objections → Clarify: "Could you explain…?"',
+            'objections-q2':'Objections → Flexible front/back option.',
+            'objections-q3':'Objections → Help decision question.',
+            'psychology-q1':'Psychology → Social proof line.',
+            'psychology-q2':'Psychology → Scarcity example.',
+            'psychology-q3':'Psychology → Authority example.',
+            'resilience-q1':'Resilience → Smile reset.',
+            'resilience-q2':'Resilience → 3-second rule.',
+            'resilience-q3':'Resilience → Celebrate activity.',
+            'resources-q1':'Resources → In-app notes help future reps.',
+            'resources-q2':'Resources → Dashboard metrics.',
+            'resources-q3':'Resources → Territory map use.'
+        };
+
+        const courseMode = {
+            index: 0,
+            stage: 'read', // 'read' | 'quiz'
+            perModule: {},
+        };
+
+        const elCourseMode = document.getElementById('course-mode');
+        const elCourseHome = document.getElementById('course-home');
+        const elRunner = document.getElementById('course-runner');
+        const elRunnerTitle = document.getElementById('runner-title');
+        const elRunnerLabel = document.getElementById('runner-step-label');
+        const elRunnerProgress = document.getElementById('runner-progress');
+        const elRunnerContent = document.getElementById('runner-content');
+        const elResults = document.getElementById('course-results');
+        const elResultsOverall = document.getElementById('results-overall');
+        const elResultsByModule = document.getElementById('results-by-module');
+        const elResultsBackHome = document.getElementById('results-back-home');
+        const elLastResults = document.getElementById('last-results');
+
+        function showCourseHome(){
+            elCourseHome.style.display = 'block';
+            elRunner.style.display = 'none';
+            elResults.style.display = 'none';
+            const nav = document.querySelector('.training-nav');
+            const content = document.querySelector('.training-content');
+            if(nav) nav.style.display='none';
+            if(content) content.style.display='none';
+            // Populate last results
+            const last = JSON.parse(localStorage.getItem(LAST_ATTEMPT_KEY) || 'null');
+            if(last){
+                elLastResults.style.display='block';
+                elLastResults.innerHTML = `<strong>Last attempt:</strong> ${new Date(last.timestamp).toLocaleString()} — Overall ${last.overall}%`+
+                  renderWrongList(last);
+            } else {
+                elLastResults.style.display='none';
+            }
+        }
+
+        function renderWrongList(attempt){
+            let html = '';
+            const items = [];
+            Object.entries(attempt.byModule||{}).forEach(([mod, data])=>{
+                if((data.wrong||[]).length){
+                    const title = (courseModules.find(m=>m.id===mod)||{}).title || mod;
+                    items.push(`<li><strong>${title}:</strong> ${data.wrong.map(q=>brushUp[q]||q).join('; ')}</li>`);
+                }
+            });
+            if(items.length){
+                html += `<div style="margin-top:8px;"><strong>Brush up on:</strong><ul style="margin-left:18px; line-height:1.6;">${items.join('')}</ul></div>`;
+            }
+            return html;
+        }
+
+        function extractLearnHTML(mod){
+            const node = (typeof mod.learn === 'function') ? mod.learn() : null;
+            if(!node) return '<p>Content not found.</p>';
+            const clone = node.cloneNode(true);
+            clone.querySelectorAll('.module-quiz').forEach(q=>q.remove());
+            return clone.innerHTML;
+        }
+
+        function extractQuizHTML(mod){
+            const quiz = document.querySelector(`.module-quiz[data-module="${mod.id}"]`);
+            if(!quiz) return '<p>No quiz found.</p>';
+            return quiz.outerHTML;
+        }
+
+        function renderRunner(){
+            const total = courseModules.length;
+            const mod = courseModules[courseMode.index];
+            const pct = Math.round((courseMode.index/total)*100);
+            elRunnerProgress.style.width = pct + '%';
+            elRunnerTitle.textContent = `${mod.title}`;
+            elRunnerLabel.textContent = (courseMode.stage === 'read') ? 'Reading' : 'Q&A';
+
+            if(courseMode.stage==='read'){
+                elRunnerContent.innerHTML = extractLearnHTML(mod) + `
+                    <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+                        <button id="go-quiz" class="btn btn-primary">Go to Questions</button>
+                    </div>`;
+                // disable back by design — no back button provided
+                elRunnerContent.querySelector('#go-quiz').addEventListener('click', ()=>{
+                    courseMode.stage='quiz';
+                    renderRunner();
+                });
+            } else {
+                elRunnerContent.innerHTML = extractQuizHTML(mod);
+                // attach submit handler scoped to runner
+                const quizContainer = elRunnerContent.querySelector('.module-quiz');
+                const submitBtn = elRunnerContent.querySelector('.quiz-submit');
+                const resultEl = elRunnerContent.querySelector('.quiz-result');
+                if(submitBtn){
+                    submitBtn.addEventListener('click', ()=>{
+                        const res = gradeModuleFrom(quizContainer||elRunnerContent, mod.id);
+                        if(resultEl){
+                            if(res.score===100){ resultEl.textContent = `✅ ${res.score}% — Perfect!`; resultEl.style.color = '#16a34a'; }
+                            else { resultEl.textContent = `📊 ${res.score}% — Review and retake for mastery.`; resultEl.style.color = '#dc2626'; }
+                        }
+                        courseMode.perModule[mod.id] = { score: res.score, wrong: res.wrong };
+                        // Continue button
+                        if(!elRunnerContent.querySelector('#continue-next')){
+                            const bar = document.createElement('div');
+                            bar.style.marginTop='12px';
+                            bar.style.display='flex';
+                            bar.style.justifyContent='flex-end';
+                            bar.innerHTML = `<button id="continue-next" class="btn btn-primary">Continue</button>`;
+                            elRunnerContent.appendChild(bar);
+                            bar.querySelector('#continue-next').addEventListener('click', nextStep);
+                        }
+                    });
+                }
+            }
+        }
+
+        function nextStep(){
+            if(courseMode.stage==='read'){
+                courseMode.stage='quiz';
+                renderRunner();
+                return;
+            }
+            // move to next module
+            if(courseMode.index < courseModules.length - 1){
+                courseMode.index++;
+                courseMode.stage='read';
+                renderRunner();
+            } else {
+                // finished
+                const attempt = { timestamp: Date.now(), byModule: courseMode.perModule };
+                const modules = Object.keys(answerKey);
+                // compute overall as avg of available modules; ensure all present
+                const scores = courseModules.map(m=> (attempt.byModule[m.id]?.score)||0);
+                const sum = scores.reduce((a,b)=>a+b,0);
+                attempt.overall = Math.round(sum / courseModules.length);
+                localStorage.setItem(LAST_ATTEMPT_KEY, JSON.stringify(attempt));
+                // show results
+                showResults(attempt);
+            }
+        }
+
+        function showResults(attempt){
+            elCourseHome.style.display='none';
+            elRunner.style.display='none';
+            elResults.style.display='block';
+            elResultsOverall.textContent = (attempt.overall||0) + '%';
+            const rows = courseModules.map(m=>{
+                const data = attempt.byModule[m.id] || { score: 0, wrong: [] };
+                const wrongHtml = (data.wrong||[]).map(q=> `<li>${brushUp[q]||q}</li>`).join('');
+                return `<div style="border-top:1px solid #e2e8f0;padding:10px 0;">
+                    <strong>${m.title}:</strong> ${data.score}%
+                    ${wrongHtml? `<ul style='margin:6px 0 0 18px;line-height:1.6;'>${wrongHtml}</ul>`: `<div style='color:#16a34a;'>All correct</div>`}
+                </div>`;
+            }).join('');
+            elResultsByModule.innerHTML = rows + renderWrongList(attempt);
+        }
+
+        document.getElementById('start-course-btn').addEventListener('click', ()=>{
+            // Hide regular nav/content while running course
+            document.querySelector('.training-nav').style.display='none';
+            document.querySelector('.training-content').style.display='none';
+            elCourseHome.style.display='none';
+            elResults.style.display='none';
+            elRunner.style.display='block';
+            // reset state
+            courseMode.index=0; courseMode.stage='read'; courseMode.perModule={};
+            renderRunner();
+        });
+
+        document.getElementById('results-back-home').addEventListener('click', showCourseHome);
+
+        // On load: default to course home as main view
+        showCourseHome();
     </script>
 </body>
 </html>

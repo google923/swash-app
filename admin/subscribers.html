@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Subscribers - Swash Admin</title>
+  <link rel="manifest" href="../manifest.json" />
+  <link rel="icon" href="../assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="../style.css" />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .header h1 {
+      margin: 0;
+      color: #0078d7;
+      font-size: 28px;
+    }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .stat-card__value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #0078d7;
+      margin-bottom: 4px;
+    }
+    .stat-card__label {
+      font-size: 14px;
+      color: #64748b;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .table-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .table-header {
+      padding: 16px 20px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .table-header h2 {
+      margin: 0;
+      font-size: 18px;
+      color: #1e293b;
+    }
+    .search-box {
+      padding: 8px 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      width: 300px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead {
+      background: #f8fafc;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    th {
+      text-align: left;
+      padding: 12px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    td {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 14px;
+      color: #334155;
+    }
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+    .company-cell {
+      font-weight: 600;
+      color: #0078d7;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .status-badge--active {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status-badge--pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .status-badge--disabled {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .status-badge--cancelled {
+      background: #f3f4f6;
+      color: #374151;
+    }
+    .action-btn {
+      padding: 8px 16px;
+      margin-left: 6px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+      white-space: nowrap;
+      min-width: 85px;
+      text-align: center;
+    }
+    .actions-cell {
+      text-align: right;
+      white-space: nowrap;
+      padding-right: 24px !important;
+    }
+    .action-btn--primary {
+      background: #0078d7;
+      color: white;
+    }
+    .action-btn--primary:hover {
+      background: #005a9e;
+    }
+    .action-btn--secondary {
+      background: #e5e7eb;
+      color: #334155;
+    }
+    .action-btn--secondary:hover {
+      background: #cbd5e1;
+    }
+    .action-btn--danger {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .action-btn--danger:hover {
+      background: #fecaca;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #64748b;
+    }
+    .empty-state__icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    .empty-state__text {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    .empty-state__subtext {
+      font-size: 14px;
+      color: #94a3b8;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #0078d7;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .btn-back {
+      padding: 8px 16px;
+      background: #e5e7eb;
+      color: #334155;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .btn-back:hover {
+      background: #cbd5e1;
+    }
+    .btn-new-subscriber {
+      padding: 10px 20px;
+      background: #0078d7;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-left: 12px;
+    }
+    .btn-new-subscriber:hover {
+      background: #005a9e;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+    .modal-header {
+      margin-bottom: 24px;
+    }
+    .modal-header h2 {
+      margin: 0 0 8px 0;
+      color: #0078d7;
+      font-size: 24px;
+    }
+    .modal-header p {
+      margin: 0;
+      color: #64748b;
+      font-size: 14px;
+    }
+    .qr-container {
+      margin: 24px 0;
+      padding: 20px;
+      background: #f8fafc;
+      border-radius: 8px;
+    }
+    .qr-canvas {
+      max-width: 100%;
+      height: auto;
+    }
+    .signup-url {
+      margin: 16px 0;
+      padding: 12px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #334155;
+      word-break: break-all;
+      user-select: all;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 24px;
+    }
+    .btn-modal {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-modal-primary {
+      background: #0078d7;
+      color: white;
+    }
+    .btn-modal-primary:hover {
+      background: #005a9e;
+    }
+    .btn-modal-secondary {
+      background: #e5e7eb;
+      color: #334155;
+    }
+    .btn-modal-secondary:hover {
+      background: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header-left">
+        <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+        <h1 style="margin: 0 0 0 12px; font-size: 1.2rem;">📊 Subscriber Management</h1>
+      </div>
+      <div class="header-actions">
+        <button id="provisionSelfBtn" class="btn-new-subscriber" type="button">✓ Provision My Workspace</button>
+        <button id="newSubscriberBtn" class="btn-new-subscriber" type="button" style="background:#0ea5e9">+ New Subscriber</button>
+        <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+        <div class="menu-box">
+          <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+          <nav id="menuDropdown" class="dropdown">
+            <div class="dropdown-title">Navigation</div>
+            <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+            <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+            <a href="/rep/add-new-customer.html">🆕 New Quote</a>
+            <a href="/rep/scheduler.html" class="admin-rep">📅 Schedule</a>
+            <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+            <a href="./users.html" class="admin-only">👥 Manage Users</a>
+            <a href="./stats.html" class="admin-only">📊 Stats</a>
+            <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+            <a href="./shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+            <a href="./message-log.html" class="admin-only">📧 Message Log</a>
+            <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+            <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <div class="container">
+      <div style="margin-bottom: 24px;">
+        <h1 style="margin: 0; color: #0078d7; font-size: 28px;">Subscriber Management</h1>
+      </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-card__value" id="totalSubscribers">0</div>
+        <div class="stat-card__label">Total Subscribers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__value" id="activeSubscribers">0</div>
+        <div class="stat-card__label">Active</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__value" id="pendingBilling">0</div>
+        <div class="stat-card__label">Pending Billing</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__value" id="monthlyRevenue">£0</div>
+        <div class="stat-card__label">Monthly Revenue</div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="table-header">
+        <h2>All Subscribers</h2>
+        <input type="text" id="searchBox" class="search-box" placeholder="Search by company or email..." />
+      </div>
+
+      <div id="loadingState" class="loading">
+        <div class="spinner"></div>
+        <p>Loading subscribers...</p>
+      </div>
+
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-state__icon">🏢</div>
+        <div class="empty-state__text">No subscribers yet</div>
+        <div class="empty-state__subtext">New subscribers will appear here once they sign up</div>
+      </div>
+
+      <table id="subscribersTable" style="display: none;">
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Monthly</th>
+            <th>Team Size</th>
+            <th>Joined</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- QR Code Modal -->
+  <div id="qrModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>New Subscriber Signup</h2>
+        <p>Show this QR code to prospects to sign up instantly</p>
+      </div>
+      <div class="qr-container">
+        <img id="qrImage" class="qr-canvas" alt="QR Code" />
+      </div>
+      <div class="signup-url" id="signupUrl"></div>
+      <div class="modal-actions">
+        <button class="btn-modal btn-modal-primary" onclick="copySignupUrl()">Copy Link</button>
+        <button class="btn-modal btn-modal-secondary" onclick="closeQrModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from '../firebase-init.js';
+    import {
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import {
+      collection,
+      query,
+      where,
+      getDocs,
+      doc,
+      updateDoc,
+      setDoc,
+      writeBatch,
+      deleteDoc,
+      orderBy
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    let allSubscribers = [];
+    let filteredSubscribers = [];
+
+    const loadingState = document.getElementById('loadingState');
+    const emptyState = document.getElementById('emptyState');
+    const subscribersTable = document.getElementById('subscribersTable');
+    const tableBody = document.getElementById('tableBody');
+    const searchBox = document.getElementById('searchBox');
+
+    // Stats elements
+    const totalSubscribersEl = document.getElementById('totalSubscribers');
+    const activeSubscribersEl = document.getElementById('activeSubscribers');
+    const pendingBillingEl = document.getElementById('pendingBilling');
+    const monthlyRevenueEl = document.getElementById('monthlyRevenue');
+
+    // Auth check
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = '../admin.html';
+        return;
+      }
+
+      // Check if admin
+      const userDoc = await getDocs(query(collection(db, 'users'), where('email', '==', user.email)));
+      if (userDoc.empty || userDoc.docs[0].data().role !== 'admin') {
+        alert('Access denied. Admin only.');
+        window.location.href = '../index.html';
+        return;
+      }
+
+      loadSubscribers();
+      wireProvisionSelf(user);
+    });
+
+    function safeNumber(n, d=0){ const v=Number(n); return Number.isFinite(v)?v:d; }
+
+    function deriveDefaultCleanersFromQuotes(quotes){
+      const set = new Set();
+      quotes.forEach(q=>{ const c=q.assignedCleanerId||q.assignedCleaner; if(c) set.add(String(c)); });
+      if(set.size===0){ for(let i=1;i<=10;i++) set.add(`Cleaner ${i}`); }
+      return Array.from(set);
+    }
+
+    async function copyCollectionToTenant({sourceColRef, targetColRef, label}){
+      const snap = await getDocs(sourceColRef);
+      let count = 0; let batch = writeBatch(db); let ops=0;
+      snap.forEach(d=>{
+        const data = d.data();
+        // Skip soft-deleted if present
+        if(data && data.deleted===true) return;
+        batch.set(doc(targetColRef, d.id), { ...data, _migratedFrom: 'global', _migratedAt: new Date().toISOString() }, { merge: true });
+        ops++; count++;
+        if(ops>=400){ batch.commit(); batch = writeBatch(db); ops=0; }
+      });
+      if(ops>0){ await batch.commit(); }
+      console.log(`[Provision] Copied ${count} docs → ${label}`);
+      return count;
+    }
+
+    async function wireProvisionSelf(currentUser){
+      const btn = document.getElementById('provisionSelfBtn');
+      if(!btn) return;
+      btn.addEventListener('click', async ()=>{
+        try{
+          if(!currentUser){ alert('Please sign in again.'); return; }
+          const confirmName = prompt('Confirm company name for your workspace:', 'Swash Cleaning Ltd');
+          if(!confirmName) return;
+          const sid = currentUser.uid; // owner = admin uid for self-workspace
+
+          // Create/merge subscriber doc
+          await setDoc(doc(db, 'subscribers', sid), {
+            companyName: confirmName,
+            ownerUid: currentUser.uid,
+            createdAt: new Date().toISOString(),
+            billingExempt: true,
+            status: 'active'
+          }, { merge: true });
+
+          // Link admin user as owner (keep admin role)
+          await setDoc(doc(db, 'users', currentUser.uid), { ownsSubscriberId: sid }, { merge: true });
+
+          // Copy quotes → tenant
+          const quotesSrc = collection(db, 'quotes');
+          const quotesDst = collection(db, `subscribers/${sid}/quotes`);
+          const copiedQuotes = await copyCollectionToTenant({ sourceColRef: quotesSrc, targetColRef: quotesDst, label: `subscribers/${sid}/quotes` });
+
+          // Seed cleaners → tenant
+          const quotesSnap = await getDocs(quotesSrc);
+          const defaults = deriveDefaultCleanersFromQuotes(quotesSnap.docs.map(d=>d.data()));
+          let batch = writeBatch(db); let ops=0; let seeded=0;
+          for(const name of defaults){
+            const id = (name.id || name).toString();
+            const docId = id.replace(/\s+/g,'-').toLowerCase();
+            batch.set(doc(db, `subscribers/${sid}/cleaners`, docId), {
+              name: typeof name==='string'?name:(name.name||id),
+              status: 'active',
+              createdAt: new Date().toISOString()
+            }, { merge: true });
+            ops++; seeded++;
+            if(ops>=400){ await batch.commit(); batch = writeBatch(db); ops=0; }
+          }
+          if(ops>0) await batch.commit();
+
+          alert(`✓ Workspace ready for ${confirmName}.\n\nCopied quotes: ${copiedQuotes}\nSeeded cleaners: ${seeded}\n\nOpen scheduler in self context next.`);
+          // Offer to open self scheduler
+          if(confirm('Open your scheduler in Self context now?')){
+            window.open('/rep/scheduler.html?tenant=self', '_blank');
+          }
+        }catch(e){
+          console.error('[Provision] Failed', e);
+          alert('Provisioning failed: ' + (e?.message||e));
+        }
+      });
+    }
+
+    async function loadSubscribers() {
+      try {
+        const q = query(
+          collection(db, 'users'),
+          where('role', '==', 'subscriber')
+        );
+        
+        const snapshot = await getDocs(q);
+        allSubscribers = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        // Sort by createdAt (most recent first)
+        allSubscribers.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return bTime - aTime;
+        });
+
+        filteredSubscribers = [...allSubscribers];
+        renderTable();
+        updateStats();
+        
+        loadingState.style.display = 'none';
+        
+        if (allSubscribers.length === 0) {
+          emptyState.style.display = 'block';
+        } else {
+          subscribersTable.style.display = 'table';
+        }
+      } catch (error) {
+        console.error('Error loading subscribers:', error);
+        loadingState.innerHTML = '<p style="color: #dc2626;">Failed to load subscribers. Please refresh.</p>';
+      }
+    }
+
+    function updateStats() {
+      const total = allSubscribers.length;
+      const active = allSubscribers.filter(s => s.billingCompleted && !s.disabled).length;
+      const pending = allSubscribers.filter(s => !s.billingCompleted).length;
+      const revenue = allSubscribers
+        .filter(s => s.billingCompleted && !s.disabled)
+        .reduce((sum, s) => sum + (Number(s.monthlyTotal) || 0), 0);
+
+      totalSubscribersEl.textContent = total;
+      activeSubscribersEl.textContent = active;
+      pendingBillingEl.textContent = pending;
+      monthlyRevenueEl.textContent = `£${revenue.toFixed(2)}`;
+    }
+
+    function getStatusBadge(subscriber) {
+      if (subscriber.disabled) {
+        return '<span class="status-badge status-badge--disabled">Disabled</span>';
+      }
+      if (!subscriber.billingCompleted) {
+        return '<span class="status-badge status-badge--pending">Pending Billing</span>';
+      }
+      if (subscriber.gcSubscriptionId) {
+        return '<span class="status-badge status-badge--active">Active</span>';
+      }
+      return '<span class="status-badge status-badge--cancelled">Inactive</span>';
+    }
+
+    function formatDate(timestamp) {
+      if (!timestamp) return 'N/A';
+      try {
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      } catch (e) {
+        return 'N/A';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function renderTable() {
+      if (filteredSubscribers.length === 0 && searchBox.value.trim()) {
+        tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">No subscribers match your search</td></tr>';
+        return;
+      }
+
+      tableBody.innerHTML = filteredSubscribers.map(subscriber => {
+        const companyName = escapeHtml(subscriber.companyName || 'No Company Name');
+        const email = escapeHtml(subscriber.email || 'N/A');
+        const monthly = subscriber.monthlyTotal ? `£${Number(subscriber.monthlyTotal).toFixed(2)}` : '£0.00';
+        const cleaners = subscriber.cleanersCount || 0;
+        const reps = subscriber.repsCount || 0;
+        const teamSize = `${cleaners} Cleaner${cleaners !== 1 ? 's' : ''} / ${reps} Rep${reps !== 1 ? 's' : ''}`;
+        const joined = formatDate(subscriber.createdAt);
+        const status = getStatusBadge(subscriber);
+
+        return `
+          <tr>
+            <td class="company-cell">${companyName}</td>
+            <td>${email}</td>
+            <td>${status}</td>
+            <td style="font-weight: 600;">${monthly}</td>
+            <td>${teamSize}</td>
+            <td>${joined}</td>
+            <td class="actions-cell">
+              <a href="/subscriber-dashboard.html?uid=${subscriber.id}" target="_blank" class="action-btn action-btn--primary">Dashboard</a>
+              <button class="action-btn action-btn--secondary" onclick="window.viewDetails('${subscriber.id}')">Details</button>
+              <button class="action-btn action-btn--${subscriber.disabled ? 'secondary' : 'danger'}" onclick="window.toggleDisable('${subscriber.id}', ${!subscriber.disabled})">${subscriber.disabled ? 'Enable' : 'Disable'}</button>
+              <button class="action-btn action-btn--danger" onclick="window.deleteSubscriber('${subscriber.id}')">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Search functionality
+    searchBox.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase().trim();
+      
+      if (!term) {
+        filteredSubscribers = [...allSubscribers];
+      } else {
+        filteredSubscribers = allSubscribers.filter(s => 
+          (s.companyName || '').toLowerCase().includes(term) ||
+          (s.email || '').toLowerCase().includes(term) ||
+          (s.name || '').toLowerCase().includes(term)
+        );
+      }
+      
+      renderTable();
+    });
+
+    // Global functions for inline handlers
+    window.viewDetails = async (userId) => {
+      const subscriber = allSubscribers.find(s => s.id === userId);
+      if (!subscriber) return;
+
+      const details = `
+Company: ${subscriber.companyName || 'N/A'}
+Email: ${subscriber.email}
+Billing Status: ${subscriber.billingCompleted ? 'Completed' : 'Pending'}
+Monthly Total: £${subscriber.monthlyTotal || 0}
+Cleaners: ${subscriber.cleanersCount || 0}
+Reps: ${subscriber.repsCount || 0}
+
+GoCardless Mandate ID: ${subscriber.gcMandateId || 'N/A'}
+GoCardless Subscription ID: ${subscriber.gcSubscriptionId || 'N/A'}
+
+User ID: ${subscriber.id}
+Joined: ${formatDate(subscriber.createdAt)}
+      `.trim();
+
+      alert(details);
+    };
+
+    window.toggleDisable = async (userId, shouldDisable) => {
+      const subscriber = allSubscribers.find(s => s.id === userId);
+      if (!subscriber) return;
+
+      const action = shouldDisable ? 'disable' : 'enable';
+      if (!confirm(`Are you sure you want to ${action} ${subscriber.companyName || 'this subscriber'}?`)) {
+        return;
+      }
+
+      try {
+        await updateDoc(doc(db, 'users', userId), {
+          disabled: shouldDisable
+        });
+        
+        subscriber.disabled = shouldDisable;
+        renderTable();
+        updateStats();
+        
+        alert(`Subscriber ${action}d successfully.`);
+      } catch (error) {
+        console.error(`Error ${action}ing subscriber:`, error);
+        alert(`Failed to ${action} subscriber. Please try again.`);
+      }
+    };
+
+    window.deleteSubscriber = async (userId) => {
+      const subscriber = allSubscribers.find(s => s.id === userId);
+      if (!subscriber) return;
+
+      const confirmMsg = `⚠️ WARNING: This will permanently delete ${subscriber.companyName || 'this subscriber'} and ALL their data:\n\n` +
+        `- User account\n` +
+        `- All quotes and customers\n` +
+        `- All schedules and territories\n` +
+        `- All logs and events\n\n` +
+        `This action CANNOT be undone!\n\n` +
+        `Type "DELETE" to confirm:`;
+      
+      const confirmation = prompt(confirmMsg);
+      
+      if (confirmation !== 'DELETE') {
+        alert('Deletion cancelled.');
+        return;
+      }
+
+      try {
+        // Call API to delete subscriber (includes auth account)
+        const response = await fetch('/api/deleteSubscriber', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscriberId: userId,
+            adminId: auth.currentUser.uid
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to delete subscriber');
+        }
+
+        // Remove from local array
+        const index = allSubscribers.findIndex(s => s.id === userId);
+        if (index > -1) {
+          allSubscribers.splice(index, 1);
+        }
+        
+        filteredSubscribers = [...allSubscribers];
+        renderTable();
+        updateStats();
+        
+        if (allSubscribers.length === 0) {
+          subscribersTable.style.display = 'none';
+          emptyState.style.display = 'block';
+        }
+        
+        alert('✓ Subscriber and authentication account deleted successfully.\n\nThey can now sign up again with the same email if needed.');
+      } catch (error) {
+        console.error('Error deleting subscriber:', error);
+        alert('Failed to delete subscriber: ' + error.message);
+      }
+    };
+
+    // Logout handler
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        await auth.signOut();
+        window.location.href = '../index.html';
+      });
+    }
+
+    // Menu toggle
+    const menuBtn = document.getElementById('menuBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
+    
+    if (menuBtn && menuDropdown) {
+      menuBtn.addEventListener('click', () => {
+        const isOpen = menuBtn.getAttribute('aria-expanded') === 'true';
+        menuBtn.setAttribute('aria-expanded', !isOpen);
+        menuDropdown.style.display = isOpen ? 'none' : 'block';
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.menu-box')) {
+          menuBtn.setAttribute('aria-expanded', 'false');
+          menuDropdown.style.display = 'none';
+        }
+      });
+    }
+
+    // QR Code Modal
+    const qrModal = document.getElementById('qrModal');
+    const newSubscriberBtn = document.getElementById('newSubscriberBtn');
+    const signupUrl = window.location.origin + '/subscriber-signup.html';
+    
+    if (newSubscriberBtn) {
+      newSubscriberBtn.addEventListener('click', () => {
+        const qrImage = document.getElementById('qrImage');
+        const urlDisplay = document.getElementById('signupUrl');
+        
+        // Use QR Server API to generate QR code
+        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(signupUrl)}`;
+        qrImage.src = qrApiUrl;
+        urlDisplay.textContent = signupUrl;
+        
+        qrModal.classList.add('active');
+      });
+    }
+
+    window.closeQrModal = () => {
+      qrModal.classList.remove('active');
+    };
+
+    window.copySignupUrl = () => {
+      navigator.clipboard.writeText(signupUrl).then(() => {
+        alert('Signup link copied to clipboard!');
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy link. Please copy manually.');
+      });
+    };
+
+    // Close modal on backdrop click
+    qrModal.addEventListener('click', (e) => {
+      if (e.target === qrModal) {
+        window.closeQrModal();
+      }
+    });
+  </script>
+</body>
+</html>

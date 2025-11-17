@@ -1,6 +1,9 @@
 // scheduler.js - 4-week route planner with drag-and-drop rescheduling and 28-day recurring cadence
 import { initMenuDropdown } from "./menu.js";
 import { authStateReady, handlePageRouting } from "../auth-check.js";
+import { createCustomerChatController } from "./components/chat-controller.js";
+import { logOutboundEmailToFirestore } from "../lib/firestore-utils.js";
+import { fetchWeatherForWeek } from "./components/weather-forecast.js";
 import {
   initializeApp,
   getApps,
@@ -11,11 +14,17 @@ import {
   getDocs,
   doc,
   updateDoc,
+  deleteField,
   query,
   where,
   getDoc,
   setDoc,
   arrayUnion,
+  // Added for "all pins" layer (collection group + pagination helpers)
+  collectionGroup,
+  orderBy,
+  limit,
+  onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import {
   getAuth,
@@ -38,6 +47,9 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 let schedulerInitialised = false;
+let subscriberId = null; // Set if user is a subscriber
+let userRole = null;
+let subscriberCleaners = []; // Store subscriber's cleaners if applicable
 
 const SYNC_CHANNEL_NAME = "swash-quotes-sync";
 const SYNC_SOURCE = "scheduler";
@@ -47,14 +59,39 @@ let syncReloadInProgress = false;
 
 const INITIAL_WEEKS = 4;
 const BASELINE_START_DATE = "2025-11-03"; // Week 1 baseline (Monday 03/11/2025)
-const MAX_WEEKS = 8;
 const EMAIL_SERVICE = "service_cdy739m";
 const EMAIL_TEMPLATE = "template_6mpufs4";
 const EMAIL_PUBLIC_KEY = "7HZRYXz3JmMciex1L";
+const EMAIL_CHAT_TEMPLATE = "template_6mpufs4";
+const EMAIL_CHAT_FROM = "contact@swashcleaning.co.uk";
 
 const CLEANER_OPTIONS = Array.from({ length: 10 }, (_, index) => `Cleaner ${index + 1}`);
 const CLEANER_ALL = "ALL";
 const CLEANER_UNASSIGNED = "UNASSIGNED";
+const CLEANER_LABEL_OVERRIDES = {
+  "Cleaner 1": "Chris",
+};
+
+function getCleanerLabel(value) {
+  if (!value) return value;
+  return CLEANER_LABEL_OVERRIDES[value] || value;
+}
+
+const chatController = createCustomerChatController({
+  db,
+  auth,
+  emailFrom: EMAIL_CHAT_FROM,
+  emailServiceId: EMAIL_SERVICE,
+  emailTemplateId: EMAIL_CHAT_TEMPLATE,
+});
+
+const {
+  getCachedCustomerId,
+  cacheCustomerId,
+  openCommunicationsForQuote,
+  resolveCustomerIdFromQuote,
+} = chatController;
+
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -126,6 +163,62 @@ const state = {
 let areasMap = null;
 let areasDrawingManager = null;
 let currentDrawingPolygon = null;
+
+// ===== All Pins (Scheduler) =====
+// Google Maps markers for historical door logs (last 60 days)
+let allPinsSchedulerMarkers = [];
+let allPinsVisibleScheduler = false;
+let allPinsLoadedScheduler = false;
+let allPinsInfoWindow = null;
+const repNameCache = new Map();
+
+// Route planner historical pins (door logs)
+let routePlannerPinsMarkers = [];
+let routePlannerPinsLoaded = false;
+let routePlannerPinsVisible = false;
+let routePlannerPinsInfoWindow = null;
+
+function formatDateTime(dt) {
+  try {
+    const d = dt instanceof Date ? dt : new Date(dt);
+    if (isNaN(d.getTime())) return "";
+    const day = d.toLocaleDateString(undefined, { weekday: "long" });
+    const date = d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+    const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    return `${day}, ${date} ${time}`;
+  } catch {
+    return "";
+  }
+}
+
+function toStatusLabel(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (s === "signup" || s === "sale" || s === "s") return "Sale";
+  if (s === "o" || s === "open" || s === "spoke") return "O";
+  if (s === "x" || s === "no_answer" || s === "noanswer" || s === "na") return "X";
+  return (raw || "").toString();
+}
+
+function statusColor(raw) {
+  const s = String(raw || "").toLowerCase();
+  if (s === "signup" || s === "sale" || s === "s") return "#f59e0b"; // amber for sale
+  if (s === "o" || s === "open" || s === "spoke") return "#3b82f6"; // blue for O
+  if (s === "x" || s === "no_answer" || s === "noanswer" || s === "na") return "#ef4444"; // red for X
+  return "#6b7280"; // gray default
+}
+
+async function getRepDisplay(repId) {
+  if (!repId) return "Unknown";
+  if (repNameCache.has(repId)) return repNameCache.get(repId);
+  try {
+    const snap = await getDoc(doc(db, "users", repId));
+    const name = snap.exists() ? (snap.data().displayName || snap.data().name || repId) : repId;
+    repNameCache.set(repId, name);
+    return name;
+  } catch {
+    return repId;
+  }
+}
 
 async function loadAreas() {
   if (!state.currentUserId) return;
@@ -204,6 +297,8 @@ function initAreasModal() {
   const clearAreaBtn = document.getElementById("clearAreaBtn");
   const stopDrawingBtn = document.getElementById("stopDrawingBtn");
   const saveAreaBtn = document.getElementById("saveAreaBtn");
+  const toggleAllPinsCheckbox = document.getElementById("toggleAllPinsScheduler");
+  const pinsLoadingEl = document.getElementById("schedulerPinsLoading");
 
   if (!defineAreasBtn) return;
 
@@ -281,6 +376,13 @@ function initAreasModal() {
     drawAreaBtn.hidden = false;
     alert(`✓ Area "${name}" created!`);
   });
+
+  // Wire up the All Pins toggle inside the Areas modal
+  if (toggleAllPinsCheckbox) {
+    toggleAllPinsCheckbox.addEventListener("change", async (e) => {
+      await toggleAllPinsScheduler(e.target.checked);
+    });
+  }
 }
 
 function renderAreasList() {
@@ -396,6 +498,15 @@ function renderJobMarkersOnMap() {
       });
     }
   });
+      // Paid status click (future: allow undo?)
+      const paidStatus = event.target.closest('.job-status-paid');
+      if (paidStatus) {
+        // For now no undo; can implement similar to completion if needed
+        const quoteId = paidStatus.dataset.quoteId;
+        const dateKey = paidStatus.dataset.date;
+        alert('Already marked as Paid');
+        return;
+      }
 }
 
 
@@ -520,6 +631,11 @@ function initAreasMapIfNeeded() {
 
   renderAreasOnMap();
   renderJobMarkersOnMap();
+
+  // Ensure a single InfoWindow instance for all pins markers
+  if (!allPinsInfoWindow && window.google && google.maps.InfoWindow) {
+    allPinsInfoWindow = new google.maps.InfoWindow({ maxWidth: 320 });
+  }
 }
 
 function escapeHtml(value) {
@@ -563,6 +679,188 @@ function normalizeUkPhone(raw) {
   return null;
 }
 
+// ===== All Pins (Scheduler) implementation =====
+async function loadAllPinsScheduler(options = {}) {
+  if (!areasMap) initAreasMapIfNeeded();
+  const days = Number(options.days || 60);
+  const pinsLoadingEl = document.getElementById("schedulerPinsLoading");
+  if (pinsLoadingEl) pinsLoadingEl.style.display = "block";
+
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const sinceVal = isNaN(since.getTime()) ? new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) : since;
+  const sinceIso = sinceVal.toISOString();
+
+  let snap;
+  try {
+    const q = query(
+      collectionGroup(db, "doorLogs"),
+      where("timestamp", ">=", sinceIso),
+      orderBy("timestamp", "desc"),
+      limit(5000)
+    );
+    snap = await getDocs(q);
+  } catch (err) {
+    console.warn("[Scheduler] Ordered doorLogs query failed, retrying without orderBy:", err?.message || err);
+    try {
+      const q2 = query(
+        collectionGroup(db, "doorLogs"),
+        where("timestamp", ">=", sinceIso),
+        limit(5000)
+      );
+      snap = await getDocs(q2);
+    } catch (err2) {
+      console.error("[Scheduler] doorLogs query failed:", err2);
+      if (pinsLoadingEl) pinsLoadingEl.style.display = "none";
+      return;
+    }
+  }
+
+  const docs = [];
+  snap.forEach((d) => docs.push({ id: d.id, data: d.data() }));
+
+  // Create markers but don't add to map until toggled on
+  allPinsSchedulerMarkers = docs
+    .filter(({ data }) => typeof data?.gpsLat === "number" && typeof data?.gpsLng === "number")
+    .map(({ data }) => {
+      const latLng = { lat: data.gpsLat, lng: data.gpsLng };
+      const color = statusColor(data.status);
+      const marker = new google.maps.Marker({
+        position: latLng,
+        map: null, // attach on toggle
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: color,
+          fillOpacity: 0.9,
+          strokeColor: "#ffffff",
+          strokeWeight: 1,
+          scale: 6,
+        },
+        title: `${(data.houseNumber || "").toString()} ${data.roadName || ""}`.trim(),
+      });
+
+      marker.addListener("click", async () => {
+        if (!allPinsInfoWindow) allPinsInfoWindow = new google.maps.InfoWindow({ maxWidth: 320 });
+        const when = formatDateTime(data.timestamp || data.createdAt || data.date);
+        const statusLabel = toStatusLabel(data.status);
+        const repName = await getRepDisplay(data.repId);
+        const address = `${(data.houseNumber || "").toString()} ${data.roadName || ""}`.trim();
+        const infoHtml = `
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:10px;max-width:300px;">
+            <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(address || "Unknown address")}</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};border:1px solid #e5e7eb;"></span>
+              <span>Status: <strong>${escapeHtml(statusLabel)}</strong></span>
+            </div>
+            <div style="font-size:12px;color:#374151;margin-bottom:2px;">${escapeHtml(when)}</div>
+            <div style="font-size:12px;color:#374151;">Rep: ${escapeHtml(repName)}</div>
+          </div>
+        `;
+        allPinsInfoWindow.setContent(infoHtml);
+        allPinsInfoWindow.open(areasMap, marker);
+      });
+
+      return marker;
+    });
+
+  allPinsLoadedScheduler = true;
+  if (pinsLoadingEl) pinsLoadingEl.style.display = "none";
+}
+
+async function toggleAllPinsScheduler(checked) {
+  if (!areasMap) initAreasMapIfNeeded();
+  const pinsLoadingEl = document.getElementById("schedulerPinsLoading");
+  if (checked) {
+    if (!allPinsLoadedScheduler) {
+      if (pinsLoadingEl) pinsLoadingEl.style.display = "block";
+      await loadAllPinsScheduler({ days: 60 });
+    }
+    allPinsSchedulerMarkers.forEach((m) => m.setMap(areasMap));
+    allPinsVisibleScheduler = true;
+  } else {
+    allPinsSchedulerMarkers.forEach((m) => m.setMap(null));
+    allPinsVisibleScheduler = false;
+    if (pinsLoadingEl) pinsLoadingEl.style.display = "none";
+  }
+}
+
+// ===== Route Planner All Pins =====
+async function loadAllPinsRoutePlanner(options = {}) {
+  const days = Number(options.days || 60);
+  const pinsLoadingEl = document.getElementById('routePinsLoading');
+  if (pinsLoadingEl) pinsLoadingEl.style.display = 'inline';
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const sinceIso = since.toISOString();
+  let snap;
+  try {
+    const q = query(
+      collectionGroup(db, 'doorLogs'),
+      where('timestamp','>=', sinceIso),
+      orderBy('timestamp','desc'),
+      limit(3000)
+    );
+    snap = await getDocs(q);
+  } catch(e) {
+    const q2 = query(collectionGroup(db,'doorLogs'), where('timestamp','>=', sinceIso), limit(3000));
+    snap = await getDocs(q2);
+  }
+  const docs = [];
+  snap.forEach(d => docs.push(d.data()));
+  routePlannerPinsMarkers = docs.filter(d => typeof d.gpsLat === 'number' && typeof d.gpsLng === 'number').map(d => {
+    const color = statusColor(d.status);
+    const marker = new google.maps.Marker({
+      position: { lat: d.gpsLat, lng: d.gpsLng },
+      map: null,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        fillColor: color,
+        fillOpacity: 0.85,
+        strokeColor: '#ffffff',
+        strokeWeight: 1,
+        scale: 5,
+      },
+      title: `${(d.houseNumber||'').toString()} ${d.roadName||''}`.trim(),
+    });
+    marker.addListener('click', async () => {
+      if (!routePlannerPinsInfoWindow) routePlannerPinsInfoWindow = new google.maps.InfoWindow({ maxWidth: 280 });
+      const repName = await getRepDisplay(d.repId);
+      const statusLabel = toStatusLabel(d.status);
+      const when = formatDateTime(d.timestamp || d.createdAt || d.date);
+      const addr = `${(d.houseNumber||'').toString()} ${d.roadName||''}`.trim();
+      const html = `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:8px;max-width:260px;">
+          <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(addr || 'Unknown address')}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;border:1px solid #e5e7eb;"></span>
+            <span>Status: <strong>${escapeHtml(statusLabel)}</strong></span>
+          </div>
+          <div style="font-size:12px;color:#374151;margin-bottom:2px;">${escapeHtml(when)}</div>
+          <div style="font-size:12px;color:#374151;">Rep: ${escapeHtml(repName)}</div>
+        </div>`;
+      routePlannerPinsInfoWindow.setContent(html);
+      const mapRef = state.orderJobsContext?.map;
+      if (mapRef) routePlannerPinsInfoWindow.open(mapRef, marker);
+    });
+    return marker;
+  });
+  routePlannerPinsLoaded = true;
+  if (pinsLoadingEl) pinsLoadingEl.style.display = 'none';
+}
+
+async function toggleAllPinsRoutePlanner(checked) {
+  const mapRef = state.orderJobsContext?.map;
+  if (!mapRef) return; // map not ready yet
+  if (checked) {
+    if (!routePlannerPinsLoaded) {
+      await loadAllPinsRoutePlanner({ days: 60 });
+    }
+    routePlannerPinsMarkers.forEach(m => m.setMap(mapRef));
+    routePlannerPinsVisible = true;
+  } else {
+    routePlannerPinsMarkers.forEach(m => m.setMap(null));
+    routePlannerPinsVisible = false;
+  }
+}
+
 function populateCleanerSelect(
   select,
   { includePlaceholder = false, placeholderLabel = "Select cleaner", includeAll = false, includeUnassigned = false } = {},
@@ -578,10 +876,22 @@ function populateCleanerSelect(
   if (includeUnassigned) {
     options.push(`<option value="${CLEANER_UNASSIGNED}">Unassigned</option>`);
   }
-  CLEANER_OPTIONS.forEach((label) => {
-    const safe = escapeHtml(label);
-    options.push(`<option value="${safe}">${safe}</option>`);
-  });
+  
+  // Use subscriber's cleaners if available, otherwise use default CLEANER_OPTIONS
+  if (subscriberId && subscriberCleaners.length > 0) {
+    subscriberCleaners.forEach((cleaner) => {
+      const valueSafe = escapeHtml(cleaner.id);
+      const labelSafe = escapeHtml(cleaner.name);
+      options.push(`<option value="${valueSafe}">${labelSafe}</option>`);
+    });
+  } else {
+    CLEANER_OPTIONS.forEach((label) => {
+      const valueSafe = escapeHtml(label);
+      const labelSafe = escapeHtml(getCleanerLabel(label));
+      options.push(`<option value="${valueSafe}">${labelSafe}</option>`);
+    });
+  }
+  
   select.innerHTML = options.join("");
   select.dataset.cleanerInit = "1";
 }
@@ -597,7 +907,15 @@ function resolveCleanerUpdate(selection) {
 }
 
 function getCleanerDisplay(value) {
-  return value ? value : "Unassigned";
+  if (!value) return "Unassigned";
+  
+  // For subscribers, look up cleaner name from subscriberCleaners
+  if (subscriberId && subscriberCleaners.length > 0) {
+    const cleaner = subscriberCleaners.find(c => c.id === value);
+    return cleaner ? cleaner.name : value;
+  }
+  
+  return getCleanerLabel(value);
 }
 
 function waitForDomReady() {
@@ -699,9 +1017,68 @@ function getOccurrences(quote, startDate, weeks) {
   return occurrences;
 }
 
+async function loadSubscriberCleaners() {
+  if (!subscriberId) return [];
+  try {
+    console.log('[Scheduler] Loading subscriber cleaners from:', `subscribers/${subscriberId}/cleaners`);
+    const cleanersRef = collection(db, `subscribers/${subscriberId}/cleaners`);
+    const snapshot = await getDocs(cleanersRef);
+    const cleaners = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(c => c.status === 'active');
+    console.log('[Scheduler] Loaded cleaners:', cleaners.length);
+    return cleaners;
+  } catch (error) {
+    console.error('[Scheduler] Error loading subscriber cleaners:', error);
+    return [];
+  }
+}
+
+// Helper to get the correct document reference for quotes/customers based on user role
+function getQuoteDocRef(quoteId) {
+  if (subscriberId) {
+    return doc(db, `subscribers/${subscriberId}/quotes`, quoteId);
+  }
+  return doc(db, "quotes", quoteId);
+}
+
 async function fetchBookedQuotes() {
   try {
     console.time('[Scheduler] fetchBookedQuotes');
+    
+    // If user is a subscriber, load from their subcollection
+    if (subscriberId) {
+      console.log('[Scheduler] Loading subscriber quotes from:', `subscribers/${subscriberId}/quotes`);
+      const quotesRef = collection(db, `subscribers/${subscriberId}/quotes`);
+      const q = query(quotesRef, where("bookedDate", "!=", null));
+      const snapshot = await getDocs(q);
+      console.log('[Scheduler] Subscriber booked quotes:', snapshot.size ?? snapshot.docs.length);
+      const results = snapshot.docs
+        .map((docSnap) => {
+          const d = docSnap.data() || {};
+          return {
+            id: docSnap.id,
+            customerName: d.customerName || d.name,
+            address: d.address || '',
+            mobile: d.mobile || d.phone || '',
+            email: d.email || d.customerEmail || '',
+            tier: d.tier || '',
+            pricePerClean: Number(d.pricePerClean ?? d.price ?? 0),
+            bookedDate: d.bookedDate,
+            nextCleanDates: Array.isArray(d.nextCleanDates) ? d.nextCleanDates : [],
+            assignedCleaner: d.assignedCleanerId || d.assignedCleaner || null,
+            status: d.status || '',
+            customerLatitude: d.customerLatitude || d.latitude,
+            customerLongitude: d.customerLongitude || d.longitude,
+            ...d
+          };
+        })
+        .filter((q) => q.bookedDate);
+      console.timeEnd('[Scheduler] fetchBookedQuotes');
+      return results;
+    }
+    
+    // Default: load from main quotes collection (for admin/rep)
     const quotesRef = collection(db, "quotes");
     const q = query(quotesRef, where("bookedDate", "!=", null));
     const snapshot = await getDocs(q);
@@ -746,6 +1123,38 @@ function buildScheduleMap(startDate, weeks) {
   return map;
 }
 
+function resolveAndSubscribeCustomerIds() {
+  // Find all cards without customerId and resolve them
+  const cardsWithoutId = document.querySelectorAll('.schedule-job:not([data-customer-id])');
+  console.log(`[Scheduler] Found ${cardsWithoutId.length} cards without customer IDs - resolving...`);
+  
+  cardsWithoutId.forEach((card) => {
+    const quoteId = card.dataset.id;
+    const quote = state.quotes.find(q => q.id === quoteId);
+    
+    if (!quote) return;
+    
+    // Try to resolve the customer ID asynchronously
+    (async () => {
+      try {
+        // Call resolveCustomerIdFromQuote which will find/create customer link
+        const customerId = await resolveCustomerIdFromQuote(quote, { jobCard: card, allowCreate: false });
+        if (customerId) {
+          console.log(`[Scheduler] Resolved customerId for ${quote.customerName}:`, customerId);
+          card.dataset.customerId = customerId;
+          quote.customerId = customerId;
+          // Now subscribe to unread count
+          subscribeToCustomerUnreadCount(customerId, card);
+        } else {
+          console.log(`[Scheduler] Could not resolve customerId for ${quote.customerName}`);
+        }
+      } catch (error) {
+        console.warn(`[Scheduler] Failed to resolve customerId for quote ${quoteId}:`, error);
+      }
+    })();
+  });
+}
+
 function applySearchHighlight() {
   const term = state.searchTerm.trim().toLowerCase();
   if (!elements.schedule) return;
@@ -760,19 +1169,396 @@ function applySearchHighlight() {
   });
 }
 
+function subscribeToCustomerUnreadCount(customerId, cardElement) {
+  if (!customerId || !cardElement) {
+    console.warn("[Scheduler] subscribeToCustomerUnreadCount: missing customerId or cardElement", { customerId, hasCard: !!cardElement });
+    return;
+  }
+  try {
+    console.log("[Scheduler] Setting up unread count subscription for customer", customerId);
+    const customerRef = doc(db, "customers", customerId);
+    const unsubscribe = onSnapshot(
+      customerRef,
+      (snapshot) => {
+        const data = snapshot.data() || {};
+        const unreadCount = data.counters?.unreadCount || 0;
+        console.log("[Scheduler] Unread count listener fired for customer", customerId, { unreadCount, hasCounters: !!data.counters, timestamp: new Date().toISOString() });
+
+        let badgeEl = cardElement.querySelector(".badge-unread");
+        if (unreadCount > 0) {
+          if (!badgeEl) {
+            badgeEl = document.createElement("span");
+            badgeEl.className = "badge-unread";
+            badgeEl.setAttribute("aria-label", `${unreadCount} unread messages`);
+            cardElement.style.position = "relative";
+            cardElement.appendChild(badgeEl);
+            console.log("[Scheduler] Created new badge element for customer", customerId);
+          }
+          badgeEl.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+          badgeEl.hidden = false;
+          console.log("[Scheduler] Badge updated - showing count", unreadCount);
+        } else {
+          if (badgeEl) {
+            badgeEl.hidden = true;
+            console.log("[Scheduler] Badge hidden for customer (unreadCount = 0)", customerId);
+          }
+        }
+      },
+      (error) => {
+        console.error("[Scheduler] Failed to subscribe to customer unread count", error);
+      },
+    );
+
+    // Store unsubscribe function for cleanup if needed
+    if (!cardElement._unreadUnsubscribers) {
+      cardElement._unreadUnsubscribers = [];
+    }
+    cardElement._unreadUnsubscribers.push(unsubscribe);
+  } catch (error) {
+    console.error("[Scheduler] Error subscribing to customer unread count", error);
+  }
+}
+
+/**
+ * Update weather info on an already-rendered bar
+ */
+function updateBarWeatherInfo(barElement, weatherData) {
+  const statsDiv = barElement.querySelector('.weekly-overview-bar__stats');
+  if (!statsDiv) return;
+
+  // Check if weather stat already exists
+  let weatherStat = statsDiv.querySelector('.weekly-overview-bar__stat:last-child');
+  if (weatherStat && !weatherStat.querySelector('.weekly-overview-bar__weather')) {
+    // Add new weather stat
+    const newStat = document.createElement('div');
+    newStat.className = 'weekly-overview-bar__stat';
+    newStat.innerHTML = `
+      <span class="weekly-overview-bar__stat-label">Weather</span>
+      <span class="weekly-overview-bar__weather">${weatherData.icon} ${weatherData.avgTemp}</span>
+      ${weatherData.hasRain ? `<span class="weekly-overview-bar__weather-rain">${weatherData.rainDays.map(d => d.day.substring(0, 3)).join(', ')}</span>` : ''}
+    `;
+    statsDiv.appendChild(newStat);
+  } else if (weatherStat && weatherStat.querySelector('.weekly-overview-bar__weather')) {
+    // Update existing weather stat
+    const weatherEl = weatherStat.querySelector('.weekly-overview-bar__weather');
+    if (weatherEl) {
+      weatherEl.textContent = `${weatherData.icon} ${weatherData.avgTemp}`;
+    }
+    
+    const rainEl = weatherStat.querySelector('.weekly-overview-bar__weather-rain');
+    if (weatherData.hasRain) {
+      if (rainEl) {
+        rainEl.textContent = weatherData.rainDays.map(d => d.day.substring(0, 3)).join(', ');
+      } else {
+        const newRain = document.createElement('span');
+        newRain.className = 'weekly-overview-bar__weather-rain';
+        newRain.textContent = weatherData.rainDays.map(d => d.day.substring(0, 3)).join(', ');
+        weatherStat.appendChild(newRain);
+      }
+    }
+  }
+}
+
+/**
+ * Renders the weekly overview bar for unpaid/uncompleted jobs
+ * Returns a DOM element or null if no issues
+ */
+function renderWeeklyOverviewBar(weekStart, weekEntries, weatherData) {
+  if (!weekEntries || weekEntries.length === 0) {
+    return null; // No occurrences this week
+  }
+
+  // Each entry represents one occurrence (quote + date)
+  // Use occurrence-aware helpers isJobPaid / isJobCompleted for accuracy
+  const unpaidOccurrences = weekEntries.filter((e) => !isJobPaid(e.quote, toIsoDate(e.date)));
+  const uncompletedOccurrences = weekEntries.filter((e) => !isJobCompleted(e.quote, toIsoDate(e.date)));
+  const unpaidCount = unpaidOccurrences.length;
+  const uncompletedCount = uncompletedOccurrences.length;
+
+  // Create bar element
+  const bar = document.createElement("div");
+  bar.className = "weekly-overview-bar";
+
+  if (unpaidCount > 0 || uncompletedCount > 0) {
+    bar.classList.add("weekly-overview-bar--has-issues");
+  }
+
+  bar.dataset.weekStart = toIsoDate(weekStart);
+
+  // Total unpaid £ is sum of pricePerClean for unpaid occurrences
+  const totalUnpaid = unpaidOccurrences.reduce((sum, e) => sum + resolvePricePerClean(e.quote), 0);
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "weekly-overview-bar__header";
+
+  const title = document.createElement("div");
+  title.className = "weekly-overview-bar__title";
+  title.innerHTML = `
+    <span>Week Summary</span>
+    <button class="weekly-overview-bar__toggle" aria-label="Toggle details">
+      ▼
+    </button>
+  `;
+
+  const stats = document.createElement("div");
+  stats.className = "weekly-overview-bar__stats";
+  
+  let statsHtml = `
+    <div class="weekly-overview-bar__stat">
+      <span class="weekly-overview-bar__stat-label">Total Occurrences</span>
+      <span class="weekly-overview-bar__stat-value">${weekEntries.length}</span>
+    </div>
+    <div class="weekly-overview-bar__stat">
+      <span class="weekly-overview-bar__stat-label">Unpaid</span>
+      <span class="weekly-overview-bar__stat-value ${unpaidCount > 0 ? "weekly-overview-bar__stat-value--warning" : ""}">${unpaidCount}</span>
+      ${unpaidCount > 0 ? `<span class="weekly-overview-bar__stat-amount">(£${totalUnpaid.toFixed(2)})</span>` : ""}
+    </div>
+    <div class="weekly-overview-bar__stat">
+      <span class="weekly-overview-bar__stat-label">Uncompleted</span>
+      <span class="weekly-overview-bar__stat-value ${uncompletedCount > 0 ? "weekly-overview-bar__stat-value--warning" : ""}">${uncompletedCount}</span>
+    </div>
+  `;
+  
+  // Add weather if available
+  if (weatherData) {
+    statsHtml += `
+    <div class="weekly-overview-bar__stat">
+      <span class="weekly-overview-bar__stat-label">Weather</span>
+      <span class="weekly-overview-bar__weather">${weatherData.icon} ${weatherData.avgTemp}</span>
+      ${weatherData.hasRain ? `<span class="weekly-overview-bar__weather-rain">${weatherData.rainDays.map(d => d.day.substring(0, 3)).join(', ')}</span>` : ''}
+    </div>
+    `;
+  }
+
+  stats.innerHTML = statsHtml;
+
+  header.appendChild(title);
+  header.appendChild(stats);
+  bar.appendChild(header);
+
+  // Content (initially hidden)
+  const content = document.createElement("div");
+  content.className = "weekly-overview-bar__content";
+
+  if (unpaidCount > 0 || uncompletedCount > 0) {
+    const jobsList = document.createElement("div");
+    jobsList.className = "weekly-overview-bar__jobs";
+
+    weekEntries.forEach(({ quote, date }) => {
+      const occurrenceKey = toIsoDate(date);
+      const needsPaid = !isJobPaid(quote, occurrenceKey);
+      const needsCompletion = !isJobCompleted(quote, occurrenceKey);
+
+      if (!needsPaid && !needsCompletion) return;
+
+      const jobEl = document.createElement("div");
+      jobEl.className = "weekly-overview-job";
+      if (needsPaid) jobEl.classList.add("weekly-overview-job--unpaid");
+      if (needsCompletion) jobEl.classList.add("weekly-overview-job--uncompleted");
+      jobEl.dataset.quoteId = quote.id;
+      jobEl.dataset.date = occurrenceKey;
+
+      const info = document.createElement("div");
+      info.className = "weekly-overview-job__info";
+      const customer = document.createElement("div");
+      customer.className = "weekly-overview-job__customer";
+      customer.textContent = escapeHtml(quote.customerName || "Unknown");
+      const details = document.createElement("div");
+      details.className = "weekly-overview-job__details";
+      const priceEl = document.createElement("span");
+      priceEl.className = "weekly-overview-job__price";
+      priceEl.textContent = formatCurrency(resolvePricePerClean(quote));
+      const dateEl = document.createElement("span");
+      dateEl.className = "weekly-overview-job__date";
+      dateEl.textContent = `Occurrence: ${formatDate(new Date(occurrenceKey))}`;
+      const cleanerEl = document.createElement("span");
+      cleanerEl.className = "weekly-overview-job__cleaner";
+      cleanerEl.textContent = `Assigned: ${getCleanerDisplay(quote.assignedCleaner) || "Unassigned"}`;
+      details.appendChild(priceEl);
+      details.appendChild(dateEl);
+      details.appendChild(cleanerEl);
+      info.appendChild(customer);
+      info.appendChild(details);
+      const actions = document.createElement("div");
+      actions.className = "weekly-overview-job__actions";
+      if (needsPaid) {
+        const paidBtn = document.createElement("button");
+        paidBtn.className = "weekly-overview-job__button weekly-overview-job__button--paid";
+        paidBtn.textContent = "Mark Paid";
+        paidBtn.dataset.quoteId = quote.id;
+        paidBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await handleMarkJobPaidFromOverview(quote.id, paidBtn);
+        });
+        actions.appendChild(paidBtn);
+      }
+      if (needsCompletion) {
+        const doneBtn = document.createElement("button");
+        doneBtn.className = "weekly-overview-job__button weekly-overview-job__button--done";
+        doneBtn.textContent = "Mark Done";
+        doneBtn.dataset.quoteId = quote.id;
+        doneBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await handleMarkJobDoneFromOverview(quote.id, doneBtn);
+        });
+        actions.appendChild(doneBtn);
+      }
+      jobEl.appendChild(info);
+      jobEl.appendChild(actions);
+      jobsList.appendChild(jobEl);
+    });
+    content.appendChild(jobsList);
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "weekly-overview-bar__empty";
+    empty.textContent = "All jobs completed and paid ✓";
+    content.appendChild(empty);
+  }
+
+  bar.appendChild(content);
+
+  // Toggle expand/collapse
+  const toggleBtn = bar.querySelector(".weekly-overview-bar__toggle");
+  toggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    content.classList.toggle("weekly-overview-bar__content--expanded");
+    toggleBtn.classList.toggle("weekly-overview-bar__toggle--expanded");
+  });
+
+  return bar;
+}
+
+/**
+ * Handle mark job as paid action from weekly overview bar
+ */
+async function handleMarkJobPaidFromOverview(quoteId, buttonEl) {
+  try {
+    buttonEl.disabled = true;
+    buttonEl.textContent = "Saving...";
+
+    const quote = state.quotes.find((q) => q.id === quoteId);
+    if (!quote) {
+      console.error("[Scheduler] Quote not found:", quoteId);
+      return;
+    }
+
+    await updateDoc(getQuoteDocRef(quoteId), {
+      paid: true,
+      paidAt: new Date().toISOString(),
+    });
+
+    console.log("[Scheduler] Marked job as paid:", quoteId);
+
+    // Remove job from overview bar
+    const jobEl = document.querySelector(`[data-quote-id="${quoteId}"]`);
+    if (jobEl) {
+      jobEl.style.opacity = "0.5";
+      setTimeout(() => jobEl.remove(), 200);
+    }
+
+    // Update state
+    const quoteIdx = state.quotes.findIndex((q) => q.id === quoteId);
+    if (quoteIdx !== -1) {
+      state.quotes[quoteIdx].paid = true;
+      state.quotes[quoteIdx].paidAt = new Date().toISOString();
+    }
+  } catch (error) {
+    console.error("[Scheduler] Error marking job as paid:", error);
+    buttonEl.disabled = false;
+    buttonEl.textContent = "Mark Paid";
+  }
+}
+
+/**
+ * Handle mark job as done action from weekly overview bar
+ */
+async function handleMarkJobDoneFromOverview(quoteId, buttonEl) {
+  try {
+    buttonEl.disabled = true;
+    buttonEl.textContent = "Saving...";
+
+    const quote = state.quotes.find((q) => q.id === quoteId);
+    if (!quote) {
+      console.error("[Scheduler] Quote not found:", quoteId);
+      return;
+    }
+
+    await updateDoc(getQuoteDocRef(quoteId), {
+      status: "completed",
+      completedAt: new Date().toISOString(),
+    });
+
+    console.log("[Scheduler] Marked job as completed:", quoteId);
+
+    // Remove job from overview bar
+    const jobEl = document.querySelector(`[data-quote-id="${quoteId}"]`);
+    if (jobEl) {
+      jobEl.style.opacity = "0.5";
+      setTimeout(() => jobEl.remove(), 200);
+    }
+
+    // Update state
+    const quoteIdx = state.quotes.findIndex((q) => q.id === quoteId);
+    if (quoteIdx !== -1) {
+      state.quotes[quoteIdx].status = "completed";
+      state.quotes[quoteIdx].completedAt = new Date().toISOString();
+    }
+  } catch (error) {
+    console.error("[Scheduler] Error marking job as completed:", error);
+    buttonEl.disabled = false;
+    buttonEl.textContent = "Mark Done";
+  }
+}
+
 function renderSchedule() {
   if (!elements.schedule) return;
   const scheduleMap = buildScheduleMap(state.startDate, state.weeksVisible);
+  const todayIso = toIsoDate(new Date());
+  if (state.startDate) {
+    const rangeStart = formatDate(state.startDate);
+    const rangeEnd = formatDate(addDays(state.startDate, 6));
+    console.log(`[Scheduler] Rendering range ${rangeStart} → ${rangeEnd}`);
+  }
   const fragment = document.createDocumentFragment();
   for (let week = 0; week < state.weeksVisible; week += 1) {
     const weekStart = addDays(state.startDate, week * 7);
     const section = document.createElement("section");
     section.className = "schedule-week";
+    
+    // Create weekly overview bar FIRST (before header)
+    const weekEndDate = addDays(weekStart, state.includeSaturday ? 5 : 4);
+    const weekEntries = Array.from(scheduleMap.entries())
+      .filter(([dateStr]) => {
+        const dateObj = new Date(dateStr + "T00:00:00Z");
+        const wsNorm = new Date(toIsoDate(weekStart) + "T00:00:00Z");
+        const weNorm = new Date(toIsoDate(addDays(weekEndDate, 1)) + "T00:00:00Z");
+        return dateObj >= wsNorm && dateObj < weNorm;
+      })
+      .flatMap(([, entries]) => entries); // Keep { quote, date }
+    
+    // Fetch weather data asynchronously (non-blocking)
+    let weatherData = null;
+    fetchWeatherForWeek(weekStart).then((data) => {
+      weatherData = data;
+      // Update the bar if it was already rendered
+      const existingBar = section.querySelector('.weekly-overview-bar');
+      if (existingBar && weatherData) {
+        updateBarWeatherInfo(existingBar, weatherData);
+      }
+    }).catch((err) => {
+      console.warn("[Scheduler] Weather fetch failed:", err);
+    });
+    
+  const overviewBar = renderWeeklyOverviewBar(weekStart, weekEntries, weatherData);
+    if (overviewBar) {
+      section.appendChild(overviewBar);
+    }
+    
     const header = document.createElement("header");
     header.className = "week-header";
-    const weekEnd = addDays(weekStart, state.includeSaturday ? 5 : 4); // Mon–Fri or Mon–Sat
     const weekNumber = getCycleWeekNumber(weekStart);
-    header.textContent = `Week ${weekNumber}: ${formatDate(weekStart)} – ${formatDate(weekEnd)}`;
+    header.textContent = `Week ${weekNumber}: ${formatDate(weekStart)} – ${formatDate(weekEndDate)}`;
     section.appendChild(header);
     const table = document.createElement("div");
     table.className = "schedule-table";
@@ -799,6 +1585,9 @@ function renderSchedule() {
   const dayCard = document.createElement("div");
   dayCard.className = "schedule-row";
   dayCard.dataset.date = isoKey;
+  if (isoKey === todayIso) {
+    dayCard.classList.add("today-highlight");
+  }
       
   // Date header
   const dateHeader = document.createElement("div");
@@ -825,6 +1614,16 @@ function renderSchedule() {
           card.className = `schedule-job ${statusClass}`;
           card.dataset.id = quote.id;
           card.dataset.date = toIsoDate(date);
+          
+          // Try to get or resolve customer ID
+          let inlineCustomerId = getCachedCustomerId(quote);
+          console.log("[Scheduler] Card rendering for quote", quote.customerName, { quoteId: quote.id, inlineCustomerId, hasQuoteCustomerId: !!quote.customerId });
+          
+          if (inlineCustomerId) {
+            card.dataset.customerId = inlineCustomerId;
+            quote.customerId = inlineCustomerId;
+            cacheCustomerId(quote, inlineCustomerId);
+          }
           card.draggable = true;
           const isSelected = state.selectedJobIds.has(quote.id);
           const name = escapeHtml(quote.customerName || "Unknown");
@@ -848,9 +1647,13 @@ function renderSchedule() {
               <div class="job-meta">
                 <span class="job-price">${price}</span>
                 <span class="job-cleaner">${cleaner}</span>
-                ${isJobCompleted(quote) 
-                  ? `<span class="job-status-completed" data-quote-id="${quote.id}" title="Click to undo completion" style="cursor: pointer;" aria-label="Undo job completion">${escapeHtml(getCompletionDisplay(quote))}</span>`
-                  : `<button class="job-mark-done" data-quote-id="${quote.id}" title="Send customer receipt and mark complete" aria-label="Mark job as done">Mark done</button>`
+                ${isJobCompleted(quote, toIsoDate(date)) 
+                  ? `<span class="job-status-completed" data-quote-id="${quote.id}" data-date="${toIsoDate(date)}" title="Click to undo completion" style="cursor: pointer;" aria-label="Undo job completion">${escapeHtml(getCompletionDisplay(quote, toIsoDate(date)))}</span>`
+                  : `<button class="job-mark-done" data-quote-id="${quote.id}" data-date="${toIsoDate(date)}" title="Send customer receipt and mark complete" aria-label="Mark job as done">Mark done</button>`
+                }
+                ${isJobPaid(quote, toIsoDate(date))
+                  ? `<span class="job-status-paid" data-quote-id="${quote.id}" data-date="${toIsoDate(date)}" title="Paid on this visit">${escapeHtml(getPaidDisplay(quote, toIsoDate(date)))}</span>`
+                  : ''
                 }
               </div>
             </div>
@@ -865,6 +1668,11 @@ function renderSchedule() {
             card.style.backgroundColor = tintColor(area.color);
             card.style.borderColor = area.color;
             card.style.borderWidth = "2px";
+          }
+
+          // Subscribe to unread count for this customer (if customerId available)
+          if (inlineCustomerId) {
+            subscribeToCustomerUnreadCount(inlineCustomerId, card);
           }
           
           jobsCell.appendChild(card);
@@ -911,24 +1719,41 @@ function renderSchedule() {
         <option value="order">Order jobs 🚗</option>
         <option value="send">Send messages</option>
         <option value="delete">Delete selected 🗑️</option>
+        <option value="mark-paid">Mark as paid 💷</option>
       `;
       dayFooter.appendChild(actionsSelect);
       
   dayCard.appendChild(dayFooter);
   table.appendChild(dayCard);
     }
+    
     section.appendChild(table);
     fragment.appendChild(section);
   }
   elements.schedule.innerHTML = "";
   elements.schedule.appendChild(fragment);
+  
+  // Resolve customer IDs for cards that don't have them yet (for badge subscriptions)
+  resolveAndSubscribeCustomerIds();
+  
   applySearchHighlight();
+
+  // If assign mode is active, re-inject inline assign buttons and restore styles/summary
+  try {
+    if (assignModeState && assignModeState.active) {
+      ensureAssignInlineButtons();
+      applyAssignedDayStyles();
+      updateAssignSetDaysButtonState();
+      renderAssignSummaryBox();
+    }
+  } catch (e) {
+    console.warn('[AssignDays] post-render enhance failed', e);
+  }
 }
 
-function updateShowNextWeekButton(force) {
+function updateShowNextWeekButton() {
   if (!elements.showNextWeek) return;
-  const canShow = force === true || state.weeksVisible < MAX_WEEKS;
-  elements.showNextWeek.disabled = !canShow;
+  elements.showNextWeek.disabled = false;
 }
 
 function updateSelectionUI() {
@@ -1078,7 +1903,7 @@ async function rescheduleQuote(quoteId, newDate) {
         addDays(updatedBase, 56).toISOString(),
       ],
     };
-    await updateDoc(doc(db, "quotes", quoteId), payload);
+    await updateDoc(getQuoteDocRef(quoteId), payload);
     quote.bookedDate = payload.bookedDate;
     quote.nextCleanDates = payload.nextCleanDates;
     updateLocalQuote(quoteId, payload);
@@ -1160,7 +1985,7 @@ async function reorderWithinDay(dateKey, draggedId, beforeId) {
 
     // Persist to Firestore
     const fieldPath = `dayOrders.${dateKey}`;
-    await updateDoc(doc(db, "quotes", draggedId), { [fieldPath]: newKey });
+    await updateDoc(getQuoteDocRef(draggedId), { [fieldPath]: newKey });
     console.log("Firestore persisted", { fieldPath, newKey });
     console.log("=== reorderWithinDay END ===");
 
@@ -1231,7 +2056,7 @@ async function reorderMultipleWithinDay(dateKey, draggedIds, beforeId) {
         quote.dayOrders[dateKey] = newKey;
       }
       const fieldPath = `dayOrders.${dateKey}`;
-      await updateDoc(doc(db, "quotes", id), { [fieldPath]: newKey });
+      await updateDoc(getQuoteDocRef(id), { [fieldPath]: newKey });
     }
 
     console.log("=== reorderMultipleWithinDay END ===");
@@ -1419,7 +2244,7 @@ function loadCustomTemplates() {
   }
 }
 
-async function handleMarkJobDone(quoteId) {
+async function handleMarkJobDone(quoteId, occurrenceDateKey) {
   // Find the quote in our data
   const quote = state.quotes.find(q => q.id === quoteId);
   if (!quote) {
@@ -1560,14 +2385,18 @@ async function handleMarkJobDone(quoteId) {
   
   // Mark job as completed regardless of receipt email choice
   const completionDate = new Date().toLocaleDateString("en-GB");
+  // Per-occurrence completion: store completion flag in map completedOccurrences{ [date]: ISO timestamp }
+  const occurrenceKey = occurrenceDateKey || toIsoDate(new Date());
+  const prevMap = (quote.completedOccurrences && typeof quote.completedOccurrences === 'object') ? quote.completedOccurrences : {};
+  const newMap = { ...prevMap, [occurrenceKey]: new Date().toISOString() };
   const updateData = {
-    status: "Completed - " + completionDate,
-    completedDate: new Date().toISOString(),
+    // Preserve existing status (don't overwrite future occurrences). We only mark map.
+    completedOccurrences: newMap,
   };
   
   try {
     // Send receipt email if user confirmed
-    if (userConfirmed) {
+  if (userConfirmed) {
       const receiptMessage = `
 Your cleaning has been completed. Thank you for choosing Swash!
 
@@ -1582,17 +2411,26 @@ Best regards,
 Swash Team
       `.trim();
       
-      await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE, {
+  await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE, {
         title: "Cleaning Completed - Receipt",
         name: quote.customerName || "Customer",
         message: receiptMessage,
         email: recipientEmail,
       });
+      try {
+        await logOutboundEmailToFirestore({
+          to: recipientEmail,
+          subject: "Cleaning Completed - Receipt",
+          body: receiptMessage,
+          source: "scheduler-receipt",
+        });
+      } catch (logError) {
+        console.warn("[Scheduler] Failed to log receipt email", logError);
+      }
       
       // Update Firestore with email log
       await updateDoc(doc(db, "quotes", quoteId), {
-        status: "Completed - " + completionDate,
-        completedDate: new Date().toISOString(),
+        completedOccurrences: newMap,
         emailLog: arrayUnion({
           type: "receipt",
           subject: "Cleaning Completed - Receipt",
@@ -1609,8 +2447,7 @@ Swash Team
     } else {
       // Mark as completed without email log
       await updateDoc(doc(db, "quotes", quoteId), {
-        status: "Completed - " + completionDate,
-        completedDate: new Date().toISOString(),
+        completedOccurrences: newMap,
       });
     }
     
@@ -1639,7 +2476,8 @@ Swash Team
     }, 3000);
     
     // Refresh schedule to show updated status
-    refreshData();
+  updateLocalQuote(quoteId, { completedOccurrences: newMap });
+  renderSchedule();
     
   } catch (error) {
     console.error("Failed to mark job as done", error);
@@ -1671,7 +2509,46 @@ Swash Team
   }
 }
 
-async function handleUndoCompletion(quoteId) {
+// Bulk mark selected jobs on a given day as paid (per occurrence)
+async function handleMarkSelectedPaid(dateKey) {
+  try {
+    const scheduleMap = buildScheduleMap(state.startDate, state.weeksVisible);
+    const entries = scheduleMap.get(dateKey) || [];
+    // Limit to selected jobs only (if none selected, alert)
+    const selected = entries.filter(e => state.selectedJobIds.has(e.quote.id));
+    if (!selected.length) {
+      alert('No jobs selected for this day. Select jobs first.');
+      return;
+    }
+    const confirmBulk = confirm(`Mark ${selected.length} job(s) on ${dateKey} as PAID?`);
+    if (!confirmBulk) return;
+    const nowIso = new Date().toISOString();
+    for (const { quote } of selected) {
+      const occurrenceKey = dateKey; // one occurrence per date
+      const prevMap = (quote.paidOccurrences && typeof quote.paidOccurrences === 'object') ? quote.paidOccurrences : {};
+      if (prevMap[occurrenceKey]) continue; // already paid
+      const newMap = { ...prevMap, [occurrenceKey]: nowIso };
+      try {
+        await updateDoc(getQuoteDocRef(quote.id), { paidOccurrences: newMap });
+        updateLocalQuote(quote.id, { paidOccurrences: newMap });
+      } catch (err) {
+        console.warn('Failed to mark paid for', quote.id, err);
+      }
+    }
+    // Small toast
+    const note = document.createElement('div');
+    note.textContent = 'Marked paid';
+    note.style.cssText = 'position:fixed;top:20px;right:20px;background:#0d9488;color:#fff;padding:10px 16px;border-radius:6px;font-weight:600;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.25);';
+    document.body.appendChild(note);
+    setTimeout(()=>{ note.style.opacity='0'; note.style.transition='opacity .3s'; setTimeout(()=>note.remove(),300); }, 2200);
+    renderSchedule();
+  } catch (error) {
+    console.error('handleMarkSelectedPaid failed', error);
+    alert('Failed to mark paid: ' + (error?.message || 'Unknown error'));
+  }
+}
+
+async function handleUndoCompletion(quoteId, occurrenceDateKey) {
   const quote = state.quotes.find((q) => q.id === quoteId);
   if (!quote) {
     alert("Quote not found");
@@ -1785,9 +2662,12 @@ async function handleUndoCompletion(quoteId) {
 
   // Undo completion by clearing status and completedDate
   try {
-    await updateDoc(doc(db, "quotes", quoteId), {
-      status: quote.tier ? quote.tier : "Quoted",
-      completedDate: null,
+    const occurrenceKey = occurrenceDateKey || toIsoDate(new Date());
+    const prevMap = (quote.completedOccurrences && typeof quote.completedOccurrences === 'object') ? quote.completedOccurrences : {};
+    const newMap = { ...prevMap };
+    delete newMap[occurrenceKey];
+    await updateDoc(getQuoteDocRef(quoteId), {
+      completedOccurrences: newMap,
     });
 
     // Show success notification
@@ -1814,7 +2694,8 @@ async function handleUndoCompletion(quoteId) {
     }, 3000);
 
     // Refresh schedule to show updated status
-    refreshData();
+  updateLocalQuote(quoteId, { completedOccurrences: newMap });
+  renderSchedule();
   } catch (error) {
     console.error("Failed to undo completion", error);
     alert(`Failed to undo: ${error.message || "Unknown error"}`);
@@ -1915,6 +2796,15 @@ function initializeRoutePlannerMap() {
     streetViewControl: false,
   });
 
+  // Attach toggle listener once map exists
+  const routeToggle = document.getElementById('toggleAllPinsRoute');
+  if (routeToggle && !routeToggle._pinsBound) {
+    routeToggle.addEventListener('change', async (e) => {
+      await toggleAllPinsRoutePlanner(e.target.checked);
+    });
+    routeToggle._pinsBound = true;
+  }
+
   // Clear previous markers
   context.markers.forEach(m => m.setMap(null));
   context.markers = [];
@@ -1927,6 +2817,8 @@ function initializeRoutePlannerMap() {
   orderedQuotes.forEach((quote, idx) => {
     if (!quote.customerLatitude || !quote.customerLongitude) return;
 
+    const priceValue = Number(quote.pricePerClean) || 0;
+
     const marker = new google.maps.Marker({
       position: {
         lat: quote.customerLatitude,
@@ -1937,12 +2829,14 @@ function initializeRoutePlannerMap() {
       title: `${idx + 1}. ${quote.customerName}`,
     });
 
+    marker.quoteId = quote.id;
+
     const infoWindow = new google.maps.InfoWindow({
       content: `
         <div style="font-size: 0.9rem;">
           <strong>${idx + 1}. ${escapeHtml(quote.customerName)}</strong><br>
           ${escapeHtml(quote.address || 'No address')}<br>
-          <span style="color: #0078d7; font-weight: 500;">£${quote.pricePerClean} (${Math.round(quote.pricePerClean)}m)</span>
+          <span style="color: #0078d7; font-weight: 500;">£${priceValue.toFixed(2)} (${Math.round(priceValue)}m)</span>
         </div>
       `,
     });
@@ -1971,6 +2865,42 @@ function initializeRoutePlannerMap() {
   if (trafficBtn) {
     trafficBtn.addEventListener('click', toggleTrafficLayer);
   }
+}
+
+function updateRouteMarkers() {
+  const context = state.orderJobsContext;
+  if (!context || !context.markers || !context.markers.length) return;
+
+  const labelMap = new Map();
+  context.optimizedOrder.forEach((quoteId, index) => {
+    labelMap.set(quoteId, String(index + 1));
+  });
+
+  const quoteLookup = new Map();
+  context.entries.forEach((entry) => {
+    if (entry?.quote?.id) {
+      quoteLookup.set(entry.quote.id, entry.quote);
+    }
+  });
+
+  context.markers.forEach((marker) => {
+    if (!marker || !marker.quoteId) return;
+    const label = labelMap.get(marker.quoteId) || "";
+    marker.setLabel(label);
+
+    const quote = quoteLookup.get(marker.quoteId);
+    if (quote && marker.infoWindow) {
+      const index = label ? Number(label) : 0;
+      const priceValue = Number(quote.pricePerClean) || 0;
+      marker.infoWindow.setContent(`
+        <div style="font-size: 0.9rem;">
+          <strong>${index || "•"}. ${escapeHtml(quote.customerName)}</strong><br>
+          ${escapeHtml(quote.address || 'No address')}<br>
+          <span style="color: #0078d7; font-weight: 500;">£${priceValue.toFixed(2)} (${Math.round(priceValue)}m)</span>
+        </div>
+      `);
+    }
+  });
 }
 
 function toggleTrafficLayer() {
@@ -2061,6 +2991,8 @@ function initializeRoutePlannerInputs() {
 async function drawRoutePath() {
   const context = state.orderJobsContext;
   if (!context || !context.map || context.entries.length === 0) return;
+
+  updateRouteMarkers();
 
   // Get ordered quotes
   const orderedQuotes = context.optimizedOrder
@@ -2357,12 +3289,13 @@ function handleOrderJobDragEnd(e) {
 }
 
 async function handleOptimizeRoute() {
-  if (!state.orderJobsContext || state.orderJobsContext.entries.length === 0) {
+  if (!state.orderJobsContext || !state.orderJobsContext.entries || state.orderJobsContext.entries.length === 0) {
     alert("No jobs to optimize");
     return;
   }
 
-  const { entries } = state.orderJobsContext;
+  const context = state.orderJobsContext;
+  const { entries } = context;
   const btn = elements.optimizeRouteBtn;
   const originalText = btn ? btn.textContent : "";
   if (btn) {
@@ -2372,21 +3305,11 @@ async function handleOptimizeRoute() {
 
   try {
     // Build waypoints for route optimization
-    const waypoints = entries
-      .map((entry) => {
-        const { quote } = entry;
-        // Use latitude/longitude if available
-        if (quote.customerLatitude && quote.customerLongitude) {
-          return {
-            location: new google.maps.LatLng(quote.customerLatitude, quote.customerLongitude),
-            quoteId: quote.id,
-          };
-        }
-        return null;
-      })
-      .filter((w) => w !== null);
+    const optimizableEntries = entries.filter((entry) => (
+      entry?.quote?.customerLatitude && entry?.quote?.customerLongitude
+    ));
 
-    if (waypoints.length < 2) {
+    if (optimizableEntries.length < 2) {
       alert("Need at least 2 valid job addresses to optimize");
       if (btn) {
         btn.disabled = false;
@@ -2395,57 +3318,139 @@ async function handleOptimizeRoute() {
       return;
     }
 
+    // Google Directions API allows max 25 waypoints (including origin/destination)
+    // We use max 23 stops to be safe (origin + 23 waypoints + destination = 25 total)
+    const MAX_STOPS = 23;
+    if (optimizableEntries.length > MAX_STOPS) {
+      alert(`Route optimization supports up to ${MAX_STOPS} stops. You have ${optimizableEntries.length} jobs selected.\n\nPlease reduce the number of jobs or split into multiple routes.`);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+      return;
+    }
+
+    // Resolve and cache start / finish coordinates
+    let startCoords = context.startLocationCoords || null;
+    if (context.startLocation && !startCoords) {
+      startCoords = await geocodeAddress(context.startLocation);
+      if (!startCoords) {
+        throw new Error(`Could not find start location: "${context.startLocation}". Please check the address and try again.`);
+      }
+      context.startLocationCoords = startCoords;
+    }
+
+    let finishCoords = context.finishLocationCoords || null;
+    if (context.finishLocation && !finishCoords) {
+      finishCoords = await geocodeAddress(context.finishLocation);
+      if (!finishCoords) {
+        throw new Error(`Could not find finish location: "${context.finishLocation}". Please check the address and try again.`);
+      }
+      context.finishLocationCoords = finishCoords;
+    }
+
+    const waypointItems = optimizableEntries.map((entry) => ({
+      location: new google.maps.LatLng(entry.quote.customerLatitude, entry.quote.customerLongitude),
+      stopover: true,
+      quoteId: entry.quote.id,
+    }));
+    const requestWaypoints = waypointItems.map(({ location, stopover }) => ({ location, stopover }));
+
+    // Determine origin/destination based on depot inputs; fall back to job coordinates
+    let origin = startCoords || waypointItems[0].location;
+    let destination = finishCoords || (startCoords ? startCoords : waypointItems[waypointItems.length - 1].location);
+
+    // Validate coordinates
+    if (!origin || !destination) {
+      throw new Error("Could not determine route start and end points. Please check your locations.");
+    }
+
+    // Check if start and finish are the same or very close (within ~10 meters)
+    // If so, use first and last job locations instead to allow Google to optimize
+    const isSameLocation = (loc1, loc2) => {
+      const lat1 = typeof loc1.lat === 'function' ? loc1.lat() : loc1.lat;
+      const lng1 = typeof loc1.lng === 'function' ? loc1.lng() : loc1.lng;
+      const lat2 = typeof loc2.lat === 'function' ? loc2.lat() : loc2.lat;
+      const lng2 = typeof loc2.lng === 'function' ? loc2.lng() : loc2.lng;
+      const latDiff = Math.abs(lat1 - lat2);
+      const lngDiff = Math.abs(lng1 - lng2);
+      return latDiff < 0.0001 && lngDiff < 0.0001; // ~10 meters
+    };
+
+    if (isSameLocation(origin, destination) && waypointItems.length >= 2) {
+      // Start and finish are same location - use first and last jobs as endpoints
+      origin = waypointItems[0].location;
+      destination = waypointItems[waypointItems.length - 1].location;
+      // Remove first and last jobs from waypoints since they're now origin/destination
+      const middleWaypoints = waypointItems.slice(1, -1);
+      requestWaypoints.length = 0;
+      requestWaypoints.push(...middleWaypoints.map(({ location, stopover }) => ({ location, stopover })));
+    }
+
     // Use promise with timeout for optimization
     const optimizePromise = new Promise((resolve, reject) => {
       const directionsService = new google.maps.DirectionsService();
-      const start = waypoints[0];
-      const end = waypoints[waypoints.length - 1];
-      const middle = waypoints.slice(1, -1);
-
       const request = {
-        origin: start.location,
-        destination: end.location,
-        waypoints: middle.map((w) => ({ location: w.location, stopover: true })),
+        origin,
+        destination,
+  waypoints: requestWaypoints,
         optimizeWaypoints: true,
         travelMode: google.maps.TravelMode.DRIVING,
       };
 
-      // Add 10 second timeout
+      // Add 15 second timeout for larger routes
       const timeoutId = setTimeout(() => {
-        reject(new Error("Route optimization timed out"));
-      }, 10000);
+        reject(new Error("Route optimization timed out. Try reducing the number of stops or check your internet connection."));
+      }, 15000);
 
       directionsService.route(request, (result, status) => {
         clearTimeout(timeoutId);
 
         if (status === google.maps.DirectionsStatus.OK) {
-          // Extract optimized order from result
-          const optimizedOrder = [start.quoteId];
-
-          // Map waypoint indices back to quote IDs
-          const waypointOrder = result.routes[0].waypoint_order;
-          waypointOrder.forEach((idx) => {
-            optimizedOrder.push(middle[idx].quoteId);
-          });
-
-          optimizedOrder.push(end.quoteId);
-          resolve({ optimizedOrder, start, end });
+          const waypointOrder = result.routes[0]?.waypoint_order || waypointItems.map((_, idx) => idx);
+          const optimizedIds = waypointOrder.map((idx) => waypointItems[idx].quoteId);
+          resolve({ optimizedIds });
         } else {
-          reject(new Error(`Route optimization failed: ${status}`));
+          // Provide more helpful error messages based on status
+          let errorMsg = "Route optimization failed";
+          if (status === "ZERO_RESULTS") {
+            errorMsg = "No route could be found between these locations. Please check that all addresses are valid and accessible by road.";
+          } else if (status === "MAX_WAYPOINTS_EXCEEDED") {
+            errorMsg = `Too many stops (${optimizableEntries.length}). Maximum is ${MAX_STOPS}. Please reduce the number of jobs.`;
+          } else if (status === "INVALID_REQUEST") {
+            errorMsg = "Invalid route request. Please check your start/finish locations and job addresses.";
+          } else if (status === "OVER_QUERY_LIMIT") {
+            errorMsg = "Google Maps API quota exceeded. Please try again in a moment.";
+          } else if (status === "REQUEST_DENIED") {
+            errorMsg = "Route optimization denied by Google Maps. Please check your API key configuration.";
+          } else {
+            errorMsg = `Route optimization failed: ${status}`;
+          }
+          reject(new Error(errorMsg));
         }
       });
     });
 
-    const { optimizedOrder } = await optimizePromise;
+    const { optimizedIds } = await optimizePromise;
+
+    const optimizedIdSet = new Set(optimizedIds);
+    entries.forEach((entry) => {
+      if (!optimizedIdSet.has(entry.quote.id)) {
+        optimizedIds.push(entry.quote.id);
+        optimizedIdSet.add(entry.quote.id);
+      }
+    });
 
     // Update state
-    state.orderJobsContext.optimizedOrder = optimizedOrder;
+    state.orderJobsContext.optimizedOrder = optimizedIds;
 
     // Re-sort entries based on optimized order
     const oldEntries = state.orderJobsContext.entries;
-    state.orderJobsContext.entries = optimizedOrder.map((qId) =>
+    state.orderJobsContext.entries = optimizedIds.map((qId) =>
       oldEntries.find((e) => e.quote.id === qId)
     );
+
+    updateRouteMarkers();
 
     // Re-render the route with new order
     drawRoutePath();
@@ -2482,6 +3487,8 @@ function handleClearOrder() {
   // Reset to original order
   state.orderJobsContext.entries.sort((a, b) => a._originalIndex - b._originalIndex);
   state.orderJobsContext.optimizedOrder = state.orderJobsContext.entries.map((e) => e.quote.id);
+
+  updateRouteMarkers();
 
   // Re-render the route with original order
   drawRoutePath();
@@ -2539,7 +3546,7 @@ async function handleSaveJobOrder() {
         updateData.routeFinishLocation = finishLocation;
       }
       
-      return updateDoc(doc(db, "quotes", entry.quote.id), updateData);
+      return updateDoc(getQuoteDocRef(entry.quote.id), updateData);
     });
 
     await Promise.all(updates);
@@ -2848,6 +3855,16 @@ async function handleSendDayMessage() {
             message: message,
             email: recipientEmail,
           });
+          try {
+            await logOutboundEmailToFirestore({
+              to: recipientEmail,
+              subject: templateTitle,
+              body: message,
+              source: "scheduler-day-message",
+            });
+          } catch (logError) {
+            console.warn("[Scheduler] Failed to log outbound day message email", logError);
+          }
           emailSuccess = true;
           await updateDoc(doc(db, "quotes", quote.id), {
             emailLog: arrayUnion({
@@ -3054,11 +4071,14 @@ function attachEvents() {
       elements.startWeek.value = state.startDate.toISOString().slice(0, 10);
     }
     renderSchedule();
+    updateShowNextWeekButton();
   });
 
   elements.showNextWeek?.addEventListener("click", () => {
-    if (state.weeksVisible >= MAX_WEEKS) return;
-    state.weeksVisible += 1;
+    state.startDate = addDays(state.startDate, 7);
+    if (elements.startWeek) {
+      elements.startWeek.value = state.startDate.toISOString().slice(0, 10);
+    }
     renderSchedule();
     updateShowNextWeekButton();
   });
@@ -3244,14 +4264,30 @@ function attachEvents() {
       }
     });
 
-    elements.schedule.addEventListener("click", (event) => {
+    elements.schedule.addEventListener("click", async (event) => {
+      const communicationsBtn = event.target.closest(".job-comm-btn");
+      if (communicationsBtn) {
+        event.stopPropagation();
+        const jobCard = communicationsBtn.closest(".schedule-job");
+        const quoteId = jobCard?.dataset.id;
+        const quote = quoteId ? state.quotes.find((q) => q.id === quoteId) : null;
+        if (!quote) {
+          alert("Unable to load customer details for this job.");
+          return;
+        }
+        const dateKey = jobCard?.dataset.date || null;
+  await openCommunicationsForQuote(quote, { occurrenceDateKey: dateKey, jobCard });
+        return;
+      }
+
       // Check if clicking the "Mark as done" button
       const markDoneBtn = event.target.closest(".job-mark-done");
       if (markDoneBtn) {
         event.stopPropagation();
         const quoteId = markDoneBtn.dataset.quoteId;
+        const dateKey = markDoneBtn.dataset.date || markDoneBtn.closest('.schedule-job')?.dataset.date || null;
         if (quoteId) {
-          handleMarkJobDone(quoteId);
+          handleMarkJobDone(quoteId, dateKey);
         }
         return;
       }
@@ -3261,9 +4297,18 @@ function attachEvents() {
       if (completedStatus) {
         event.stopPropagation();
         const quoteId = completedStatus.dataset.quoteId;
+        const dateKey = completedStatus.dataset.date || completedStatus.closest('.schedule-job')?.dataset.date || null;
         if (quoteId) {
-          handleUndoCompletion(quoteId);
+          handleUndoCompletion(quoteId, dateKey);
         }
+        return;
+      }
+
+      // Check if clicking the paid status box (no undo for now)
+      const paidStatus = event.target.closest('.job-status-paid');
+      if (paidStatus) {
+        event.stopPropagation();
+        // No action: already paid indicator
         return;
       }
       
@@ -3328,6 +4373,9 @@ function attachEvents() {
           handleDeleteSelectedJobs(dateKey);
           // Reset dropdown after action
           setTimeout(() => { event.target.value = ""; }, 100);
+        } else if (action === "mark-paid" && dateKey) {
+          handleMarkSelectedPaid(dateKey);
+          setTimeout(() => { event.target.value = ""; }, 100);
         }
         return;
       }
@@ -3368,6 +4416,17 @@ function attachEvents() {
   elements.cleanerFilter?.addEventListener("change", (event) => {
     state.cleanerFilter = event.target.value;
     renderSchedule();
+    // In Assign Mode, schedule re-render removes injected buttons – add them back and refresh state
+    if (assignModeState && assignModeState.active) {
+      try {
+        ensureAssignInlineButtons();
+        applyAssignedDayStyles();
+        updateAssignSetDaysButtonState();
+        renderAssignSummaryBox();
+      } catch (e) {
+        console.warn('[AssignDays] cleaner change enhance failed', e);
+      }
+    }
   });
 
   elements.closeModal?.addEventListener("click", () => {
@@ -3386,6 +4445,13 @@ export async function startSchedulerApp() {
   initMenuDropdown();
   initEmailJsScheduler();
   loadCustomTemplates();
+  if (window.CustomerChatModal?.init) {
+    try {
+      window.CustomerChatModal.init();
+    } catch (error) {
+      console.warn("[Scheduler] Failed to initialise CustomerChatModal", error);
+    }
+  }
 
   // Set up area management
   const user = auth.currentUser;
@@ -3395,14 +4461,37 @@ export async function startSchedulerApp() {
     initAreasModal();
   }
 
-  const baseline = new Date(`${BASELINE_START_DATE}T00:00:00`);
-  state.startDate = normalizeStartDate(baseline);
-
+  const today = new Date();
+  const currentWeekStart = normalizeStartDate(today);
+  state.startDate = currentWeekStart;
   if (elements.startWeek) {
-    elements.startWeek.value = BASELINE_START_DATE;
+    elements.startWeek.value = currentWeekStart.toISOString().slice(0, 10);
   }
+  const initialWeekEnd = addDays(currentWeekStart, 6);
+  console.log(
+    `[Scheduler] Initial week set to ${formatDate(currentWeekStart)} → ${formatDate(initialWeekEnd)}`,
+  );
 
   console.time('[Scheduler] initial-data');
+  
+  // Load subscriber cleaners if applicable
+  if (subscriberId) {
+    subscriberCleaners = await loadSubscriberCleaners();
+  }
+  
+  // Reflect context in subheading
+  try {
+    const sub = document.getElementById('schedulerSubheading');
+    if (sub) {
+      const params = new URLSearchParams(window.location.search || '');
+      const ctx = subscriberId ? `Tenant mode` : `Global mode`;
+      const hint = subscriberId
+        ? `Viewing your business data. Add ?tenant=global to see global.`
+        : `Viewing global data. Add ?tenant=self to view your business.`;
+      sub.textContent = `Generate a rolling schedule from booked customers and plan upcoming cleans. (${ctx} — ${hint})`;
+    }
+  } catch(_) {}
+  
   state.quotes = await fetchBookedQuotes();
   state.weeksVisible = INITIAL_WEEKS;
   state.draggingIds = [];
@@ -3424,11 +4513,12 @@ export async function startSchedulerApp() {
 
   if (elements.cleanerFilter) {
     populateCleanerSelect(elements.cleanerFilter, {
-      includePlaceholder: true,
-      placeholderLabel: "All cleaners",
+      includePlaceholder: false,
       includeAll: true,
       includeUnassigned: true,
     });
+    elements.cleanerFilter.value = CLEANER_ALL;
+    state.cleanerFilter = CLEANER_ALL;
   }
 
   console.time('[Scheduler] renderSchedule');
@@ -3438,6 +4528,18 @@ export async function startSchedulerApp() {
   updateSelectionUI();
   updateShowNextWeekButton();
   console.timeEnd('[Scheduler] initial-data');
+
+  // ===== Assign Area Days Mode Activation =====
+  try {
+    const params = new URLSearchParams(window.location.search || '');
+    const assignMode = params.get('assignMode') === 'true';
+    const territoryId = params.get('territoryId');
+    if (assignMode && territoryId) {
+      await initAssignAreaDaysMode(territoryId);
+    }
+  } catch (e) {
+    console.warn('[Scheduler] Assign mode init failed', e);
+  }
 }
 
 if (syncChannel) {
@@ -3457,6 +4559,7 @@ if (syncChannel) {
 
 function setupSchedulerAuth() {
   if (!elements.loginForm) return;
+  let failedAttempts = 0;
   
   elements.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -3473,6 +4576,7 @@ function setupSchedulerAuth() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       clearLoginError();
+      failedAttempts = 0;
     } catch (error) {
       console.error("Login failed", error);
       if (error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
@@ -3484,6 +4588,12 @@ function setupSchedulerAuth() {
       }
       elements.loginEmail.value = "";
       elements.loginPassword.value = "";
+      failedAttempts += 1;
+      if (failedAttempts >= 2) {
+        // Fall back to the dedicated login page which is known-good across environments
+        const redirect = encodeURIComponent('/rep/scheduler.html');
+        window.location.href = `/index.html?redirect=${redirect}`;
+      }
     }
   });
 
@@ -3500,8 +4610,47 @@ async function initScheduler() {
   await waitForDomReady();
   setupSchedulerAuth();
   
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     if (user) {
+      try {
+        // Check user role
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          userRole = userData.role;
+          // Tenant scoping rules with admin override:
+          // - subscriber owners: tenant = self uid
+          // - team reps: tenant = users/{uid}.subscriberId
+          // - admins: default to their business tenant if subscriberId exists; allow override via URL
+          const params = new URLSearchParams(window.location.search || '');
+          const tenantParam = params.get('tenant') || params.get('subscriberId');
+          if (userRole === 'subscriber') {
+            subscriberId = user.uid;
+            console.log('[Scheduler] Subscriber owner detected:', subscriberId);
+          } else if (userRole === 'rep' && userData.subscriberId) {
+            subscriberId = userData.subscriberId;
+            console.log('[Scheduler] Subscriber team member detected. Tenant:', subscriberId);
+          } else if (userRole === 'admin') {
+            // Admin: default to GLOBAL for safety; allow explicit tenant via query
+            if (tenantParam) {
+              const t = tenantParam.toLowerCase();
+              if (t === 'global' || t === 'none') {
+                subscriberId = null;
+              } else if (t === 'me' || t === 'self' || t === 'owner') {
+                subscriberId = userData.ownsSubscriberId || userData.subscriberId || null;
+              } else {
+                subscriberId = tenantParam; // explicit tenant id
+              }
+            } else {
+              subscriberId = null; // global by default
+            }
+            console.log('[Scheduler] Admin context:', subscriberId ? `tenant ${subscriberId}` : 'global');
+          }
+        }
+      } catch (error) {
+        console.error('[Scheduler] Error checking user role:', error);
+      }
+      
       clearLoginError();
       elements.logoutBtn?.removeAttribute("hidden");
       showAuthOverlay(false);
@@ -3549,15 +4698,30 @@ function getPaymentStatusClass(quote) {
   return "schedule-job--unpaid";
 }
 
-function isJobCompleted(quote) {
+function isJobCompleted(quote, occurrenceDateKey) {
+  if (!quote) return false;
+  const map = quote.completedOccurrences;
+  if (map && typeof map === 'object' && occurrenceDateKey) {
+    return !!map[occurrenceDateKey];
+  }
+  // Legacy fallback: if status starts with Completed and this is the original bookedDate occurrence only.
   const status = (quote.status || "").toString();
-  return status.startsWith("Completed");
+  if (!status.startsWith('Completed')) return false;
+  if (!occurrenceDateKey) return false;
+  const booked = toIsoDate(toDate(quote.bookedDate));
+  return occurrenceDateKey === booked;
 }
 
-function getCompletionDisplay(quote) {
-  if (!isJobCompleted(quote)) return null;
-  const status = quote.status || "Completed";
-  return status;
+function getCompletionDisplay(quote, occurrenceDateKey) {
+  if (!isJobCompleted(quote, occurrenceDateKey)) return null;
+  // Show localized date from map or status fallback
+  const map = quote.completedOccurrences;
+  if (map && map[occurrenceDateKey]) {
+    const dt = new Date(map[occurrenceDateKey]);
+    return 'Completed - ' + dt.toLocaleDateString('en-GB');
+  }
+  // Legacy fallback
+  return quote.status || 'Completed';
 }
 
 function buildJobDetailsHtml(quote) {
@@ -3568,6 +4732,9 @@ function buildJobDetailsHtml(quote) {
   const emailRaw = quote.email || quote.customerEmail || "";
   const emailDisplay = emailRaw ? safe(emailRaw) : "—";
   const emailHref = emailRaw ? `mailto:${encodeURIComponent(String(emailRaw))}` : null;
+  const customerName = quote.customerName || quote.name || "Customer";
+  const navigationUrl = getNavigationUrl(quote);
+  const hasChatAccess = Boolean(getCachedCustomerId(quote) || emailRaw);
 
   // Calculate duration from price (£1 per minute)
   const pricePerClean = resolvePricePerClean(quote);
@@ -3598,12 +4765,39 @@ function buildJobDetailsHtml(quote) {
         `)
         .join("")}
     </dl>
-    ${getNavigationUrl(quote) ? `
+    ${(hasChatAccess || navigationUrl) ? `
       <div class="job-details__actions">
-        <a class="btn btn-primary job-nav-btn" href="${getNavigationUrl(quote)}" target="_blank" rel="noopener nofollow">Navigate</a>
+        ${hasChatAccess ? `
+          <button type="button" class="btn btn-secondary job-comm-btn" aria-label="Open communications with ${escapeHtml(customerName)}">Communications</button>
+        ` : ""}
+        ${navigationUrl ? `
+          <a class="btn btn-primary job-nav-btn" href="${navigationUrl}" target="_blank" rel="noopener nofollow">Navigate</a>
+        ` : ""}
       </div>
-    ` : ''}
+    ` : ""}
   `;
+}
+
+function isJobPaid(quote, occurrenceDateKey) {
+  if (!quote) return false;
+  const paidMap = quote.paidOccurrences;
+  if (paidMap && typeof paidMap === 'object' && occurrenceDateKey && paidMap[occurrenceDateKey]) {
+    return true;
+  }
+  // Legacy fallback: whole-quote paid flag or status text containing 'paid'
+  const status = String(quote.status || '').toLowerCase();
+  if (quote.paid === true || status.includes('paid')) return true;
+  return false;
+}
+
+function getPaidDisplay(quote, occurrenceDateKey) {
+  if (!isJobPaid(quote, occurrenceDateKey)) return '';
+  const map = quote.paidOccurrences;
+  if (map && typeof map === 'object' && occurrenceDateKey && map[occurrenceDateKey]) {
+    const dt = new Date(map[occurrenceDateKey]);
+    return 'Paid - ' + dt.toLocaleDateString('en-GB');
+  }
+  return 'Paid';
 }
 
 // Build a navigation URL that opens the default maps app on mobile
@@ -3624,3 +4818,386 @@ function getNavigationUrl(quote) {
   }
   return `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
 }
+
+// ================= ASSIGN AREA DAYS MODE (Implementation appended) =================
+// selectedDays structure: { weekKey: { dayKey: [cleanerId, ...] } }
+let assignModeState = {
+  active: false,
+  territoryId: null,
+  territory: null,
+  selectedDays: {},
+  color: '#0078d7'
+};
+
+function resolveTerritoryIdentifier(territory, fallbackId) {
+  return territory?.id || territory?.territoryId || territory?.name || fallbackId;
+}
+
+function cloneAllowedBookingDays(map) {
+  try {
+    return JSON.parse(JSON.stringify(map || {}));
+  } catch (_) {
+    return {};
+  }
+}
+
+function buildTerritoryDocMergePayload(territory) {
+  if (!territory) return {};
+  const payload = {};
+  const type = territory.type || (territory.center && Number.isFinite(Number(territory.radius)) ? 'circle' : 'polygon');
+  if (type) payload.type = type;
+  if (type === 'polygon') {
+    // Normalize polygon points to objects {lat, lng} to avoid nested array Firestore limitation
+    const rawPath = Array.isArray(territory.geoBoundary)
+      ? territory.geoBoundary
+      : Array.isArray(territory.path)
+        ? territory.path
+        : [];
+    const normalizePoint = (p) => {
+      if (!p) return null;
+      if (Array.isArray(p) && p.length >= 2) {
+        return { lat: Number(p[0]), lng: Number(p[1]) };
+      }
+      if (typeof p.lat === 'number' && typeof p.lng === 'number') {
+        return { lat: Number(p.lat), lng: Number(p.lng) };
+      }
+      return null;
+    };
+    const pts = rawPath.map(normalizePoint).filter(Boolean);
+    if (pts.length) payload.geoBoundary = pts;
+  } else if (type === 'circle') {
+    if (territory.center) payload.center = territory.center;
+    if (territory.radius != null) payload.radius = territory.radius;
+  }
+  if (territory.color) payload.color = territory.color;
+  if (Array.isArray(territory.reps)) payload.reps = territory.reps;
+  if (territory.name) payload.name = territory.name;
+  if (territory.focusPeriodStart || territory.focusFromDate) payload.focusPeriodStart = territory.focusPeriodStart || territory.focusFromDate;
+  if (territory.focusPeriodEnd || territory.focusToDate) payload.focusPeriodEnd = territory.focusPeriodEnd || territory.focusToDate;
+  return payload;
+}
+
+// Deep sanitize any nested arrays (Firestore forbids arrays-of-arrays). Convert coordinate
+// arrays of length 2 into {lat,lng}. Flatten other nested arrays conservatively.
+function sanitizeFirestoreValue(value) {
+  if (Array.isArray(value)) {
+    const outArr = [];
+    for (const item of value) {
+      if (Array.isArray(item)) {
+        if (item.length === 2 && item.every(n => typeof n === 'number' || !isNaN(Number(n)))) {
+          outArr.push({ lat: Number(item[0]), lng: Number(item[1]) });
+        } else {
+          // wrap nested arrays to avoid array-in-array
+          outArr.push({ values: sanitizeFirestoreValue(item) });
+        }
+      } else if (typeof item === 'object' && item !== null) {
+        outArr.push(sanitizeFirestoreValue(item));
+      } else {
+        outArr.push(item);
+      }
+    }
+    return outArr;
+  }
+  if (typeof value === 'object' && value !== null) {
+    const out = {};
+    for (const k in value) {
+      out[k] = sanitizeFirestoreValue(value[k]);
+    }
+    return out;
+  }
+  return value;
+}
+
+function buildSystemTerritoryEntry(territory, allowedBookingDays, auditMeta, fallbackId) {
+  const entry = {
+    id: resolveTerritoryIdentifier(territory, fallbackId),
+    name: territory?.name || fallbackId || 'Area',
+    allowedBookingDays: cloneAllowedBookingDays(allowedBookingDays),
+    updatedAt: auditMeta.updatedAt,
+    updatedBy: auditMeta.updatedBy,
+    color: territory?.color || '#0078d7',
+  };
+  const type = territory?.type || (territory?.center && Number.isFinite(Number(territory?.radius)) ? 'circle' : 'polygon');
+  entry.type = type;
+  if (type === 'circle') {
+    if (territory?.center) entry.center = territory.center;
+    if (territory?.radius != null) entry.radius = territory.radius;
+  } else {
+    if (Array.isArray(territory?.path)) entry.path = territory.path;
+    else if (Array.isArray(territory?.geoBoundary)) entry.geoBoundary = territory.geoBoundary;
+  }
+  if (Array.isArray(territory?.reps)) entry.reps = territory.reps;
+  if (territory?.focusFromDate || territory?.focusPeriodStart) entry.focusFromDate = territory.focusFromDate || territory.focusPeriodStart;
+  if (territory?.focusToDate || territory?.focusPeriodEnd) entry.focusToDate = territory.focusToDate || territory.focusPeriodEnd;
+  return entry;
+}
+
+async function syncSystemTerritoriesDoc(territory, allowedBookingDays, auditMeta, fallbackId) {
+  try {
+    const sysRef = doc(db, 'system', 'territories');
+    const snap = await getDoc(sysRef);
+    if (!snap.exists()) return;
+    const existing = Array.isArray(snap.data().data) ? snap.data().data.map((item) => ({ ...item })) : [];
+    const entry = buildSystemTerritoryEntry(territory, allowedBookingDays, auditMeta, fallbackId);
+    let updated = false;
+    for (let i = 0; i < existing.length; i += 1) {
+      const existingId = existing[i].id || existing[i].territoryId || existing[i].name;
+      if (existingId === entry.id) {
+        existing[i] = { ...existing[i], ...entry };
+        updated = true;
+        break;
+      }
+    }
+    if (!updated) existing.push(entry);
+    await setDoc(sysRef, { data: existing, updatedAt: auditMeta.updatedAt, updatedBy: auditMeta.updatedBy }, { merge: true });
+  } catch (err) {
+    console.warn('[AssignDays] Failed to sync system territories doc', err);
+  }
+}
+
+async function fetchTerritoryById(id) {
+  try {
+    const snap = await getDoc(doc(db, 'territories', id));
+    if (snap.exists()) return { id: snap.id, ...snap.data() };
+  } catch (e) {
+    console.warn('[AssignDays] Territory doc fetch failed', e);
+  }
+  try {
+    const sysDoc = await getDoc(doc(db, 'system', 'territories'));
+    if (sysDoc.exists() && Array.isArray(sysDoc.data().data)) {
+      const found = sysDoc.data().data.find(t => t.id === id || t.territoryId === id);
+      if (found) return found;
+    }
+  } catch (e) {
+    console.warn('[AssignDays] system/territories fallback failed', e);
+  }
+  return null;
+}
+
+function getRepNameCached() {
+  try { return localStorage.getItem('swash:lastRepName') || ''; } catch(_) { return ''; }
+}
+
+function ensureAssignInlineButtons() {
+  document.querySelectorAll('.schedule-row .day-cell').forEach(cell => {
+    if (cell.querySelector('.assign-btn-inline')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Assign to Area';
+    btn.className = 'btn btn-secondary assign-btn-inline';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = cell.closest('.schedule-row');
+      if (!row) return;
+      const dayIso = row.dataset.date;
+      const weekSection = row.closest('.schedule-week');
+      let weekStartIso = null;
+      if (weekSection) {
+        const firstRow = weekSection.querySelector('.schedule-row');
+        weekStartIso = firstRow ? firstRow.dataset.date : dayIso;
+      } else {
+        weekStartIso = dayIso;
+      }
+      // Multi-cleaner toggle using current cleaner filter
+      const cleanerVal = elements.cleanerFilter?.value || '';
+      if (!cleanerVal || cleanerVal === CLEANER_ALL) {
+        alert('Select a cleaner from the Cleaner dropdown, then click Assign to Area.');
+        return;
+      }
+      const weekKey = getWeekKeyFromIso(weekStartIso);
+      const dayKey = getDayKeyFromIso(dayIso);
+      if (!assignModeState.selectedDays[weekKey]) assignModeState.selectedDays[weekKey] = {};
+      if (!assignModeState.selectedDays[weekKey][dayKey]) assignModeState.selectedDays[weekKey][dayKey] = [];
+      const arr = assignModeState.selectedDays[weekKey][dayKey];
+      const idx = arr.indexOf(cleanerVal);
+      if (idx >= 0) arr.splice(idx, 1); else arr.push(cleanerVal);
+      // Clean up empties
+      if (arr.length === 0) {
+        delete assignModeState.selectedDays[weekKey][dayKey];
+        if (Object.keys(assignModeState.selectedDays[weekKey]).length === 0) delete assignModeState.selectedDays[weekKey];
+      }
+      applyAssignedDayStyles();
+      updateAssignSetDaysButtonState();
+      renderAssignSummaryBox();
+    });
+    cell.appendChild(btn);
+  });
+}
+
+function renderAssignSummaryBox() {
+  const box = document.getElementById('assignSummaryBox');
+  const list = document.getElementById('assignSummaryList');
+  if (!box || !list) return;
+  const lines = [];
+  const weekKeys = Object.keys(assignModeState.selectedDays).sort((a,b)=>Number(a.replace('week',''))-Number(b.replace('week','')));
+  for (const wk of weekKeys) {
+    const dayMap = assignModeState.selectedDays[wk] || {};
+    const dayKeys = Object.keys(dayMap).sort(daySortOrder);
+    for (const dk of dayKeys) {
+      const cleaners = dayMap[dk] || [];
+      cleaners.forEach(c => {
+        lines.push(`${dayLongName(dk)} ${wk.replace('week','Week ')} – ${escapeHtml(getCleanerLabel(c) || c)}`);
+      });
+    }
+  }
+  list.innerHTML = lines.map(l => `<li class="assign-summary__item">${l}</li>`).join('');
+  box.hidden = lines.length === 0;
+}
+
+function daySortOrder(a,b){
+  const order=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  return order.indexOf(a)-order.indexOf(b);
+}
+function dayLongName(short){
+  const map={Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'};
+  return map[short]||short;
+}
+function getWeekKeyFromIso(weekStartIso){
+  const d=new Date(weekStartIso+'T00:00:00');
+  return 'week'+getCycleWeekNumber(d);
+}
+function getDayKeyFromIso(dayIso){
+  const d=new Date(dayIso+'T00:00:00');
+  const s=d.toLocaleDateString('en-GB',{weekday:'short'});
+  return s.replace('.','');
+}
+function cleanersForDay(weekKey,dayKey){
+  return (assignModeState.selectedDays[weekKey] && assignModeState.selectedDays[weekKey][dayKey]) || [];
+}
+function applyAssignedDayStyles(){
+  document.querySelectorAll('.schedule-week').forEach(section=>{
+    const firstRow=section.querySelector('.schedule-row');
+    if(!firstRow) return;
+    const weekKey=getWeekKeyFromIso(firstRow.dataset.date);
+    section.querySelectorAll('.schedule-row').forEach(row=>{
+      const dayIso=row.dataset.date;
+      const dayKey=getDayKeyFromIso(dayIso);
+      const assigned=cleanersForDay(weekKey,dayKey);
+      const headerCell=row.querySelector('.day-cell');
+      if(assigned.length>0){
+        row.classList.add('assigned-day');
+        row.style.setProperty('--territory-color', assignModeState.color);
+      }else{
+        row.classList.remove('assigned-day');
+        row.style.removeProperty('--territory-color');
+      }
+      let badge=headerCell?.querySelector('.assign-multi-badge');
+      if(!badge && headerCell){
+        badge=document.createElement('span');
+        badge.className='assign-multi-badge';
+        headerCell.appendChild(badge);
+      }
+      if(badge){
+        if(assigned.length>1){
+          badge.textContent=`+${assigned.length}`;
+          badge.style.display='inline-block';
+        }else{
+          badge.style.display='none';
+        }
+      }
+      const titleEl=headerCell?.querySelector('.day-title');
+      if(titleEl){
+        const names=assigned.map(c=>getCleanerLabel(c)||c).join(', ');
+        titleEl.title=names?`Assigned: ${names}`:'';
+      }
+    });
+  });
+}
+
+function updateAssignSetDaysButtonState() {
+  const btn = document.getElementById('assignSetDaysBtn');
+  if (!btn) return;
+  const hasSelections = Object.values(assignModeState.selectedDays).some(week => week && Object.values(week).some(arr => (arr||[]).length));
+  btn.disabled = !hasSelections;
+}
+
+async function saveAssignedDays() {
+  if (!assignModeState.active || !assignModeState.territoryId) return;
+  const allowedBookingDays = cloneAllowedBookingDays(assignModeState.selectedDays);
+  const auditMeta = {
+    updatedAt: new Date().toISOString(),
+    updatedBy: auth.currentUser?.uid || null,
+  };
+  const resolvedId = resolveTerritoryIdentifier(assignModeState.territory, assignModeState.territoryId);
+  
+  // Build COMPLETE territory document to ensure name, geoBoundary, color, reps all persist
+  const territoryMerge = buildTerritoryDocMergePayload(assignModeState.territory);
+  const completePayload = {
+    // Core territory data (MUST include name and geoBoundary/center+radius)
+    ...territoryMerge,
+    // Add the booking days assignment
+    allowedBookingDays,
+    // Add audit metadata
+    ...auditMeta,
+  };
+  
+  const payload = sanitizeFirestoreValue(completePayload);
+  console.log('[AssignDays] Saving to Firestore territories/' + resolvedId, { payload, territory: assignModeState.territory });
+  
+  try {
+    // Use setDoc with merge:true to update while preserving existing data
+    await setDoc(doc(db, 'territories', resolvedId), payload, { merge: true });
+    console.log('[AssignDays] Successfully saved to territories/' + resolvedId);
+    
+    // Also sync to system/territories doc for backup
+    await syncSystemTerritoriesDoc(assignModeState.territory, allowedBookingDays, auditMeta, resolvedId);
+    
+    const terrName = assignModeState.territory?.name || assignModeState.territory?.title || 'this area';
+    showAssignToast(`✅ Cleaning days assigned for ${terrName}.`);
+    
+    setTimeout(() => {
+      // Redirect back to map.html which will reload all territories fresh from Firestore
+      window.location.href = '/rep/map.html?toast=daysAssigned';
+    }, 800);
+  } catch (e) {
+    console.error('[AssignDays] Failed to save allowedBookingDays', e);
+    showAssignToast('❌ Failed to save days. Try again.', true);
+  }
+}
+
+function showAssignToast(message, isError = false) {
+  let toast = document.getElementById('assignDaysToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'assignDaysToast';
+    toast.style.position = 'fixed';
+    toast.style.bottom = '16px';
+    toast.style.right = '16px';
+    toast.style.padding = '10px 14px';
+    toast.style.borderRadius = '8px';
+    toast.style.zIndex = '2000';
+    toast.style.fontWeight = '600';
+    toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.style.background = isError ? '#fee2e2' : '#dcfce7';
+  toast.style.color = isError ? '#7f1d1d' : '#064e3b';
+  toast.hidden = false;
+  setTimeout(() => { toast.hidden = true; }, 4000);
+}
+
+async function initAssignAreaDaysMode(territoryId) {
+  assignModeState.active = true;
+  assignModeState.territoryId = territoryId;
+  document.body.classList.add('assign-mode');
+  const banner = document.getElementById('assignModeBanner');
+  const titleEl = document.getElementById('assignModeTitle');
+  const ctxEl = document.getElementById('assignModeContext');
+  const setBtn = document.getElementById('assignSetDaysBtn');
+  if (banner) banner.hidden = false;
+  if (setBtn) setBtn.addEventListener('click', saveAssignedDays);
+  const territory = await fetchTerritoryById(territoryId);
+  assignModeState.territory = territory;
+  assignModeState.color = territory?.color || territory?.colour || '#0078d7';
+  if (titleEl) titleEl.textContent = 'Assigning Days';
+  const repName = getRepNameCached() || 'Rep';
+  const terrName = territory?.name || territory?.title || territoryId;
+  if (ctxEl) ctxEl.textContent = `${terrName} (Rep: ${repName})`;
+  ensureAssignInlineButtons();
+  applyAssignedDayStyles();
+  updateAssignSetDaysButtonState();
+  renderAssignSummaryBox();
+  console.log('[AssignDays] Mode active for territory', territoryId, territory);
+}
+

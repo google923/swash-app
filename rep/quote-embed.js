@@ -11,6 +11,8 @@ import {
   addDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { queueOfflineSubmission, syncQueue } from "../offline-queue.js";
+import { logOutboundEmailToFirestore } from "../lib/firestore-utils.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCLmrWYAY4e7tQD9Cknxp7cKkzqJgndm0I",
@@ -238,6 +240,13 @@ async function sendQuoteEmail(
 
   try {
     console.debug?.("[Swash] Sending quote email to", recipient);
+    const summaryLines = [
+      `Plan: ${planLabel}`,
+      `Extras: ${extrasLabel || "Standard clean"}`,
+      `Price per clean: £${quote.pricePerClean.toFixed(2)}`,
+      `Total amount: £${quote.price.toFixed(2)}`,
+    ];
+    const summaryBody = summaryLines.join("\n");
     await emailjs.send("service_cdy739m", "template_rqdf3xf", {
       customer_name: quote.customerName,
       house_size: quote.houseSize,
@@ -251,6 +260,16 @@ async function sendQuoteEmail(
       ref_code: quote.refCode,
       email: recipient,
     });
+    try {
+      await logOutboundEmailToFirestore({
+        to: recipient,
+        subject: "Your Quote - Swash Cleaning Ltd - Payment Details",
+        body: summaryBody,
+        source: "quote-embed",
+      });
+    } catch (logError) {
+      console.warn("[QuoteEmbed] Failed to log outbound quote email", logError);
+    }
     return true;
   } catch (error) {
     console.warn("EmailJS send failed", error);
@@ -315,6 +334,13 @@ function renderEmailPreview(quote) {
 }
 
 async function persistQuote(quote) {
+  // Check if online first
+  if (!navigator.onLine) {
+    console.warn("Offline - queueing quote submission");
+    queueOfflineSubmission(quote);
+    return 'queued';
+  }
+  
   try {
     await addDoc(collection(db, "quotes"), {
       ...quote,
@@ -323,9 +349,10 @@ async function persistQuote(quote) {
     return true;
   } catch (error) {
     console.error("Firestore write failed", error);
-    if (error.code === 'unavailable' || error.code === 'failed-precondition') {
-      console.warn("Network unavailable");
-      return false;
+    if (error.code === 'unavailable' || error.code === 'failed-precondition' || error.message?.includes('Failed to get document')) {
+      console.warn("Network unavailable - queueing quote");
+      queueOfflineSubmission(quote);
+      return 'queued';
     }
     throw error;
   }
@@ -399,19 +426,48 @@ async function handleSubmit() {
     notes: selectors.notes.value.trim(),
   };
 
-  let storedOnline = false;
+  let submitResult = false;
   try {
-    storedOnline = await persistQuote(quote);
+    submitResult = await persistQuote(quote);
   } catch (error) {
     console.error("Failed to save quote", error);
-    storedOnline = false;
+    submitResult = false;
   }
 
   selectors.paymentRefValue.textContent = quote.refCode;
   selectors.paymentRefBox.hidden = false;
 
+  // Handle queued quotes (offline mode)
+  if (submitResult === 'queued') {
+    selectors.resultPanel.insertAdjacentHTML(
+      "beforeend",
+      `<p class="status success">✓ Quote queued successfully! It will be sent when you're back online.</p>`,
+    );
+    renderEmailPreview(quote);
+    // Post message to parent
+    try {
+      const payload = {
+        type: 'SWASH_QUOTE_CREATED',
+        quote: {
+          refCode: quote.refCode,
+          pricePerClean: quote.pricePerClean.toFixed(2),
+          priceUpfront: quote.price.toFixed(2),
+          plan: quote.tier.toUpperCase(),
+          houseSize: quote.houseSize,
+          houseType: quote.houseType,
+          extras: buildExtrasLabel(quote),
+          email: quote.email,
+          queued: true
+        }
+      };
+      window.parent?.postMessage(payload, '*');
+    } catch(e) { console.warn('postMessage failed', e); }
+    return;
+  }
+
+  // Handle online submission
   let emailSent = false;
-  if (storedOnline && navigator.onLine) {
+  if (submitResult === true && navigator.onLine) {
     emailSent = await sendQuoteEmail(quote);
   }
   renderEmailPreview(quote);
@@ -421,14 +477,14 @@ async function handleSubmit() {
       "beforeend",
       `<p class="status success">Quote emailed to <strong>${escapeHtml(emailValue)}</strong>. Preview below.</p>`,
     );
-  } else if (storedOnline) {
+  } else if (submitResult === true) {
     selectors.resultPanel.insertAdjacentHTML(
       "beforeend",
       `<p class="status warning">Quote saved to dashboard. Email will need to be sent manually.</p>`,
     );
   }
 
-  if (!storedOnline) {
+  if (!submitResult) {
     selectors.resultPanel.insertAdjacentHTML(
       "beforeend",
       `<p class="status warning">Could not save quote at this time. Please try again later.</p>`,
@@ -520,6 +576,22 @@ if (document.readyState === "loading") {
 } else {
   startCalculator();
 }
+
+// Auto-sync queued quotes when back online
+window.addEventListener('online', async () => {
+  console.log('[Quote Embed] Back online - syncing queued quotes');
+  try {
+    await syncQueue();
+    if (selectors.resultPanel) {
+      selectors.resultPanel.insertAdjacentHTML(
+        "beforeend",
+        `<p class="status success">✓ Connection restored - queued quotes synced successfully!</p>`,
+      );
+    }
+  } catch (error) {
+    console.error('[Quote Embed] Failed to sync queue', error);
+  }
+});
 
 // Receive prefill messages from parent (rep-log signup modal)
 window.addEventListener('message', (event) => {

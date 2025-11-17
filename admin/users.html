@@ -48,6 +48,14 @@
       background: #dcfce7;
       color: #166534;
     }
+    .user-card__role--cleaner {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .user-card__role--subscriber {
+      background: #faf5ff;
+      color: #6b21a8;
+    }
     .user-card__info {
       font-size: 0.9rem;
       color: #64748b;
@@ -57,6 +65,103 @@
       display: flex;
       gap: 8px;
       margin-top: 12px;
+    }
+    .user-card__training {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.9rem;
+    }
+    .user-card__disabled {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.9rem;
+    }
+    .disabled-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: #fee2e2;
+      color: #991b1b;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .user-card__contract-type {
+      margin-top: 8px;
+      padding: 8px;
+      background: #f0f9ff;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .user-card__contract-type label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .user-card__contract-type select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .training-toggle {
+      width: 48px;
+      height: 24px;
+      position: relative;
+      display: inline-block;
+    }
+    .training-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .training-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e1;
+      transition: .3s;
+      border-radius: 24px;
+    }
+    .training-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    .training-toggle input:checked + .training-slider {
+      background-color: #0078d7;
+    }
+    .training-toggle input:checked + .training-slider:before {
+      transform: translateX(24px);
+    }
+    .training-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: #fef3c7;
+      color: #92400e;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
     }
     .form-row {
       display: grid;
@@ -122,7 +227,25 @@
       <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
     </div>
     <div class="header-actions">
-      <a href="../admin.html" class="btn btn-secondary">← Back to Admin Dashboard</a>
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html">🆕 New Quote</a>
+          <a href="/rep/scheduler.html" class="admin-rep">📅 Schedule</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="./users.html" class="admin-only">👥 Manage Users</a>
+          <a href="./stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="./shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="./message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+        </nav>
+      </div>
     </div>
   </header>
 
@@ -152,10 +275,17 @@
               <input type="text" id="newName" required style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" placeholder="e.g., Chris, Glen, Harvie" />
             </label>
             <label style="display: block;">
+              <span style="display: block; margin-bottom: 4px; font-weight: 600;">Company Name (for subscribers)</span>
+              <input type="text" id="newCompanyName" style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;" placeholder="Company Ltd" />
+            </label>
+          </div>
+          <div class="form-row">
+            <label style="display: block;">
               <span style="display: block; margin-bottom: 4px; font-weight: 600;">Role *</span>
               <select id="newRole" required style="width: 100%; padding: 8px; border: 1px solid #c8d4e5; border-radius: 6px;">
                 <option value="rep">Rep</option>
                 <option value="admin">Admin</option>
+                <option value="subscriber">Subscriber</option>
               </select>
             </label>
           </div>
@@ -196,6 +326,7 @@
           <select id="editRole" required>
             <option value="rep">Rep</option>
             <option value="admin">Admin</option>
+            <option value="subscriber">Subscriber</option>
           </select>
         </label>
         <div class="modal__actions">

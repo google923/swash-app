@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Subscriber Dashboard - Swash</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .admin-only, .rep-only, .admin-rep { display: none !important; }
+    .subscriber-only { display: block !important; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <span id="companyNameDisplay" style="margin-left:16px;font-weight:600;color:#334155;"></span>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
+          <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
+          <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
+          <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
+          <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we verify your account.</p>
+    </div>
+  </section>
+
+  <main id="dashboardContent" class="page" style="display:none;">
+    
+    <section class="card">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h2>Welcome to Your Dashboard</h2>
+          <p class="text-muted">Manage your window cleaning business with ease</p>
+        </div>
+      </header>
+
+      <div class="dashboard-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;padding:20px;">
+        <div class="stat-card" style="background:#f0f9ff;padding:20px;border-radius:8px;border-left:4px solid #0078d7;">
+          <div style="font-size:14px;color:#64748b;margin-bottom:8px;">Total Quotes</div>
+          <div id="statQuotes" style="font-size:32px;font-weight:600;color:#0078d7;">0</div>
+        </div>
+        
+        <div class="stat-card" style="background:#f0fdf4;padding:20px;border-radius:8px;border-left:4px solid #22c55e;">
+          <div style="font-size:14px;color:#64748b;margin-bottom:8px;">Active Customers</div>
+          <div id="statCustomers" style="font-size:32px;font-weight:600;color:#22c55e;">0</div>
+        </div>
+        
+        <div class="stat-card" style="background:#fefce8;padding:20px;border-radius:8px;border-left:4px solid #eab308;">
+          <div style="font-size:14px;color:#64748b;margin-bottom:8px;">Pending Bookings</div>
+          <div id="statPending" style="font-size:32px;font-weight:600;color:#eab308;">0</div>
+        </div>
+        
+        <div class="stat-card" style="background:#faf5ff;padding:20px;border-radius:8px;border-left:4px solid #a855f7;">
+          <div style="font-size:14px;color:#64748b;margin-bottom:8px;">This Month Revenue</div>
+          <div id="statRevenue" style="font-size:32px;font-weight:600;color:#a855f7;">£0</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h3>Quick Actions</h3>
+          <p class="text-muted">Common tasks to manage your business</p>
+        </div>
+      </header>
+      
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;padding:20px;">
+        <a href="/subscriber-quotes.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">📝</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">View Quotes</div>
+          <div style="font-size:14px;color:#64748b;">Manage customer quotes</div>
+        </a>
+        
+        <a href="/subscriber-customers.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">👥</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">View Customers</div>
+          <div style="font-size:14px;color:#64748b;">Manage customer database</div>
+        </a>
+        
+        <a href="/subscriber-schedule.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">📅</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Schedule Jobs</div>
+          <div style="font-size:14px;color:#64748b;">View and manage schedule</div>
+        </a>
+        
+        <a href="/subscriber-cleaners.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">👷</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Manage Cleaners</div>
+          <div style="font-size:14px;color:#64748b;">Add and manage your team</div>
+        </a>
+        
+        <a href="/subscriber-territories.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">🗺️</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Territories</div>
+          <div style="font-size:14px;color:#64748b;">Define service areas</div>
+        </a>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h3>Recent Activity</h3>
+          <p class="text-muted">Latest updates from your workspace</p>
+        </div>
+      </header>
+      
+      <div id="recentActivity" style="padding:20px;">
+        <p style="color:#64748b;text-align:center;">Loading recent activity...</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module" src="./subscriber-dashboard.js"></script>
+  
+  <style>
+    .quick-action-card:hover {
+      border-color: #0078d7;
+      box-shadow: 0 4px 12px rgba(0,120,215,0.15);
+      transform: translateY(-2px);
+    }
+    
+    .dashboard-stats {
+      animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+
+</body>
+</html>

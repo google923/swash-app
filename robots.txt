@@ -1,0 +1,24 @@
+# robots.txt for Swash Cleaning - Window Cleaning in Essex
+# Allow search engines to crawl and index the site
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /rep/
+Disallow: /*.json
+Disallow: /node_modules/
+
+# Specific directives for Google
+User-agent: Googlebot
+Allow: /
+
+# Crawl delay (optional - in seconds)
+Crawl-delay: 2
+
+# Sitemap
+Sitemap: https://app.swashcleaning.co.uk/sitemap.xml
+
+# Comments for Swash Cleaning SEO
+# Essex window cleaning service - primary keyword
+# 4-weekly professional service
+# Google Maps integration for local SEO

@@ -44,7 +44,7 @@ function applyRepViewFlag(enabled) {
   else body.removeAttribute("data-rep-view");
 
   // Hide/show admin menu items when in rep view
-  const adminLinkIds = ["admin-dashboard-link", "scheduler-link", "rep-tracker-link", "stats-link", "user-settings-link"];
+  const adminLinkIds = ["admin-dashboard-link", "scheduler-link", "rep-tracker-link", "stats-link", "user-settings-link", "add-new-customer-link"];
   adminLinkIds.forEach((id) => {
     const a = qs(id);
     if (!a) return;
@@ -166,7 +166,7 @@ function updateMenuVisibility() {
                     location.pathname.includes("/rep/policy");
 
   // Admin menu items - hide for reps, show for admins
-  const adminLinks = ["admin-dashboard-link", "scheduler-link", "rep-tracker-link", "stats-link", "user-settings-link"];
+  const adminLinks = ["admin-dashboard-link", "scheduler-link", "rep-tracker-link", "stats-link", "user-settings-link", "add-new-customer-link"];
   adminLinks.forEach(id => {
     const link = qs(id);
     if (link) link.classList.toggle("hidden", role !== "admin");
@@ -193,6 +193,24 @@ function updateMenuVisibility() {
   if (statusIndicator && navigator.onLine !== undefined) {
     statusIndicator.textContent = navigator.onLine ? "● Online" : "● Offline";
     statusIndicator.style.background = navigator.onLine ? "#10b981" : "#64748b";
+  }
+
+  // Subscriber menu visibility for shared pages (e.g., rep/scheduler.html)
+  // Hide admin-only and admin-rep items for subscribers; show subscriber-only and admin-rep-subscriber
+  try {
+    const hideForSubscriber = document.querySelectorAll('.admin-only, .admin-rep');
+    const showForSubscriber = document.querySelectorAll('.subscriber-only, .admin-rep-subscriber');
+    if (role === 'subscriber') {
+      hideForSubscriber.forEach(el => el.classList.add('hidden'));
+      showForSubscriber.forEach(el => el.classList.remove('hidden'));
+      // Rep-only items should also be hidden for subscribers on shared pages
+      document.querySelectorAll('.rep-only').forEach(el => el.classList.add('hidden'));
+    } else {
+      // When not a subscriber, do not force-hide these elements here
+      // Let existing admin/rep logic above control visibility
+    }
+  } catch (e) {
+    console.warn('[Nav] Subscriber menu toggle failed', e);
   }
 }
 

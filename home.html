@@ -1,0 +1,1969 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Professional and reliable window cleaning in Essex. Instant quotes, online booking and automated 4-weekly cleans. Join the Swash window cleaning round and enjoy streak-free results from trusted local cleaners." />
+  <meta name="keywords" content="window cleaning Essex, window cleaner Essex, professional window cleaning, reliable window cleaner, 4-weekly window cleaning, best window cleaner Essex, local window cleaning company" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="canonical" href="https://app.swashcleaning.co.uk/" />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="business.business" />
+  <meta property="og:url" content="https://app.swashcleaning.co.uk/" />
+  <meta property="og:title" content="Premium Window Cleaning in Essex | Swash Cleaning" />
+  <meta property="og:description" content="Professional 4-weekly window cleaning for Essex homes. Free instant quote, 100% satisfaction guaranteed, trusted by 1,000+ homeowners." />
+  <meta property="og:image" content="https://app.swashcleaning.co.uk/assets/swash-logo.png" />
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://app.swashcleaning.co.uk/" />
+  <meta property="twitter:title" content="Premium Window Cleaning in Essex | Swash Cleaning" />
+  <meta property="twitter:description" content="Professional 4-weekly window cleaning for Essex homes. Free instant quote, 100% satisfaction guaranteed." />
+  <meta property="twitter:image" content="https://app.swashcleaning.co.uk/assets/swash-logo.png" />
+  
+  <title>Window Cleaning Essex | Professional 4-Weekly Service | Swash Cleaning</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    /* Cocogoose Font */
+    @font-face {
+      font-family: 'Cocogoose';
+      src: url('./assets/cocogoose.ttf') format('truetype');
+    }
+
+    /* ============================================
+       1. HERO SECTION (Premium Headlines & CTAs)
+       ============================================ */
+    .landing-hero {
+      background: transparent;
+      padding: 80px 24px 60px;
+      text-align: center;
+    }
+
+    .landing-hero h1 {
+      font-size: clamp(2.2rem, 8vw, 3.5rem);
+      font-weight: 700;
+      margin: 0 0 20px 0;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+      color: #0078d7;
+      font-family: 'Cocogoose', sans-serif;
+      line-height: 1.1;
+    }
+
+    .landing-hero .subheadline {
+      font-size: clamp(1.15rem, 3.8vw, 1.6rem);
+      margin: 0 0 12px 0;
+      color: #1e293b;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.7;
+      font-weight: 500;
+    }
+
+    .hero-divider {
+      height: 3px;
+      width: 80px;
+      background: linear-gradient(90deg, #0078d7 0%, #0078d7 100%);
+      margin: 20px auto 28px;
+    }
+
+    .hero-cta-section {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 48px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-cta-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #0078d7;
+      color: white;
+      padding: 20px 56px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.35rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 6px 20px rgba(0, 120, 215, 0.3);
+      gap: 12px;
+    }
+
+    .hero-cta-primary:hover {
+      background: #006ec2;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(0, 120, 215, 0.4);
+    }
+
+    .hero-trust-badges {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-top: 32px;
+      font-size: 1rem;
+      color: #1e293b;
+    }
+
+    .trust-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .trust-badge-icon {
+      font-size: 1.3rem;
+    }
+
+    /* ============================================
+       2. VIDEO BLOCK (REDESIGNED - Side-by-Side)
+       ============================================ */
+    .video-section {
+      background: white;
+      padding: 80px 24px;
+    }
+
+    .video-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .video-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .video-title {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: clamp(2rem, 5.5vw, 2.6rem);
+      color: #0078d7;
+      margin: 0;
+      line-height: 1.2;
+      font-weight: 700;
+      font-weight: 700;
+    }
+
+    .video-subtitle {
+      font-size: 1.1rem;
+      color: #1e293b;
+      margin: 0;
+      line-height: 1.85;
+    }
+
+    .video-ctas {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .video-ctas a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 32px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .video-ctas .primary-cta {
+      background: #0078d7;
+      color: white;
+      box-shadow: 0 4px 15px rgba(0, 120, 215, 0.3);
+    }
+
+    .video-ctas .primary-cta:hover {
+      background: #006ec2;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 120, 215, 0.4);
+    }
+
+    .video-embed-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .video-embed-wrapper iframe {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border: none;
+    }
+
+    .video-caption {
+      font-size: 1rem;
+      color: #64748b;
+      margin-top: 20px;
+      font-style: italic;
+    }
+
+    /* ============================================
+       3. WHY PEOPLE SWITCH (Social Proof + Benefit)
+       ============================================ */
+    .why-switch-section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+
+    .why-switch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .why-switch-content h2 {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      color: #0078d7;
+      margin: 0 0 36px 0;
+      line-height: 1.15;
+      font-weight: 700;
+    }
+
+    .why-switch-benefits {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .benefit-item {
+      margin-bottom: 28px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      gap: 16px;
+    }
+
+    .benefit-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .benefit-icon {
+      font-size: 1.8rem;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .benefit-text h3 {
+      color: #0078d7;
+      font-size: 1.35rem;
+      margin: 0 0 8px 0;
+      font-weight: 700;
+    }
+
+    .benefit-text p {
+      color: #1e293b;
+      margin: 0;
+      line-height: 1.85;
+      font-size: 1.1rem;
+    }
+
+    .why-switch-image {
+      background: linear-gradient(135deg, rgba(0, 120, 215, 0.08) 0%, rgba(0, 100, 180, 0.08) 100%);
+      border-radius: 16px;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      color: #0078d7;
+      overflow: hidden;
+    }
+
+    .why-switch-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* ============================================
+       4. HOW IT WORKS (Clear Process)
+       ============================================ */
+    .how-it-works-section {
+      background: #0078d7;
+      color: white;
+      padding: 70px 24px;
+    }
+
+    .how-it-works-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .how-it-works-title {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      text-align: center;
+      margin: 0 0 60px 0;
+      font-weight: 700;
+      color: white;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 32px;
+    }
+
+    .step-card {
+      background: white;
+      color: #0078d7;
+      padding: 48px 32px;
+      border-radius: 16px;
+      text-align: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .step-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .step-number {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: white;
+      background:#0078d7;
+      width:56px;
+      height:56px;
+      border-radius:50%;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      margin-bottom: 14px;
+    }
+
+    .step-card h3 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #0078d7;
+      margin: 0 0 14px 0;
+    }
+
+    .step-card p {
+      color: #1e293b;
+      line-height: 1.85;
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    /* ============================================
+       5. BEFORE/AFTER GALLERY
+       ============================================ */
+    .before-after-section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 70px 24px;
+    }
+
+    .before-after-title {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      color: #0078d7;
+      text-align: center;
+      margin: 0 0 20px 0;
+      font-weight: 700;
+    }
+
+    .before-after-subtitle {
+      text-align: center;
+      color: #1e293b;
+      font-size: 1.2rem;
+      margin: 0 0 60px 0;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.85;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 32px;
+    }
+
+    .gallery-card {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      transition: all 0.3s ease;
+    }
+
+    .gallery-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    }
+
+    .gallery-card-image {
+      background: linear-gradient(135deg, rgba(0, 120, 215, 0.1) 0%, rgba(0, 100, 180, 0.1) 100%);
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.5rem;
+      color: #0078d7;
+      font-weight: 700;
+    }
+
+    .gallery-card-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .gallery-card-text {
+      padding: 24px;
+      background: white;
+    }
+
+    .gallery-card-label {
+      font-size: 0.95rem;
+      color: #0078d7;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .gallery-card-title {
+      color: #0078d7;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    /* ============================================
+       6. MEET THE OWNER
+       ============================================ */
+    .meet-owner-section {
+      background: linear-gradient(135deg, rgba(0, 120, 215, 0.08) 0%, rgba(0, 100, 180, 0.08) 100%);
+      padding: 70px 24px;
+    }
+
+    .meet-owner-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .meet-owner-photo {
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0, 120, 215, 0.2);
+    }
+
+    .meet-owner-photo img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .meet-owner-content h2 {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: clamp(2rem, 5.5vw, 2.8rem);
+      color: #0078d7;
+      margin: 0 0 20px 0;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .meet-owner-role {
+      color: #0078d7;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .meet-owner-bio {
+      color: #1e293b;
+      font-size: 1.1rem;
+      line-height: 1.8;
+      margin-bottom: 28px;
+    }
+
+    .meet-owner-bio strong {
+      color: #0078d7;
+      font-weight: 600;
+    }
+
+    .owner-contact-info {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      border-left: 4px solid #0078d7;
+    }
+
+    .contact-line {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      color: #1e293b;
+      font-size: 1.1rem;
+    }
+
+    .contact-line:last-child {
+      margin-bottom: 0;
+    }
+
+    .contact-label {
+      font-weight: 700;
+      color: #0078d7;
+      min-width: 80px;
+      font-size: 1.1rem;
+    }
+
+    /* ============================================
+       7. REVIEWS / TESTIMONIALS
+       ============================================ */
+    .reviews-section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 70px 24px;
+    }
+
+    .reviews-title {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      color: #0078d7;
+      text-align: center;
+      margin: 0 0 20px 0;
+      font-weight: 700;
+    }
+
+    .reviews-subtitle {
+      text-align: center;
+      color: #1e293b;
+      font-size: 1.1rem;
+      margin: 0 0 60px 0;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .reviews-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 32px;
+    }
+
+    .review-card {
+      background: white;
+      padding: 32px;
+      border-radius: 12px;
+      border-top: 4px solid #0078d7;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+    }
+
+    .review-card:hover {
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      transform: translateY(-4px);
+    }
+
+    .review-stars {
+      font-size: 1.3rem;
+      margin-bottom: 12px;
+      color: #fbbf24;
+    }
+
+    .review-text {
+      color: #1e293b;
+      font-size: 1.1rem;
+      line-height: 1.85;
+      margin-bottom: 16px;
+      flex-grow: 1;
+      font-style: italic;
+    }
+
+    .review-author {
+      color: #0078d7;
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin: 0;
+    }
+
+    /* ============================================
+       8. WHY SWASH IS DIFFERENT
+       ============================================ */
+    .why-different-section {
+      background: linear-gradient(135deg, rgba(0, 120, 215, 0.08) 0%, rgba(0, 100, 180, 0.08) 100%);
+      padding: 70px 24px;
+    }
+
+    .why-different-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .why-different-title {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      color: #0078d7;
+      text-align: center;
+      margin: 0 0 60px 0;
+      font-weight: 700;
+    }
+
+    .differences-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 32px;
+    }
+
+    .difference-card {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .difference-card:hover {
+      border-color: #0078d7;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      transform: translateY(-4px);
+    }
+
+    .difference-icon {
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+    }
+
+    .difference-card h3 {
+      color: #0078d7;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0 0 14px 0;
+    }
+
+    .difference-card p {
+      color: #1e293b;
+      line-height: 1.85;
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    /* ============================================
+       9. PAYMENT & PLANS
+       ============================================ */
+    .plans-section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 70px 24px;
+    }
+
+    .plans-title {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      color: #0078d7;
+      text-align: center;
+      margin: 0 0 20px 0;
+      font-weight: 700;
+    }
+
+    .plans-subtitle {
+      text-align: center;
+      color: #1e293b;
+      font-size: 1.2rem;
+      margin: 0 0 60px 0;
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.85;
+    }
+
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 32px;
+    }
+
+    .plan-card {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .plan-card.featured {
+      border-color: #0078d7;
+      background: linear-gradient(135deg, rgba(0, 120, 215, 0.05) 0%, rgba(0, 100, 180, 0.05) 100%);
+      transform: scale(1.05);
+    }
+
+    .plan-card:hover {
+      border-color: #0078d7;
+      box-shadow: 0 8px 24px rgba(0, 120, 215, 0.15);
+    }
+
+    .plan-name {
+      color: #0078d7;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .plan-price {
+      font-size: 2.6rem;
+      color: #0078d7;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .plan-frequency {
+      color: #64748b;
+      font-size: 1.1rem;
+      margin-bottom: 28px;
+      font-weight: 500;
+    }
+
+    .plan-features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 28px 0;
+      text-align: left;
+    }
+
+    .plan-features li {
+      padding: 14px 0;
+      border-bottom: 1px solid #e2e8f0;
+      color: #1e293b;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      line-height: 1.75;
+    }
+
+    .plan-features li:last-child {
+      border-bottom: none;
+    }
+
+    .plan-features li:before {
+      content: "✓";
+      color: #0078d7;
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+
+    .plan-cta {
+      display: inline-block;
+      background: #0078d7;
+      color: white;
+      padding: 14px 32px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+
+    .plan-cta:hover {
+      background: #006ec2;
+      transform: translateY(-2px);
+    }
+
+    /* ============================================
+       10. AREAS COVERED
+       ============================================ */
+    .areas-section {
+      background: #0078d7;
+      color: white;
+      padding: 70px 24px;
+    }
+
+    .areas-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .areas-title {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      text-align: center;
+      margin: 0 0 60px 0;
+      font-weight: 700;
+      color: white;
+    }
+
+    .areas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 40px;
+      margin-bottom: 60px;
+    }
+
+    .area-column h3 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0 0 20px 0;
+      text-align: center;
+    }
+
+    .area-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      text-align: center;
+    }
+
+    .area-list li {
+      padding: 10px 0;
+      font-size: 1.1rem;
+      opacity: 0.95;
+      line-height: 1.75;
+    }
+
+    .areas-cta-section {
+      text-align: center;
+      padding-top: 40px;
+      border-top: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .areas-cta-text {
+      font-size: 1.2rem;
+      margin-bottom: 24px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.7;
+    }
+
+    .areas-cta-button {
+      display: inline-block;
+      background: white;
+      color: #0078d7;
+      padding: 14px 40px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .areas-cta-button:hover {
+      background: #f0f0f0;
+      transform: translateY(-2px);
+    }
+
+    /* ============================================
+       11. FINAL CTA
+       ============================================ */
+    .final-cta-section {
+      background: linear-gradient(135deg, #0078d7 0%, #006ec2 100%);
+      color: white;
+      padding: 70px 24px;
+      text-align: center;
+    }
+
+    .final-cta-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .final-cta-title {
+      font-family: 'Cocogoose', sans-serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      margin: 0 0 20px 0;
+      font-weight: 700;
+      color: white;
+    }
+
+    .final-cta-text {
+      font-size: 1.25rem;
+      margin: 0 0 40px 0;
+      line-height: 1.8;
+      opacity: 0.98;
+    }
+
+    .final-cta-button {
+      display: inline-block;
+      background: white;
+      color: #0078d7;
+      padding: 18px 56px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .final-cta-button:hover {
+      background: #f0f0f0;
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ============================================
+       12. FOOTER
+       ============================================ */
+    .footer-section {
+      background: #0078d7;
+      color: white;
+      padding: 60px 24px 40px;
+    }
+
+    .footer-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 40px;
+      margin-bottom: 40px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .footer-column h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 0 0 16px 0;
+      color: white;
+    }
+
+    .footer-links {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .footer-links li {
+      margin-bottom: 12px;
+    }
+
+    .footer-links a {
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+    }
+
+    .footer-links a:hover {
+      color: white;
+    }
+
+    .footer-contact {
+      font-size: 0.95rem;
+      line-height: 1.8;
+    }
+
+    .footer-tracking-input {
+      margin-top: 16px;
+    }
+
+    .footer-tracking-input label {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    .footer-tracking-input input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      font-size: 1rem;
+    }
+
+    .footer-tracking-input input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .footer-bottom {
+      text-align: center;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.9);
+      line-height: 1.7;
+    }
+
+    .footer-bottom p {
+      margin: 8px 0;
+    }
+
+    /* ============================================
+       RESPONSIVE DESIGN
+       ============================================ */
+    @media (max-width: 768px) {
+      .landing-hero {
+        padding: 60px 24px 40px;
+      }
+
+      .landing-hero h1 {
+        font-size: 2rem;
+      }
+
+      .landing-hero .subheadline {
+        font-size: 1rem;
+      }
+
+      .hero-cta-section {
+        margin-top: 32px;
+      }
+
+      /* Video Section Mobile */
+      .video-container {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .video-embed-wrapper {
+        aspect-ratio: 16 / 9;
+      }
+
+      .why-switch-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .meet-owner-container {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .steps-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .plan-card.featured {
+        transform: scale(1);
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .gallery-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .reviews-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .areas-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .differences-grid {
+        grid-template-columns: 1fr;
+      }
+
+      /* Pricing cards - stack on mobile */
+      .plans-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .plan-card {
+        width: 100%;
+      }
+
+      /* Button sizing for mobile */
+      .plan-cta,
+      .areas-cta-button,
+      .final-cta-button {
+        width: 100%;
+        padding: 16px 24px;
+        font-size: 1rem;
+      }
+
+      /* Header adjustments */
+      .header {
+        padding: 16px 12px;
+      }
+
+      .header-logo {
+        height: 40px !important;
+      }
+
+      .header-actions a {
+        font-size: 0.95rem;
+        margin-right: 12px;
+      }
+
+      /* Section padding mobile */
+      .landing-hero,
+      .why-switch-section,
+      .how-it-works-section,
+      .before-after-section,
+      .meet-owner-section,
+      .reviews-section,
+      .why-different-section,
+      .plans-section,
+      .areas-section,
+      .final-cta-section {
+        padding: 60px 16px;
+      }
+
+      /* Typography scaling for mobile */
+      h1 { font-size: clamp(1.5rem, 4vw, 3rem); }
+      h2 { font-size: clamp(1.3rem, 3.5vw, 2.5rem); }
+      h3 { font-size: clamp(1.1rem, 3vw, 1.8rem); }
+
+      /* Improve readability on small screens */
+      .reviews-grid,
+      .differences-grid {
+        gap: 20px;
+      }
+
+      /* Map height on mobile */
+      iframe[title*="Map"] {
+        height: 300px !important;
+      }
+
+      /* Contact info layout on mobile */
+      .owner-contact-info {
+        gap: 8px;
+      }
+
+      .contact-line {
+        flex-direction: row;
+        font-size: 0.95rem;
+      }
+
+      /* Local presence section - stack on mobile */
+      [style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      .video-placeholder {
+        aspect-ratio: auto;
+        min-height: 300px;
+      }
+    }
+  </style>
+  <!-- GA4 Implementation (Replace with your actual GA4 Measurement ID) -->
+  <!-- Find your Measurement ID in Google Analytics 4 dashboard under Admin > Property Settings -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
+
+  <!-- ========================================
+       SCHEMA MARKUP FOR SEO
+       ======================================== -->
+  <!-- Local Business Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "@id": "https://app.swashcleaning.co.uk/",
+    "name": "Swash Cleaning Ltd",
+    "image": "https://app.swashcleaning.co.uk/assets/swash-logo.png",
+    "description": "Professional window cleaning service providing 4-weekly reliable cleaning for Essex homes",
+    "url": "https://app.swashcleaning.co.uk/",
+    "telephone": "0330 0436345",
+    "email": "contact@swashcleaning.co.uk",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Rochford, Essex",
+      "addressLocality": "Essex",
+      "addressRegion": "Essex",
+      "postalCode": "SS4",
+      "addressCountry": "GB"
+    },
+    "areaServed": {
+      "@type": "State",
+      "name": "Essex"
+    },
+    "priceRange": "£££",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.9",
+      "ratingCount": "150"
+    }
+  }
+  </script>
+
+  <!-- Service Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org/",
+    "@type": "Service",
+    "name": "Professional Window Cleaning",
+    "description": "Reliable 4-weekly professional window cleaning service for Essex homes",
+    "serviceType": "Window Cleaning",
+    "areaServed": {
+      "@type": "State",
+      "name": "Essex"
+    },
+    "provider": {
+      "@type": "LocalBusiness",
+      "name": "Swash Cleaning Ltd",
+      "url": "https://app.swashcleaning.co.uk/"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "Contact for quote",
+      "priceCurrency": "GBP"
+    }
+  }
+  </script>
+
+  <!-- Organization Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Swash Cleaning Ltd",
+    "url": "https://app.swashcleaning.co.uk/",
+    "logo": "https://app.swashcleaning.co.uk/assets/swash-logo.png",
+    "description": "Professional window cleaning company serving Essex with 15+ years of experience",
+    "sameAs": [
+      "https://www.google.com/maps/search/swash+cleaning+essex"
+    ],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "Customer Service",
+      "telephone": "0330 0436345",
+      "email": "contact@swashcleaning.co.uk"
+    }
+  }
+  </script>
+
+  <!-- FAQ Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+
+      {
+        "@type": "Question",
+        "@id": "https://app.swashcleaning.co.uk/#faq-4weekly",
+        "name": "How do your 4-weekly window cleans work?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Once booked, your cleaner visits every 28 days like clockwork. You choose your preferred day, and we handle the rest. Payment is automatic via GoCardless, so you never have to think about it."
+        }
+      },
+      {
+        "@type": "Question",
+        "@id": "https://app.swashcleaning.co.uk/#faq-areas",
+        "name": "What areas do you cover in Essex?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We serve the entire Essex area including Rochford, Southend, Rayleigh, Basildon, and beyond. Check our Areas section or contact us to confirm if we serve your postcode."
+        }
+      },
+      {
+        "@type": "Question",
+        "@id": "https://app.swashcleaning.co.uk/#faq-payment",
+        "name": "How do I pay for my window cleaning?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We use GoCardless for secure monthly payments. Set it up once, and your payment is automatically processed on the same day each month. No hidden fees, no surprises."
+        }
+      },
+      {
+        "@type": "Question",
+        "@id": "https://app.swashcleaning.co.uk/#faq-frames",
+        "name": "Do you clean frames, doors and sills?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Absolutely! We clean all window frames, sills, and exterior doors. Every surface gets the professional treatment, leaving your home looking pristine."
+        }
+      },
+      {
+        "@type": "Question",
+        "@id": "https://app.swashcleaning.co.uk/#faq-reschedule",
+        "name": "How do I reschedule a clean?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Simply contact us at least 48 hours before your scheduled clean, and we'll arrange a new date that works for you. Flexibility and reliability go hand in hand."
+        }
+      }
+    ]
+  }
+  </script>
+
+</head>
+<body>
+  <!-- ============================================
+       HEADER
+       ============================================ -->
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash - Professional Window Cleaning" style="height: 50px; width: auto;" />
+    </div>
+    <div class="header-actions">
+      <a href="tel:03300436345" style="color: #ffffff; text-decoration: none; font-weight: 700; font-size: 1.1rem; margin-right: 24px;">📞 0330 0436345</a>
+      <a href="./rep/add-new-customer.html" class="btn btn-secondary" style="background: #0078d7; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; transition: all 0.3s ease; cursor: pointer;">Get Quote Now</a>
+      <a href="./rep/rep-home.html" class="btn btn-primary" style="margin-left: 12px; color: #0078d7; text-decoration: none; font-weight: 600; transition: all 0.3s ease;">Login</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <!-- ============================================
+         1. HERO SECTION
+         ============================================ -->
+    <section class="landing-hero">
+      <h1>Premium Window Cleaning in Essex — Reliable 4-Weekly Service for Local Homeowners</h1>
+      <p class="subheadline">15+ Years of Professional Experience. 5-Star Reviews. Trusted by 1,000+ Essex Homeowners. Never Miss a Scheduled Clean.</p>
+      <div class="hero-divider"></div>
+      
+      <div class="hero-cta-section">
+        <a href="./rep/add-new-customer.html" class="hero-cta-primary">
+          ✨ Get Your Instant Quote in 60 Seconds
+        </a>
+        <div class="hero-trust-badges">
+          <div class="trust-badge">
+            <span class="trust-badge-icon">✓</span>
+            <span>100% Satisfaction Guaranteed</span>
+          </div>
+          <div class="trust-badge">
+            <span class="trust-badge-icon">⭐</span>
+            <span>4.9-Star Rated on Google</span>
+          </div>
+          <div class="trust-badge">
+            <span class="trust-badge-icon">🏠</span>
+            <span>1,000+ Happy Homeowners</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         2. VIDEO BLOCK - SOCIAL PROOF & ENGAGEMENT
+         ============================================ -->
+    <section class="video-section">
+      <div class="video-container">
+        <h2 class="video-title">See Real Window Cleaning Results from Professional Essex Cleaners</h2>
+        <p class="video-subtitle">Watch real before-and-after transformations from homes just like yours. Discover why Essex homeowners choose Swash for reliable, professional window cleaning.</p>
+        
+        <!-- YouTube Shorts Embed - Responsive -->
+        <div style="max-width: 100%; margin: 0 auto; aspect-ratio: 9/16; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); margin-bottom: 20px;">
+          <iframe 
+            width="100%" 
+            height="100%" 
+            src="https://www.youtube.com/embed/tIcxN60vj1Y" 
+            title="Swash Window Cleaning - Professional Results" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen
+            style="display: block;">
+          </iframe>
+        </div>
+        
+        <div style="display: flex; gap: 16px; justify-content: center; margin-top: 32px; flex-wrap: wrap;">
+          <a href="./rep/add-new-customer.html" class="hero-cta-primary" style="font-size: 1.1rem; padding: 16px 40px;">
+            ✨ Get Your Free Quote Now
+          </a>
+          <a href="tel:03300436345" class="hero-cta-primary" style="background: white; color: #0078d7; font-size: 1.1rem; padding: 16px 40px;">
+            📞 Call Us Today
+          </a>
+        </div>
+        
+        <p class="video-caption">Your cleaner, brighter windows make every room feel fresher and more inviting</p>
+      </div>
+    </section>
+
+    <!-- ============================================
+         3. WHY CHOOSE SWASH FOR WINDOW CLEANING
+         ============================================ -->
+    <section class="why-switch-section">
+      <div class="why-switch-grid">
+        <div class="why-switch-content">
+          <h2>Why Essex Homeowners Choose Swash for Professional Window Cleaning</h2>
+          <ul class="why-switch-benefits">
+            <li class="benefit-item">
+              <div class="benefit-icon">⏱️</div>
+              <div class="benefit-text">
+                <h3>Save Time & Energy Every 4 Weeks</h3>
+                <p>No more climbing ladders or spending weekends scrubbing windows. Our professional team handles it all, so you can enjoy your home instead.</p>
+              </div>
+            </li>
+            <li class="benefit-item">
+              <div class="benefit-icon">💎</div>
+              <div class="benefit-text">
+                <h3>Professional Quality Window Cleaning You Can Trust</h3>
+                <p>Our expert team uses specialist equipment, purified water systems, and professional techniques. Every window, frame, and sill is cleaned to perfection every time.</p>
+              </div>
+            </li>
+            <li class="benefit-item">
+              <div class="benefit-icon">🏠</div>
+              <div class="benefit-text">
+                <h3>Protect Your Home Investment with Regular Care</h3>
+                <p>Regular professional window cleaning extends the life of your windows and frames, saving you costly repairs and replacement down the road.</p>
+              </div>
+            </li>
+            <li class="benefit-item">
+              <div class="benefit-icon">🔄</div>
+              <div class="benefit-text">
+                <h3>Consistent, Reliable 4-Weekly Service</h3>
+                <p>Every 28 days like clockwork. You'll never have to think about your windows again. We're reliable, punctual, and never miss a scheduled clean.</p>
+              </div>
+            </li>
+            <li class="benefit-item">
+              <div class="benefit-icon">😊</div>
+              <div class="benefit-text">
+                <h3>Friendly, Professional Team</h3>
+                <p>We're real people who care about your home. We'll respect your property, say hello, and take pride in every job we do.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="why-switch-image">
+          <img src="./assets/swash-cleaning-residential.jpg" alt="Professional residential window cleaning service in Essex - sparkling clean windows" loading="lazy" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         4. HOW IT WORKS - THE SWASH PROCESS
+         ============================================ -->
+    <section class="how-it-works-section" style="padding: 80px 24px; background: #0078d7; color: white; width: 100%;">
+      <div style="max-width: 1200px; margin: 0 auto;">
+        <h2 class="how-it-works-title" style="font-size: clamp(1.8rem, 5vw, 2.6rem); margin-bottom: 60px; color: white;">How It Works — 4 Simple Steps</h2>
+        <div class="steps-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 40px;">
+          <div class="step-card" style="background: white; color: #1e293b;">
+            <div class="step-number" style="background:#0078d7; color:white; width:56px; height:56px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-weight:900; font-size:1.4rem; margin-bottom:14px;">1</div>
+            <h3 style="color:#0078d7;">Fill In Your Quote</h3>
+            <p>Enter your details to get an instant price — it takes less than 60 seconds.</p>
+          </div>
+          <div class="step-card" style="background: white; color: #1e293b;">
+            <div class="step-number" style="background:#0078d7; color:white; width:56px; height:56px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-weight:900; font-size:1.4rem; margin-bottom:14px;">2</div>
+            <h3 style="color:#0078d7;">Accept The Quote</h3>
+            <p>Review your price and confirm. No pressure, no sales calls — just tap to accept.</p>
+          </div>
+          <div class="step-card" style="background: white; color: #1e293b;">
+            <div class="step-number" style="background:#0078d7; color:white; width:56px; height:56px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-weight:900; font-size:1.4rem; margin-bottom:14px;">3</div>
+            <h3 style="color:#0078d7;">Set Up Payment</h3>
+            <p>Secure monthly payments via GoCardless. It’s quick to set up and you’re fully protected.</p>
+          </div>
+          <div class="step-card" style="background: white; color: #1e293b;">
+            <div class="step-number" style="background:#0078d7; color:white; width:56px; height:56px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-weight:900; font-size:1.4rem; margin-bottom:14px;">4</div>
+            <h3 style="color:#0078d7;">Choose Your Booking Date</h3>
+            <p>Pick your preferred start date. We clean every 28 days like clockwork after that.</p>
+          </div>
+        </div>
+        <div style="margin-top: 28px; background: rgba(255,255,255,0.1); padding: 16px 20px; border-radius: 10px;">
+          <p style="margin:0; color: #fff; font-size: 1.1rem; line-height: 1.85;">
+            You’ll get an email the day before, a message when we’re on route, and a receipt after every clean.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         5. BEFORE/AFTER GALLERY
+         ============================================ -->
+    <section class="before-after-section">
+      <h2 class="before-after-title">Before & After</h2>
+      <p class="before-after-subtitle">Real transformations from real customers. See the dramatic difference professional cleaning makes.</p>
+      
+      <div class="gallery-grid">
+        <div class="gallery-card">
+          <div class="gallery-card-image">
+            <img src="./assets/swash-reflection.jpg" alt="Before and after window cleaning in Essex - crystal clear reflection" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" />
+          </div>
+          <div class="gallery-card-text">
+            <div class="gallery-card-label">Window Cleaning</div>
+            <h3 class="gallery-card-title">Professional Results</h3>
+          </div>
+        </div>
+        <div class="gallery-card">
+          <div class="gallery-card-image">
+            <img src="./assets/swash-house-cleaning.jpg" alt="4-weekly window cleaning service for Essex homes" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" />
+          </div>
+          <div class="gallery-card-text">
+            <div class="gallery-card-label">Residential Cleaning</div>
+            <h3 class="gallery-card-title">Complete Service</h3>
+          </div>
+        </div>
+        <div class="gallery-card">
+          <div class="gallery-card-image">
+            <img src="./assets/swash-interior.jpg" alt="Professional exterior window cleaning with sparkling results" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;" />
+          </div>
+          <div class="gallery-card-text">
+            <div class="gallery-card-label">Exterior Only</div>
+            <h3 class="gallery-card-title">Crystal Clear Views</h3>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         6. MEET THE OWNER
+         ============================================ -->
+    <section class="meet-owner-section">
+      <div class="meet-owner-container">
+        <div class="meet-owner-photo">
+          <img src="./assets/chris-swash.jpg" alt="Christopher Wessell - Owner and founder of professional window cleaning company Swash" loading="lazy" />
+        </div>
+        <div class="meet-owner-content">
+          <h2>Hi, I'm Christopher</h2>
+          <div class="meet-owner-role">👋 Founder & Director of Swash</div>
+          <p class="meet-owner-bio">
+            I started Swash because I believe homeowners deserve <strong>professional, reliable service from someone who genuinely cares</strong>. For over 15 years, I've built a team dedicated to treating your home like our own.
+          </p>
+          <p class="meet-owner-bio">
+            Every window we clean, every frame we polish, every customer we serve — it's a reflection of <strong>who we are and what we stand for</strong>. We're not just cleaners; we're part of your community.
+          </p>
+          <div class="owner-contact-info">
+            <div class="contact-line">
+              <span class="contact-label">📞</span>
+              <span>0330 0436345</span>
+            </div>
+            <div class="contact-line">
+              <span class="contact-label">✉️</span>
+              <span>contact@swashcleaning.co.uk</span>
+            </div>
+            <div class="contact-line">
+              <span class="contact-label">📍</span>
+              <span>Rochford, Essex, UK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         6.5 LOCAL PRESENCE - GOOGLE MAPS & LOCATION
+         ============================================ -->
+    <section style="background: #f8f9fa; padding: 60px 0; border-top: 1px solid #e2e8f0;">
+      <!-- Full Width Map -->
+      <div style="width: 100%; height: 650px; margin-bottom: 60px;">
+        <iframe 
+          src="https://www.google.com/maps?q=Essex%2C%20UK&z=9&output=embed" 
+          width="100%" 
+          height="100%" 
+          style="border: none;" 
+          allowfullscreen="" 
+          loading="lazy" 
+          referrerpolicy="no-referrer-when-downgrade"
+          title="Swash Cleaning Service Area Map - Essex"
+        ></iframe>
+      </div>
+
+      <!-- Local Presence Info -->
+      <div style="padding: 0 24px;">
+        <div style="max-width: 1200px; margin: 0 auto;">
+          <h2 style="font-family: 'Cocogoose', sans-serif; font-size: clamp(1.8rem, 5vw, 2.6rem); color: #0078d7; margin: 0 0 30px 0; font-weight: 700; line-height: 1.2;">Serving Essex Homeowners for 15+ Years</h2>
+          <p style="color: #1e293b; font-size: clamp(1.05rem, 2vw, 1.2rem); line-height: 1.8; margin-bottom: 30px; max-width: 700px;">Based in Rochford, we're your local window cleaning experts. We know Essex homes, Essex weather, and exactly what it takes to keep windows sparkling clean all year round.</p>
+          
+          <div style="background: white; padding: 28px; border-radius: 12px; border-left: 4px solid #0078d7; margin-bottom: 30px; max-width: 600px;">
+            <h3 style="color: #0078d7; font-size: 1.2rem; margin: 0 0 14px 0; font-weight: 700;">Our Service Area Includes:</h3>
+            <p style="color: #1e293b; font-size: 1.1rem; line-height: 1.85; margin: 0;">Rochford, Southend-on-Sea, Rayleigh, Basildon, Wickford, Hockley, and throughout Essex. Check our "Areas We Service" section to see if we cover your postcode.</p>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 14px; max-width: 400px;">
+            <a href="tel:03300436345" style="display: inline-flex; align-items: center; justify-content: center; background: #0078d7; color: white; padding: 16px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 1rem; transition: all 0.3s ease;">📞 Call Now: 0330 0436345</a>
+            <a href="./rep/add-new-customer.html" style="display: inline-flex; align-items: center; justify-content: center; background: white; color: #0078d7; border: 2px solid #0078d7; padding: 16px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 1rem; transition: all 0.3s ease;">Get Free Quote</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         7. CUSTOMER REVIEWS
+         ============================================ -->
+    <section class="reviews-section">
+      <h2 class="reviews-title">Professional Window Cleaning Reviews from Essex Homeowners</h2>
+      
+      <div style="text-align: center; margin-bottom: 60px;">
+        <img src="./assets/5-star-google-swash.jpg" alt="Google 5-star reviews for Swash professional window cleaning service in Essex" style="max-width: 350px; height: auto; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
+      </div>
+      
+      <p class="reviews-subtitle">Join 1,000+ happy Essex homeowners who trust Swash for professional, reliable window cleaning service.</p>
+      
+      <div class="reviews-grid">
+        <div class="review-card">
+          <div class="review-stars">⭐⭐⭐⭐⭐</div>
+          <p class="review-text">"Professional, friendly, and they actually care about doing a great job. Can't recommend them enough!"</p>
+          <p class="review-author">— Sarah M., Southend-on-Sea</p>
+        </div>
+        <div class="review-card">
+          <div class="review-stars">⭐⭐⭐⭐⭐</div>
+          <p class="review-text">"Been with Swash for 3 years now. They're reliable, honest, and make my home look beautiful every month."</p>
+          <p class="review-author">— David T., Westcliff</p>
+        </div>
+        <div class="review-card">
+          <div class="review-stars">⭐⭐⭐⭐⭐</div>
+          <p class="review-text">"Best decision I made. No more worrying about dirty windows. Christopher and the team are brilliant!"</p>
+          <p class="review-author">— Emma L., Leigh-on-Sea</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         8. WHY SWASH IS DIFFERENT
+         ============================================ -->
+    <section class="why-different-section">
+      <div class="why-different-container">
+        <h2 class="why-different-title">The Swash Difference</h2>
+        <div class="differences-grid">
+          <div class="difference-card">
+            <div class="difference-icon">💧</div>
+            <h3>Purified Water Technology</h3>
+            <p>We use pure, deionized water that dries spot-free without streaks or residue. Professional-grade equipment, better results.</p>
+          </div>
+          <div class="difference-card">
+            <div class="difference-icon">🛡️</div>
+            <h3>Safe & Insured</h3>
+            <p>Fully insured and trained to the highest safety standards. Your home and family are in safe hands.</p>
+          </div>
+          <div class="difference-card">
+            <div class="difference-icon">🎯</div>
+            <h3>Meticulous Attention</h3>
+            <p>We clean frames, sills, doors, and gutters. Every detail matters. Your entire home gets the full treatment.</p>
+          </div>
+          <div class="difference-card">
+            <div class="difference-icon">🔄</div>
+            <h3>Flexible Scheduling</h3>
+            <p>We clean on a 28‑day rota only — but that doesn’t mean we’re not flexible. You can have your front windows and rear windows cleaned on alternating visits.</p>
+          </div>
+          <div class="difference-card">
+            <div class="difference-icon">📱</div>
+            <h3>Easy Booking & Updates</h3>
+            <p>You’ll get an email the day before, a message when we’re on route to your clean, and a receipt after every clean.</p>
+          </div>
+          <div class="difference-card">
+            <div class="difference-icon">💯</div>
+            <h3>100% Satisfaction Guarantee</h3>
+            <p>Not happy? We'll make it right. No hassles, no excuses. Your satisfaction is everything to us.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         9. PAYMENT & PLANS
+         ============================================ -->
+    <section class="plans-section">
+      <h2 class="plans-title">Affordable 4-Weekly Window Cleaning Plans for Essex Homes</h2>
+      <p class="plans-subtitle">Choose your plan and enjoy professional window cleaning every 28 days. No hidden fees. No long contracts. Simple, transparent pricing. Cancel anytime.</p>
+      
+      <div class="plans-grid">
+        <div class="plan-card">
+          <h3 class="plan-name">Silver Plan</h3>
+          <div class="plan-price">From £16</div>
+          <p class="plan-frequency">per clean (3-clean prepaid bundle)</p>
+          <ul class="plan-features">
+            <li>External window panes only</li>
+            <li>4-weekly rota (every 28 days)</li>
+            <li>Track upcoming cleans in your online portal</li>
+            <li>No internal window cleaning</li>
+            <li>No one-off cleans</li>
+            <li>Friendly, uniformed cleaner</li>
+          </ul>
+          <a href="./rep/add-new-customer.html" class="plan-cta">Get Quote</a>
+        </div>
+        <div class="plan-card">
+          <h3 class="plan-name">🟡 Gold Plan</h3>
+          <div class="plan-price">From £21.60</div>
+          <p class="plan-frequency">per clean (3-clean prepaid bundle)</p>
+          <ul class="plan-features">
+            <li>All exterior windows, frames, sills and doors</li>
+            <li>Notification emails and optional SMS</li>
+            <li>On-route message + after-clean receipt</li>
+            <li>Reliable 28-day schedule</li>
+            <li>External cleaning only (no internals)</li>
+            <li>Great for most homes</li>
+          </ul>
+          <a href="./rep/add-new-customer.html" class="plan-cta">Get Quote</a>
+        </div>
+        <div class="plan-card featured">
+          <div style="display: inline-block; background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%); color: white; padding: 10px 18px; border-radius: 20px; font-size: 0.9rem; font-weight: 700; margin-bottom: 16px;">💎 MOST POPULAR - INTRO OFFER</div>
+          <h3 class="plan-name">Diamond Plan</h3>
+          <div class="plan-price">From £16</div>
+          <p class="plan-frequency">per clean (3 cleans paid in advance)</p>
+          <ul class="plan-features">
+            <li>Gold service for the price of Silver</li>
+            <li>Priority support and scheduling</li>
+            <li>Must be paid in advance</li>
+            <li>Includes all Gold features</li>
+            <li>Email day-before, on-route, and receipt after</li>
+            <li>Best value for new customers</li>
+          </ul>
+          <a href="./rep/add-new-customer.html" class="plan-cta">Get Quote</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         10.5 FREQUENTLY ASKED QUESTIONS
+         ============================================ -->
+    <section style="background: white; padding: 70px 24px; border-top: 1px solid #e2e8f0;">
+      <div style="max-width: 1000px; margin: 0 auto;">
+        <h2 style="font-family: 'Cocogoose', sans-serif; font-size: clamp(1.8rem, 5vw, 2.6rem); color: #0078d7; text-align: center; margin: 0 0 50px 0; font-weight: 700;">Frequently Asked Questions About Professional Window Cleaning in Essex</h2>
+        
+        <div style="display: grid; gap: 32px;">
+          <!-- FAQ 1 -->
+          <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 32px;">
+            <h3 style="color: #0078d7; font-size: 1.35rem; margin: 0 0 12px 0; font-weight: 700;">How do your 4-weekly window cleans work?</h3>
+            <p style="color: #1e293b; font-size: 1.1rem; line-height: 1.85; margin: 0;">Once you're booked, your dedicated cleaner visits every 28 days like clockwork. You choose your preferred day, and we handle the rest. Payment is automatic via GoCardless on the same date each month, so you never have to think about it. We never miss a scheduled clean.</p>
+          </div>
+
+          <!-- FAQ 3 -->
+          <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 32px;">
+            <h3 style="color: #0078d7; font-size: 1.35rem; margin: 0 0 12px 0; font-weight: 700;">What areas do you cover in Essex?</h3>
+            <p style="color: #1e293b; font-size: 1.1rem; line-height: 1.85; margin: 0;">We serve the entire Essex area including Rochford, Southend-on-Sea, Rayleigh, Basildon, Wickford, Hockley, and many other towns. See our "Areas We Service" section below for a complete list. If you're not sure, just give us a call at <strong>0330 0436345</strong> to check if we serve your postcode.</p>
+          </div>
+
+          <!-- FAQ 4 -->
+          <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 32px;">
+            <h3 style="color: #0078d7; font-size: 1.35rem; margin: 0 0 12px 0; font-weight: 700;">How do I pay for my window cleaning?</h3>
+            <p style="color: #1e293b; font-size: 1.1rem; line-height: 1.85; margin: 0;">We use GoCardless for secure monthly payments. You set it up once during booking, and your payment is automatically processed on the same day each month. No hidden fees, no surprises — just reliable, transparent pricing.</p>
+          </div>
+
+          <!-- FAQ 5 -->
+          <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 32px;">
+            <h3 style="color: #0078d7; font-size: 1.35rem; margin: 0 0 12px 0; font-weight: 700;">Do you clean frames, doors and sills?</h3>
+            <p style="color: #1e293b; font-size: 1.1rem; line-height: 1.85; margin: 0;">Absolutely! We clean all window frames, sills, and exterior doors. Every surface gets the professional treatment using our specialist equipment and purified water systems, leaving your home looking pristine.</p>
+          </div>
+
+          <!-- FAQ 6 -->
+          <div style="padding-bottom: 0;">
+            <h3 style="color: #0078d7; font-size: 1.35rem; margin: 0 0 12px 0; font-weight: 700;">How do I reschedule or cancel a clean?</h3>
+            <p style="color: #1e293b; font-size: 1.1rem; line-height: 1.85; margin: 0;">Simply contact us at least 48 hours before your scheduled clean, and we'll arrange a new date that works for you. We're flexible and committed to providing a service that fits your lifestyle. Call <strong>0330 0436345</strong> or email <strong>contact@swashcleaning.co.uk</strong>.</p>
+          </div>
+        </div>
+
+        <div style="background: linear-gradient(135deg, rgba(0, 120, 215, 0.1) 0%, rgba(0, 100, 180, 0.1) 100%); padding: 40px; border-radius: 12px; margin-top: 50px; text-align: center;">
+          <p style="color: #1e293b; font-size: 1.1rem; margin: 0 0 20px 0; font-weight: 500;">Still have questions about professional window cleaning in Essex?</p>
+          <a href="tel:03300436345" style="display: inline-block; background: #0078d7; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 1.1rem; transition: all 0.3s ease;">📞 Call Us at 0330 0436345</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         11. AREAS COVERED
+         ============================================ -->
+    <section class="areas-section">
+      <div class="areas-container">
+        <h2 class="areas-title">Professional Window Cleaning Areas We Service Across Essex</h2>
+        
+        <!-- Coverage Map -->
+        <div style="margin-bottom: 60px;">
+          <div style="max-width: 100%; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.12); height: 650px;">
+            <iframe 
+              src="https://www.google.com/maps?q=Essex%2C%20UK&z=9&output=embed" 
+              width="100%" 
+              height="100%" 
+              style="border: none;" 
+              allowfullscreen="" 
+              loading="lazy" 
+              referrerpolicy="no-referrer-when-downgrade"
+              title="Swash Cleaning Service Coverage Areas - Rochford, Essex"
+            ></iframe>
+          </div>
+          <p style="color: #1e293b; font-size: 1rem; margin-top: 20px; text-align: center; line-height: 1.7;">
+            <strong>Map shows Rochford as our base location.</strong> We cover the entire Essex area shown with our roving teams. The service radius extends from Southend-on-Sea in the south to Maldon in the north, and throughout South Essex.
+          </p>
+        </div>
+
+        <div class="areas-grid">
+          <div class="area-column">
+            <h3>Southend</h3>
+            <ul class="area-list">
+              <li>Southend-on-Sea</li>
+              <li>Westcliff-on-Sea</li>
+              <li>Leigh-on-Sea</li>
+              <li>Chalkwell</li>
+              <li>Eastwood</li>
+              <li>Prittlewell</li>
+              <li>Southchurch</li>
+              <li>Thorpe Bay</li>
+              <li>Shoeburyness</li>
+              <li>Rochford</li>
+              <li>Hawkwell</li>
+              <li>Hockley</li>
+              <li>Rayleigh</li>
+            </ul>
+          </div>
+          <div class="area-column">
+            <h3>Hadleigh</h3>
+            <ul class="area-list">
+              <li>Hadleigh</li>
+              <li>Benfleet</li>
+              <li>South Benfleet</li>
+              <li>Thundersley</li>
+              <li>Great Wakering</li>
+              <li>Little Wakering</li>
+              <li>Barling</li>
+              <li>Canewdon</li>
+              <li>Ashingdon</li>
+              <li>Paglesham</li>
+              <li>Kirby-le-Soken</li>
+            </ul>
+          </div>
+          <div class="area-column">
+            <h3>Ballards Gore</h3>
+            <ul class="area-list">
+              <li>Ballards Gore</li>
+              <li>Rawreth</li>
+              <li>Hullbridge</li>
+              <li>Battlesbridge</li>
+              <li>North Fambridge</li>
+              <li>Bowers Gifford</li>
+              <li>Daws Heath</li>
+              <li>Shopland</li>
+              <li>Stambridge</li>
+              <li>Foulness Island</li>
+            </ul>
+          </div>
+        </div>
+        <div class="areas-cta-section">
+          <p class="areas-cta-text">Not sure if we cover your area? Get in touch — we may be able to help!</p>
+          <a href="tel:03300436345" class="areas-cta-button">📞 Call Us Now</a>
+        </div>
+
+        <!-- Local SEO Area Mentions -->
+        <div style="background: rgba(255, 255, 255, 0.1); padding: 40px; border-radius: 12px; margin-top: 50px; text-align: center;">
+          <p style="color: white; font-size: 0.95rem; line-height: 1.8; margin: 0;">
+            Professional window cleaning services across <strong>Rochford</strong>, <strong>Southend-on-Sea</strong>, <strong>Westcliff-on-Sea</strong>, <strong>Rayleigh</strong>, <strong>Basildon</strong>, <strong>Wickford</strong>, <strong>Hockley</strong>, <strong>Benfleet</strong>, <strong>Hadleigh</strong>, <strong>Leigh-on-Sea</strong>, <strong>Thundersley</strong>, <strong>Rawreth</strong>, and <strong>surrounding Essex areas</strong>. 
+            <br><br>
+            <strong>Swash Cleaning Ltd</strong> has been providing reliable, professional window cleaning across Essex for over 15 years. Rated 4.9 stars on Google with 1,000+ satisfied customers, we're your trusted local window cleaner based in Rochford.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         12. FINAL CTA - CONVERSION FOCUS
+         ============================================ -->
+    <section class="final-cta-section">
+      <div class="final-cta-container">
+        <h2 class="final-cta-title">Ready for Professional, Reliable Window Cleaning in Essex?</h2>
+        <p class="final-cta-text">Join 1,000+ Essex homeowners who enjoy clean, bright windows every 28 days. Get your free instant quote today — no obligation, no pressure, no hidden fees.</p>
+        <a href="./rep/add-new-customer.html" class="final-cta-button">Get Your Free Instant Quote Now</a>
+        <p style="margin-top: 24px; color: rgba(255,255,255,0.9); font-size: 1rem; text-align: center;">💬 Or call us at <strong style="color: #ffffff;">0330 0436345</strong> for immediate help</p>
+      </div>
+    </section>
+
+    <!-- ============================================
+         12. FOOTER
+         ============================================ -->
+    <footer class="footer-section">
+      <div class="footer-container">
+        <div class="footer-grid">
+          <div class="footer-column">
+            <h4>About Swash</h4>
+            <p style="font-size: 0.95rem; line-height: 1.6; margin: 0;">Professional window cleaning with heart. 15+ years serving Essex homeowners. 5-star reviews. 100% satisfaction guaranteed.</p>
+          </div>
+          <div class="footer-column">
+            <h4>Quick Links</h4>
+            <ul class="footer-links">
+              <li><a href="./rep/add-new-customer.html">Get a Quote</a></li>
+              <li><a href="./rep/rep-home.html">Login</a></li>
+              <li><a href="tel:03300436345">Call Us</a></li>
+              <li><a href="./privacy.html">Privacy Policy</a></li>
+              <li><a href="./terms.html">Terms of Service</a></li>
+            </ul>
+          </div>
+          <div class="footer-column">
+            <h4>Contact Swash Cleaning</h4>
+            <div class="footer-contact">
+              <div style="margin-bottom: 12px;">
+                <strong>Business Name:</strong><br>
+                Swash Cleaning Ltd
+              </div>
+              <div style="margin-bottom: 12px;">
+                <strong>Phone:</strong><br>
+                <a href="tel:03300436345" style="color: #ffffff; text-decoration: none;">0330 0436345</a>
+              </div>
+              <div style="margin-bottom: 12px;">
+                <strong>Email:</strong><br>
+                <a href="mailto:contact@swashcleaning.co.uk" style="color: rgba(255,255,255,0.85); text-decoration: none;">contact@swashcleaning.co.uk</a>
+              </div>
+              <div style="margin-bottom: 12px;">
+                <strong>Service Area:</strong><br>
+                Essex, UK
+              </div>
+            </div>
+          </div>
+          <div class="footer-column">
+            <h4>Track Your Service</h4>
+            <div class="footer-tracking-input">
+              <label for="trackingPhone">Enter your phone number:</label>
+              <input type="tel" id="trackingPhone" placeholder="03300 436 345" />
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <img src="./assets/swash-logo.png" alt="Swash Cleaning" style="height: 40px; margin-bottom: 12px; filter: brightness(0) invert(1);" />
+          <p><strong>Swash Cleaning Ltd</strong> (part of Wessell Group Ltd)</p>
+          <p>Proudly serving homeowners across Essex with professional window cleaning since 2010.</p>
+          <p style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">"Swash" is a registered trademark of Wessell Group Ltd. All rights reserved © 2024.</p>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    // Placeholder for tracking functionality
+    document.getElementById('trackingPhone').addEventListener('keyup', function(e) {
+      if (e.key === 'Enter') {
+        console.log('Track service for:', this.value);
+        // TODO: Add tracking API call here
+      }
+    });
+  </script>
+</body>
+</html>

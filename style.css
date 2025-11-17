@@ -85,16 +85,14 @@ body::before {
 @media print {
   body::before { display: none !important; }
 }
-body.embed-mode::before { display: none !important; }
+:is(body.embed-mode, .quote-modal-shell.embed-mode)::before { display: none !important; }
 
 /* Remove background image on quote page only */
 body.quote-page::before { display: none !important; }
 
 /* Hide sensitive/rep-only controls on embedded quote form */
-body.embed-mode #quoteForm label[for="repCode"],
-body.embed-mode #quoteForm label[for="quoteDate"],
-body.embed-mode #applyOfferBtn,
-body.embed-mode #applyOfferBtn + *[hidden] /* container guard */ {
+:is(body.embed-mode, .quote-modal-shell.embed-mode) #quoteForm label[for="repCode"],
+:is(body.embed-mode, .quote-modal-shell.embed-mode) #quoteForm label[for="quoteDate"] {
   display: none !important;
 }
 
@@ -107,8 +105,8 @@ body.embed-mode #applyOfferBtn + *[hidden] /* container guard */ {
 }
 
 /* Force-hide the generated email message controls on the quote page */
-body.quote-page label[for="emailMessage"],
-body.quote-page #emailMessage {
+:is(body.quote-page, .quote-modal-shell) label[for="emailMessage"],
+:is(body.quote-page, .quote-modal-shell) #emailMessage {
   display: none !important;
 }
 
@@ -2101,21 +2099,21 @@ tbody tr:hover {
   .header-logo { height: 34px; }
 }
 
-/* Embed mode (for iframe) */
-body.embed-mode {
+/* Embed mode (for iframe + inline modal shell) */
+:is(body.embed-mode, .quote-modal-shell.embed-mode) {
   background: transparent !important;
   margin: 0 !important;
   padding: 0 !important;
 }
 
-body.embed-mode .page {
+:is(body.embed-mode, .quote-modal-shell.embed-mode) .page {
   box-shadow: none !important;
   background: transparent !important;
 }
 
-body.embed-mode header,
-body.embed-mode .navbar,
-body.embed-mode .banner {
+:is(body.embed-mode, .quote-modal-shell.embed-mode) header,
+:is(body.embed-mode, .quote-modal-shell.embed-mode) .navbar,
+:is(body.embed-mode, .quote-modal-shell.embed-mode) .banner {
   display: none !important;
 }
 
@@ -2191,6 +2189,37 @@ body.embed-mode .banner {
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(16, 42, 67, 0.08);
   overflow: hidden;
+}
+
+@keyframes todayHighlightPulse {
+  0%, 100% {
+    box-shadow: inset 0 0 0 3px rgba(10, 132, 255, 0.22), inset 0 12px 24px rgba(0, 120, 215, 0.18);
+  }
+  50% {
+    box-shadow: inset 0 0 0 5px rgba(10, 132, 255, 0.32), inset 0 16px 28px rgba(0, 120, 215, 0.22);
+  }
+}
+
+.schedule-row.today-highlight {
+  position: relative;
+  border-color: rgba(0, 120, 215, 0.55);
+  background: linear-gradient(180deg, rgba(0, 120, 215, 0.18) 0%, rgba(255, 255, 255, 0.96) 65%, rgba(0, 120, 215, 0.08) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.schedule-row.today-highlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.0) 0%, rgba(0, 120, 215, 0.14) 50%, rgba(0, 120, 215, 0.08) 100%);
+  animation: todayHighlightPulse 5s ease-in-out infinite;
+}
+
+.schedule-row.today-highlight .day-cell {
+  background: linear-gradient(90deg, #0060bf, #0a84ff);
+  color: #f5fbff;
 }
 
 .day-cell {
@@ -2388,9 +2417,11 @@ body.embed-mode .banner {
 /* Navigation button inside expanded job card */
 .job-details__actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
-  margin-top: 4px;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
 }
 
 .job-nav-btn {
@@ -2419,6 +2450,30 @@ body.embed-mode .banner {
   transform: translateY(0);
 }
 
+.job-comm-btn {
+  border: 1px solid rgba(0, 120, 215, 0.5);
+  background: rgba(0, 120, 215, 0.1);
+  color: var(--swash-blue);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
+  cursor: pointer;
+}
+
+.job-comm-btn:hover,
+.job-comm-btn:focus {
+  background: rgba(0, 120, 215, 0.2);
+  border-color: var(--swash-blue);
+  transform: translateY(-1px);
+}
+
+.job-comm-btn:active {
+  transform: translateY(0);
+}
+
 /* Make contact links clearly clickable and contained */
 .job-details a {
   color: var(--swash-blue);
@@ -2427,6 +2482,337 @@ body.embed-mode .banner {
 }
 .job-details a:hover {
   filter: brightness(0.9);
+}
+
+.customer-chat-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 3200;
+}
+
+.customer-chat-modal.is-open {
+  display: flex;
+}
+
+.customer-chat-dialog {
+  width: min(640px, 100%);
+  max-height: 90vh;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 32px 60px rgba(15, 23, 42, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.customer-chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.customer-chat-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text-heading);
+}
+
+.customer-chat-header p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.customer-chat-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.customer-chat-body {
+  flex: 1;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.customer-chat-status {
+  min-height: 18px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.customer-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.customer-chat-message {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  color: var(--text-body);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.customer-chat-message + .customer-chat-message {
+  margin-top: 8px;
+}
+
+.customer-chat-message--inbound {
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.customer-chat-message--outbound {
+  margin-left: auto;
+  background: linear-gradient(135deg, #0a84ff, #0078d7);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(0, 120, 215, 0.35);
+}
+
+.customer-chat-message__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.customer-chat-message__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.customer-chat-message__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: rgba(15, 23, 42, 0.65);
+}
+
+.customer-chat-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  color: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.customer-chat-badge--email {
+  background: rgba(14, 165, 233, 0.18);
+  color: #0369a1;
+}
+
+.customer-chat-badge--sms {
+  background: rgba(16, 185, 129, 0.18);
+  color: #047857;
+}
+
+.customer-chat-badge--note {
+  background: rgba(234, 179, 8, 0.18);
+  color: #92400e;
+}
+
+.customer-chat-message--outbound .customer-chat-badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.customer-chat-message--outbound .customer-chat-message__meta {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.customer-chat-message__author {
+  font-weight: 600;
+}
+
+.customer-chat-job {
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+.customer-chat-message__subject {
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.customer-chat-message__body {
+  margin-top: 4px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.customer-chat-message__content {
+  word-break: break-word;
+}
+
+.customer-chat-message__body--single .customer-chat-message__content {
+  display: block;
+}
+
+.customer-chat-message__body:not(.is-expanded) .customer-chat-message__content--full {
+  display: none;
+}
+
+.customer-chat-message__body.is-expanded .customer-chat-message__content--preview {
+  display: none;
+}
+
+.customer-chat-message__footer {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: rgba(15, 23, 42, 0.55);
+}
+
+.customer-chat-message--outbound .customer-chat-message__footer {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.customer-chat-message__timestamp {
+  margin-right: auto;
+}
+
+.customer-chat-expander,
+.customer-chat-reply {
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  color: inherit;
+}
+
+.customer-chat-reply {
+  font-weight: 600;
+}
+
+.customer-chat-expander:hover,
+.customer-chat-reply:hover {
+  text-decoration: none;
+}
+
+.customer-chat-divider {
+  margin: 0 0 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.customer-chat-empty {
+  padding: 24px;
+  border: 2px dashed rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.customer-chat-form {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 16px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.customer-chat-form textarea {
+  width: 100%;
+  min-height: 90px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.customer-chat-form textarea:focus {
+  border-color: var(--swash-blue);
+  box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.15);
+  outline: none;
+}
+
+.customer-chat-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.customer-chat-error {
+  color: #b91c1c;
+  font-size: 0.8rem;
+}
+
+.customer-chat-actions .customer-chat-send {
+  align-self: flex-end;
+}
+
+.customer-chat-modal.is-sending .customer-chat-send {
+  pointer-events: none;
+}
+
+.customer-chat-modal.is-sending textarea,
+.customer-chat-modal.is-loading textarea {
+  opacity: 0.75;
+}
+
+.customer-chat-modal.is-loading .customer-chat-send {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+@media (max-width: 640px) {
+  .customer-chat-dialog {
+    border-radius: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+  }
+
+  .customer-chat-header,
+  .customer-chat-body,
+  .customer-chat-form {
+    padding: 16px;
+  }
+
+  .customer-chat-message {
+    max-width: 92%;
+  }
 }
 
 .job-name {
@@ -2500,6 +2886,20 @@ body.embed-mode .banner {
   font-weight: 600;
   white-space: nowrap;
   align-self: center;
+}
+
+/* Status display for paid jobs (same style as completed, different hue) */
+.job-status-paid {
+  background: #ecfdf5;
+  color: #047857; /* emerald-700 */
+  border: 1px solid #10b981; /* emerald-500 */
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  align-self: center;
+  margin-left: 6px;
 }
 
 /* Generic utility */
@@ -2899,20 +3299,21 @@ body.embed-mode .banner {
 /* ============================================================
    Quote Page (rep) scoped theming
    Ensures even spacing, alignment, and consistent control styling
-   without affecting other pages. Applies only to body.quote-page.
+   without affecting other pages. Applies only to body.quote-page
+   or the inline .quote-modal-shell component.
    ============================================================ */
-body.quote-page .form-grid {
+:is(body.quote-page, .quote-modal-shell) .form-grid {
   gap: 18px 20px; /* even spacing across grid rows/cols */
 }
 
-body.quote-page .inline-two {
+:is(body.quote-page, .quote-modal-shell) .inline-two {
   gap: 18px 20px; /* match form-grid spacing */
 }
 
 /* Inputs: consistent size and rounded corners */
-body.quote-page input,
-body.quote-page select,
-body.quote-page textarea {
+:is(body.quote-page, .quote-modal-shell) input,
+:is(body.quote-page, .quote-modal-shell) select,
+:is(body.quote-page, .quote-modal-shell) textarea {
   min-height: 42px;
   padding: 12px 14px;
   border-radius: 10px; /* less rounded */
@@ -2922,20 +3323,20 @@ body.quote-page textarea {
 }
 
 /* Stronger focus treatment, but scoped */
-body.quote-page input:focus,
-body.quote-page select:focus,
-body.quote-page textarea:focus {
+:is(body.quote-page, .quote-modal-shell) input:focus,
+:is(body.quote-page, .quote-modal-shell) select:focus,
+:is(body.quote-page, .quote-modal-shell) textarea:focus {
   box-shadow: none; /* remove glow */
   border-color: var(--swash-blue-dark);
 }
 
 /* Labels spacing for clean vertical rhythm */
-body.quote-page .form-section {
+:is(body.quote-page, .quote-modal-shell) .form-section {
   gap: 8px;
 }
 
 /* Unify label spacing above inputs across all sections on quote page */
-body.quote-page .form-grid label {
+:is(body.quote-page, .quote-modal-shell) .form-grid label {
   display: flex;
   flex-direction: column;
   gap: 8px; /* consistent with .form-section gap */
@@ -2944,37 +3345,58 @@ body.quote-page .form-grid label {
 }
 
 /* Customer box, Options box, Result panel: consistent outside spacing */
-body.quote-page .customer-section.customer-box {
+:is(body.quote-page, .quote-modal-shell) .customer-section.customer-box {
   margin-bottom: 16px;
 }
 
-body.quote-page .options-box {
+:is(body.quote-page, .quote-modal-shell) .options-box {
   margin-top: 16px;
 }
 
-body.quote-page .result-panel {
+:is(body.quote-page, .quote-modal-shell) .result-panel {
   margin-top: 18px;
 }
 
 /* Actions rows below result: align items and unify spacing */
-body.quote-page .form-actions {
+:is(body.quote-page, .quote-modal-shell) .form-actions {
   align-items: center;
   gap: 18px;
   margin-top: 12px;
 }
 
 /* Compact spacing variant for tight alignment under pricing box */
-body.quote-page .form-actions--compact {
+:is(body.quote-page, .quote-modal-shell) .form-actions--compact {
   gap: 10px;
   margin-top: 8px; /* small gap below pricing box */
+  flex-wrap: wrap; /* allow clean wrapping on small screens */
 }
 
 /* Utility modifiers for alignment per row */
-body.quote-page .form-actions--start { justify-content: flex-start; }
-body.quote-page .form-actions--end { justify-content: flex-end; }
+:is(body.quote-page, .quote-modal-shell) .form-actions--start { justify-content: flex-start; }
+:is(body.quote-page, .quote-modal-shell) .form-actions--end { justify-content: flex-end; }
 
 /* Ensure checkbox label in action rows has no extra margins */
-body.quote-page .form-actions .checkbox { margin: 0; }
+:is(body.quote-page, .quote-modal-shell) .form-actions .checkbox { margin: 0; }
+
+/* Chip-style toggles in compact action row */
+:is(body.quote-page, .quote-modal-shell) .form-actions--compact .checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+:is(body.quote-page, .quote-modal-shell) .form-actions--compact .checkbox input {
+  width: 18px;
+  height: 18px;
+}
+
+:is(body.quote-page, .quote-modal-shell) .form-actions--compact .checkbox span {
+  line-height: 1.1;
+}
 
 /* Order jobs modal styles */
 .order-job-item {
@@ -3229,6 +3651,26 @@ body.quote-page .slider-row input[type="range"]::-moz-range-thumb {
 .badge--receipt {
   background: #dcfce7;
   color: #14532d;
+}
+
+.badge-unread {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #e11d48;
+  color: #fff;
+  font-size: 11px;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 9px;
+  padding: 0 6px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .customer-name {
@@ -3903,4 +4345,280 @@ body.quote-page .slider-row input[type="range"]::-moz-range-thumb {
     font-size: 0.95rem;
   }
 }
+
+/* ============================================================
+   WEEKLY OVERVIEW BAR - Schedule/Admin Dashboard
+   Displays unpaid/uncompleted job counts with live updates
+   ============================================================ */
+
+.weekly-overview-bar {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.weekly-overview-bar:hover {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.weekly-overview-bar--hidden {
+  display: none;
+}
+
+.weekly-overview-bar--has-issues {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+  border-color: #ffc107;
+}
+
+/* Bar header: summary stats */
+.weekly-overview-bar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: var(--text-body);
+  padding: 0;
+}
+
+.weekly-overview-bar__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.weekly-overview-bar__toggle {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: var(--swash-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.weekly-overview-bar__toggle--expanded {
+  transform: rotate(180deg);
+}
+
+.weekly-overview-bar__stats {
+  display: flex;
+  gap: 16px;
+  font-size: 0.95rem;
+}
+
+.weekly-overview-bar__stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.weekly-overview-bar__stat-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.weekly-overview-bar__stat-value {
+  font-weight: 700;
+  color: var(--swash-blue);
+  min-width: 24px;
+  text-align: center;
+}
+
+.weekly-overview-bar__stat-value--warning {
+  color: var(--swash-red);
+}
+
+.weekly-overview-bar__stat-amount {
+  font-weight: 600;
+  color: var(--text-body);
+  display: flex;
+  gap: 4px;
+}
+
+.weekly-overview-bar__weather {
+  font-weight: 600;
+  color: var(--text-body);
+  font-size: 0.9rem;
+}
+
+.weekly-overview-bar__weather-rain {
+  color: #0078d7;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* Expanded content */
+.weekly-overview-bar__content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  margin-top: 0;
+}
+
+.weekly-overview-bar__content--expanded {
+  max-height: 2000px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.weekly-overview-bar__jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weekly-overview-job {
+  background: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: box-shadow 0.2s ease;
+}
+
+.weekly-overview-job:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.weekly-overview-job--unpaid {
+  border-left: 4px solid var(--swash-red);
+}
+
+.weekly-overview-job--uncompleted {
+  border-left: 4px solid #ffc107;
+}
+
+.weekly-overview-job__info {
+  flex: 1;
+}
+
+.weekly-overview-job__customer {
+  font-weight: 600;
+  color: var(--text-body);
+  font-size: 0.95rem;
+}
+
+.weekly-overview-job__details {
+  display: flex;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.weekly-overview-job__detail {
+  display: flex;
+  gap: 4px;
+}
+
+.weekly-overview-job__price {
+  font-weight: 600;
+  color: var(--text-body);
+}
+
+.weekly-overview-job__date {
+  color: var(--text-muted);
+}
+
+.weekly-overview-job__cleaner {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.weekly-overview-job__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.weekly-overview-job__button {
+  padding: 6px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text-body);
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.weekly-overview-job__button:hover:not(:disabled) {
+  background: var(--swash-blue);
+  color: #ffffff;
+  border-color: var(--swash-blue);
+}
+
+.weekly-overview-job__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.weekly-overview-job__button--paid {
+  background: var(--swash-green);
+  color: #ffffff;
+  border-color: var(--swash-green);
+}
+
+.weekly-overview-job__button--done {
+  background: var(--swash-green);
+  color: #ffffff;
+  border-color: var(--swash-green);
+}
+
+/* Empty state */
+.weekly-overview-bar__empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .weekly-overview-bar {
+    padding: 12px;
+  }
+
+  .weekly-overview-bar__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .weekly-overview-bar__stats {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .weekly-overview-job {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .weekly-overview-job__actions {
+    width: 100%;
+  }
+
+  .weekly-overview-job__button {
+    flex: 1;
+    text-align: center;
+  }
+}
+
 

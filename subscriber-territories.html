@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Territories - Swash Subscriber</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .admin-only, .rep-only, .admin-rep { display: none !important; }
+    .subscriber-only { display: block !important; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <h1 style="margin: 0 0 0 12px; font-size: 1.2rem;">🗺️ Territories</h1>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
+          <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
+          <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
+          <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
+          <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we verify your account.</p>
+    </div>
+  </section>
+
+  <main id="territoriesContent" class="page" style="display:none;">
+    <section class="card">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h2>Service Territories</h2>
+          <p class="text-muted">Define and manage your service areas</p>
+        </div>
+      </header>
+
+      <div style="padding:20px;">
+        <p style="text-align:center;color:#64748b;padding:60px 20px;">
+          🗺️ Territory management coming soon!<br/>
+          <span style="font-size:14px;margin-top:12px;display:block;">
+            This will allow you to define service areas, set booking days, and organize your routes.
+          </span>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { auth, db } from './firebase-init.js';
+    import {
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import {
+      doc,
+      getDoc
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    let subscriberId = null;
+
+    const authOverlay = document.getElementById('authOverlay');
+    const territoriesContent = document.getElementById('territoriesContent');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './subscriber-login.html';
+        return;
+      }
+
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewingUid = urlParams.get('uid');
+
+        const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!currentUserDoc.exists()) throw new Error('User not found');
+
+        const currentUserData = currentUserDoc.data();
+
+        if (viewingUid && currentUserData.role === 'admin') {
+          subscriberId = viewingUid;
+        } else {
+          subscriberId = user.uid;
+          if (currentUserData.role !== 'subscriber') {
+            throw new Error('Access denied');
+          }
+          if (!currentUserData.billingCompleted) {
+            window.location.href = './subscriber-billing.html';
+            return;
+          }
+        }
+
+        authOverlay.style.display = 'none';
+        territoriesContent.style.display = 'block';
+
+      } catch (error) {
+        console.error('Auth error:', error);
+        alert(error.message);
+        await signOut(auth);
+        window.location.href = './subscriber-login.html';
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = './subscriber-login.html';
+    });
+
+    menuBtn.addEventListener('click', () => {
+      menuDropdown.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.menu-box')) {
+        menuDropdown.classList.remove('show');
+      }
+    });
+  </script>
+
+</body>
+</html>
