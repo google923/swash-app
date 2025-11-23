@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Swash Quick Actions Hub</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .admin-only, .rep-only, .admin-rep { display: none !important; }
+    .subscriber-only { display: block !important; }
+    .quick-sections {
+      display: grid;
+      gap: 24px;
+      margin-top: 24px;
+    }
+    .quick-section {
+      border-left: 4px solid #e2e8f0;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .quick-section.is-active {
+      border-left-color: #0078d7;
+      box-shadow: 0 12px 32px rgba(0, 120, 215, 0.12);
+    }
+    .quick-section .card-header {
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      padding: 20px;
+    }
+    .quick-action-card {
+      display: block;
+      padding: 20px;
+      background: #ffffff;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      text-decoration: none;
+      color: #0f172a;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+      min-height: 132px;
+    }
+    .quick-action-card:hover {
+      border-color: #0078d7;
+      box-shadow: 0 10px 24px rgba(0, 120, 215, 0.16);
+      transform: translateY(-3px);
+    }
+    .quick-action-emoji {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+    .quick-action-title {
+      display: block;
+      font-weight: 600;
+      font-size: 1.05rem;
+      margin-bottom: 6px;
+      color: #1e293b;
+    }
+    .quick-action-description {
+      font-size: 0.9rem;
+      color: #64748b;
+      line-height: 1.35;
+    }
+    .summary-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #ecfeff;
+      color: #0f172a;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    .summary-pill::before {
+      content: "🧭";
+    }
+    .quick-action-card[hidden] {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/main.html" class="admin-rep-subscriber">🔗 Quick Actions Hub</a>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Subscriber Dashboard</a>
+          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
+          <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
+          <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
+          <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
+          <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
+          <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
+          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
+          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Hold tight while we confirm your access.</p>
+    </div>
+  </section>
+
+  <main id="mainContent" class="page" style="display:none;">
+    <section class="card">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h2>Swash Quick Actions Hub</h2>
+          <p class="text-muted">Jump straight into any area of the platform. <span class="summary-pill"><strong id="linkCount">0</strong> quick actions mapped.</span></p>
+        </div>
+        <div class="card-header-actions">
+          <span class="role-badge" style="background:#f5f3ff;color:#4c1d95;">
+            Current role:
+            <strong data-role-label>Guest</strong>
+          </span>
+        </div>
+      </header>
+      <div class="card-body" style="padding:20px;">
+        <p style="color:#475569;font-size:0.95rem;">Links are grouped by role so teams can open their tools in seconds. Use the menu for a compact view or add this hub to your bookmarks for a single source of truth.</p>
+      </div>
+    </section>
+
+    <div class="quick-sections">
+      <section class="card quick-section" data-role-section="admin">
+        <header class="card-header">
+          <div class="card-header-main">
+            <h3>Admin Control Center</h3>
+            <p class="text-muted">Operational dashboards and management tools for the leadership team.</p>
+          </div>
+        </header>
+        <div class="quick-grid">
+          <a href="/subscriber-dashboard.html" class="quick-action-card">
+            <span class="quick-action-emoji">🏠</span>
+            <span class="quick-action-title">Subscriber Dashboard</span>
+            <span class="quick-action-description">View KPIs, recent activity, and territory health at a glance.</span>
+          </a>
+          <a href="/schedule.html" class="quick-action-card">
+            <span class="quick-action-emoji">📅</span>
+            <span class="quick-action-title">Cleaning Rota</span>
+            <span class="quick-action-description">Assign days, balance workloads, and manage each four-week cycle.</span>
+          </a>
+          <a href="/map.html" class="quick-action-card">
+            <span class="quick-action-emoji">🗺️</span>
+            <span class="quick-action-title">Territory Map</span>
+            <span class="quick-action-description">Draw service areas and sync them with rota assignments.</span>
+          </a>
+          <a href="/subscriber-cleaners.html" class="quick-action-card">
+            <span class="quick-action-emoji">👷</span>
+            <span class="quick-action-title">Cleaner Management</span>
+            <span class="quick-action-description">Add cleaners, manage availability, and allocate workloads.</span>
+          </a>
+          <a href="/subscriber-rep-dashboard.html" class="quick-action-card">
+            <span class="quick-action-emoji">🧾</span>
+            <span class="quick-action-title">Rep Dashboard</span>
+            <span class="quick-action-description">Capture daily logs, odometer readings, and review rep output.</span>
+          </a>
+          <a href="/subscriber-rep-log.html" class="quick-action-card">
+            <span class="quick-action-emoji">📝</span>
+            <span class="quick-action-title">Rep Log</span>
+            <span class="quick-action-description">Record field activity, notes, and proof-of-service updates.</span>
+          </a>
+          <a href="/subscriber-shifts-logs.html" class="quick-action-card">
+            <span class="quick-action-emoji">📋</span>
+            <span class="quick-action-title">Shifts &amp; Logs</span>
+            <span class="quick-action-description">Review shift summaries, door counts, and mileage claims.</span>
+          </a>
+          <a href="/subscriber-performance.html" class="quick-action-card">
+            <span class="quick-action-emoji">🎯</span>
+            <span class="quick-action-title">Performance</span>
+            <span class="quick-action-description">Track conversion, retention, and monthly performance trends.</span>
+          </a>
+          <a href="/subscriber-sms-setup.html" class="quick-action-card">
+            <span class="quick-action-emoji">📲</span>
+            <span class="quick-action-title">SMS Centre</span>
+            <span class="quick-action-description">Buy credits, manage sender IDs, and send customer messages.</span>
+          </a>
+          <a href="/subscriber-email-settings.html" class="quick-action-card">
+            <span class="quick-action-emoji">✉️</span>
+            <span class="quick-action-title">Email Settings</span>
+            <span class="quick-action-description">Configure booking confirmations and reminder templates.</span>
+          </a>
+          <a href="/subscriber-tracking.html" class="quick-action-card">
+            <span class="quick-action-emoji">📍</span>
+            <span class="quick-action-title">Live Tracking</span>
+            <span class="quick-action-description">Follow cleaner activity and monitor real-time completion.</span>
+          </a>
+          <a href="/add-log.html" class="quick-action-card">
+            <span class="quick-action-emoji">🛠️</span>
+            <span class="quick-action-title">Manual Log Entry</span>
+            <span class="quick-action-description">Capture ad-hoc field updates and sync them to the admin records.</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="card quick-section" data-role-section="rep">
+        <header class="card-header">
+          <div class="card-header-main">
+            <h3>Rep Daily Operations</h3>
+            <p class="text-muted">Everything field reps need for quoting, routing, and daily reporting.</p>
+          </div>
+        </header>
+        <div class="quick-grid">
+          <a href="/rep/rep-home.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">🏠</span>
+            <span class="quick-action-title">Rep Home</span>
+            <span class="quick-action-description">Launchpad for day plans, targets, and quick shortcuts.</span>
+          </a>
+          <a href="/rep/rep-dashboard.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">📊</span>
+            <span class="quick-action-title">Rep Dashboard</span>
+            <span class="quick-action-description">Track personal performance, leaderboards, and goals.</span>
+          </a>
+          <a href="/rep/add-new-customer.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">➕</span>
+            <span class="quick-action-title">Add New Customer</span>
+            <span class="quick-action-description">Capture prospect details and start the booking journey.</span>
+          </a>
+          <a href="/rep/add-new-customer.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">📝</span>
+            <span class="quick-action-title">Full Quote Form</span>
+            <span class="quick-action-description">Generate pricing with tier logic and email-ready summaries.</span>
+          </a>
+          <a href="/rep/quote-embed.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">🔗</span>
+            <span class="quick-action-title">Quote Embed</span>
+            <span class="quick-action-description">Use the compact embed for drop-in forms and microsites.</span>
+          </a>
+          <a href="/rep/scheduler.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">📅</span>
+            <span class="quick-action-title">Route Scheduler</span>
+            <span class="quick-action-description">Drag-and-drop bookings across the 4-week cadence.</span>
+          </a>
+          <a href="/rep/rep-log.html" class="quick-action-card">
+            <span class="quick-action-emoji">🗒️</span>
+            <span class="quick-action-title">Rep Log &amp; Tracking</span>
+            <span class="quick-action-description">Record daily activity, notes, and proof-of-service updates.</span>
+          </a>
+          <a href="/rep/master-log.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">📚</span>
+            <span class="quick-action-title">Master Log</span>
+            <span class="quick-action-description">Review the full history of rep submissions and logs.</span>
+          </a>
+          <a href="/rep/offline-queue.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">📶</span>
+            <span class="quick-action-title">Offline Queue</span>
+            <span class="quick-action-description">Inspect any queued submissions and sync when back online.</span>
+          </a>
+          <a href="/rep/map.html" class="quick-action-card">
+            <span class="quick-action-emoji">🗺️</span>
+            <span class="quick-action-title">Territory Map</span>
+            <span class="quick-action-description">Visualise territories, hot leads, and rep coverage.</span>
+          </a>
+          <a href="/rep/maintenance.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">🧰</span>
+            <span class="quick-action-title">Maintenance Mode</span>
+            <span class="quick-action-description">Check platform status and maintenance announcements.</span>
+          </a>
+          <a href="/rep/chat.html" class="quick-action-card">
+            <span class="quick-action-emoji">💬</span>
+            <span class="quick-action-title">Team Chat</span>
+            <span class="quick-action-description">Collaborate with dispatch and stay aligned on the day.</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="card quick-section" data-role-section="rep">
+        <header class="card-header">
+          <div class="card-header-main">
+            <h3>Rep Resources &amp; Policies</h3>
+            <p class="text-muted">Knowledge base, compliance, and support pages for the field team.</p>
+          </div>
+        </header>
+        <div class="quick-grid">
+          <a href="/rep/performance.html" class="quick-action-card">
+            <span class="quick-action-emoji">🏅</span>
+            <span class="quick-action-title">Performance Hub</span>
+            <span class="quick-action-description">Monitor KPIs, streaks, and incentives tied to your targets.</span>
+          </a>
+          <a href="/rep/commission.html" class="quick-action-card">
+            <span class="quick-action-emoji">💷</span>
+            <span class="quick-action-title">Commission Planner</span>
+            <span class="quick-action-description">Estimate pay-outs and understand commission tiers.</span>
+          </a>
+          <a href="/rep/competitions.html" class="quick-action-card">
+            <span class="quick-action-emoji">🏁</span>
+            <span class="quick-action-title">Competitions Board</span>
+            <span class="quick-action-description">See current contests, prizes, and how to climb the leaderboard.</span>
+          </a>
+          <a href="/rep/training.html" class="quick-action-card">
+            <span class="quick-action-emoji">🎓</span>
+            <span class="quick-action-title">Training Library</span>
+            <span class="quick-action-description">Access playbooks, demo videos, and onboarding resources.</span>
+          </a>
+          <a href="/rep/holiday.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">🏖️</span>
+            <span class="quick-action-title">Holiday Requests</span>
+            <span class="quick-action-description">Submit leave requests and track approvals.</span>
+          </a>
+          <a href="/rep/sickness.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">🤒</span>
+            <span class="quick-action-title">Sickness Reporting</span>
+            <span class="quick-action-description">Log sickness days so scheduling stays up to date.</span>
+          </a>
+          <a href="/rep/feedback.html" class="quick-action-card">
+            <span class="quick-action-emoji">🗣️</span>
+            <span class="quick-action-title">Feedback &amp; Ideas</span>
+            <span class="quick-action-description">Share suggestions, report issues, and celebrate wins.</span>
+          </a>
+          <a href="/rep/contract.html" class="quick-action-card">
+            <span class="quick-action-emoji">📜</span>
+            <span class="quick-action-title">Rep Contract</span>
+            <span class="quick-action-description">Review the latest contract terms and expectations.</span>
+          </a>
+          <a href="/rep/policy.html" class="quick-action-card">
+            <span class="quick-action-emoji">⚖️</span>
+            <span class="quick-action-title">Policies &amp; Compliance</span>
+            <span class="quick-action-description">Keep up to date with policies, safeguarding, and standards.</span>
+          </a>
+          <a href="/rep/login.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">🔑</span>
+            <span class="quick-action-title">Rep Login</span>
+            <span class="quick-action-description">Direct link to the dedicated rep sign-in experience.</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="card quick-section" data-role-section="subscriber">
+        <header class="card-header">
+          <div class="card-header-main">
+            <h3>Subscriber Workspace</h3>
+            <p class="text-muted">Core tools for franchise subscribers to run their local business.</p>
+          </div>
+        </header>
+        <div class="quick-grid">
+          <a href="/subscriber-dashboard.html" class="quick-action-card">
+            <span class="quick-action-emoji">🏠</span>
+            <span class="quick-action-title">Subscriber Dashboard</span>
+            <span class="quick-action-description">View KPIs, recent activity, and quick metrics for your territory.</span>
+          </a>
+          <a href="/subscriber-quotes.html" class="quick-action-card">
+            <span class="quick-action-emoji">📝</span>
+            <span class="quick-action-title">Quotes Manager</span>
+            <span class="quick-action-description">Review customer quotes, statuses, and follow-up tasks.</span>
+          </a>
+          <a href="/rep/add-new-customer.html" class="quick-action-card">
+            <span class="quick-action-emoji">➕</span>
+            <span class="quick-action-title">Add New Customer</span>
+            <span class="quick-action-description">Launch the branded quote builder and capture bookings instantly.</span>
+          </a>
+          <a href="/subscriber-customers.html" class="quick-action-card">
+            <span class="quick-action-emoji">👥</span>
+            <span class="quick-action-title">Customer CRM</span>
+            <span class="quick-action-description">Maintain customer records, contacts, and service notes.</span>
+          </a>
+          <a href="/subscriber-cleaners.html" class="quick-action-card">
+            <span class="quick-action-emoji">👷</span>
+            <span class="quick-action-title">Cleaner Management</span>
+            <span class="quick-action-description">Add cleaners, assign workloads, and track availability.</span>
+          </a>
+          <a href="/subscriber-rep-log.html" class="quick-action-card">
+            <span class="quick-action-emoji">🗒️</span>
+            <span class="quick-action-title">Rep Log</span>
+            <span class="quick-action-description">Capture field activity, notes, and proof-of-service updates.</span>
+          </a>
+          <a href="/schedule.html" class="quick-action-card">
+            <span class="quick-action-emoji">📅</span>
+            <span class="quick-action-title">Route Planner</span>
+            <span class="quick-action-description">Assign cleaning days, balance workloads, and manage 4-week routes.</span>
+          </a>
+          <a href="/subscriber-schedule-full.html" class="quick-action-card">
+            <span class="quick-action-emoji">🗓️</span>
+            <span class="quick-action-title">Full Calendar View</span>
+            <span class="quick-action-description">Dive into a comprehensive calendar with expanded controls.</span>
+          </a>
+          <a href="/map.html" class="quick-action-card">
+            <span class="quick-action-emoji">🗺️</span>
+            <span class="quick-action-title">Territory Map</span>
+            <span class="quick-action-description">Draw service areas and sync them with cleaner assignments.</span>
+          </a>
+          <a href="/subscriber-tracking.html" class="quick-action-card">
+            <span class="quick-action-emoji">📍</span>
+            <span class="quick-action-title">Live Tracking</span>
+            <span class="quick-action-description">Follow cleaner activity and monitor real-time completion.</span>
+          </a>
+          <a href="/subscriber-users.html" class="quick-action-card">
+            <span class="quick-action-emoji">👤</span>
+            <span class="quick-action-title">Team Access</span>
+            <span class="quick-action-description">Manage subscriber-side user accounts and permissions.</span>
+          </a>
+          <a href="/subscriber-email-settings.html" class="quick-action-card">
+            <span class="quick-action-emoji">✉️</span>
+            <span class="quick-action-title">Email Settings</span>
+            <span class="quick-action-description">Configure templates, reminders, and customer messaging.</span>
+          </a>
+          <a href="/subscriber-add-customer-settings.html" class="quick-action-card">
+            <span class="quick-action-emoji">⚙️</span>
+            <span class="quick-action-title">Add Customer Settings</span>
+            <span class="quick-action-description">Control pricing tiers, modifiers, and embed styling for your quote form.</span>
+          </a>
+          <a href="/subscriber-sms-setup.html" class="quick-action-card">
+            <span class="quick-action-emoji">📲</span>
+            <span class="quick-action-title">SMS Centre</span>
+            <span class="quick-action-description">Buy credits, manage your sender ID, and track SMS usage.</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="card quick-section" data-role-section="subscriber">
+        <header class="card-header">
+          <div class="card-header-main">
+            <h3>Subscriber Onboarding &amp; Billing</h3>
+            <p class="text-muted">Everything needed to set up new subscriber accounts and payments.</p>
+          </div>
+        </header>
+        <div class="quick-grid">
+          <a href="/subscriber-signup.html" class="quick-action-card">
+            <span class="quick-action-emoji">📝</span>
+            <span class="quick-action-title">Subscriber Signup</span>
+            <span class="quick-action-description">Start the onboarding flow for new franchise partners.</span>
+          </a>
+          <a href="/subscriber-login.html" class="quick-action-card">
+            <span class="quick-action-emoji">🔐</span>
+            <span class="quick-action-title">Subscriber Login</span>
+            <span class="quick-action-description">Direct access to the subscriber authentication portal.</span>
+          </a>
+          <a href="/subscriber-billing.html" class="quick-action-card">
+            <span class="quick-action-emoji">💳</span>
+            <span class="quick-action-title">Billing Setup</span>
+            <span class="quick-action-description">Complete payment details to activate the subscriber workspace.</span>
+          </a>
+          <a href="/subscriber-billing-complete.html" class="quick-action-card">
+            <span class="quick-action-emoji">✅</span>
+            <span class="quick-action-title">Billing Confirmation</span>
+            <span class="quick-action-description">Confirmation screen once billing has been finalised.</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="card quick-section" data-role-section="shared">
+        <header class="card-header">
+          <div class="card-header-main">
+            <h3>Public &amp; Access Pages</h3>
+            <p class="text-muted">Marketing, legal, and entry points shared across all audiences.</p>
+          </div>
+        </header>
+        <div class="quick-grid">
+          <a href="/index.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">🚪</span>
+            <span class="quick-action-title">Main Login</span>
+            <span class="quick-action-description">Primary landing and login page for the Swash platform.</span>
+          </a>
+          <a href="/home.html" class="quick-action-card">
+            <span class="quick-action-emoji">🏡</span>
+            <span class="quick-action-title">Marketing Homepage</span>
+            <span class="quick-action-description">Customer-facing overview of services and the Swash brand.</span>
+          </a>
+          <a href="/privacy.html" class="quick-action-card">
+            <span class="quick-action-emoji">🔒</span>
+            <span class="quick-action-title">Privacy Policy</span>
+            <span class="quick-action-description">Review how Swash collects, stores, and uses customer data.</span>
+          </a>
+          <a href="/terms.html" class="quick-action-card">
+            <span class="quick-action-emoji">📄</span>
+            <span class="quick-action-title">Terms &amp; Conditions</span>
+            <span class="quick-action-description">Legal agreement governing platform and service usage.</span>
+          </a>
+          <a href="/404.html" class="quick-action-card" data-hide-for="rep">
+            <span class="quick-action-emoji">🚧</span>
+            <span class="quick-action-title">404 Page</span>
+            <span class="quick-action-description">Custom not-found experience for broken or outdated links.</span>
+          </a>
+          <a href="/googleedd7c8c6796eb4fd.html" class="quick-action-card">
+            <span class="quick-action-emoji">✅</span>
+            <span class="quick-action-title">Google Verification</span>
+            <span class="quick-action-description">Site verification endpoint for Google Search Console.</span>
+          </a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="./auth-check.js"></script>
+  <script type="module" src="./nav.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

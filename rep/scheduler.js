@@ -1,8 +1,9 @@
-// scheduler.js - 4-week route planner with drag-and-drop rescheduling and 28-day recurring cadence
+// scheduler.js - cleaner rota planner with drag-and-drop rescheduling and flexible recurring cadence
 import { initMenuDropdown } from "./menu.js";
 import { authStateReady, handlePageRouting } from "../auth-check.js";
 import { createCustomerChatController } from "./components/chat-controller.js";
 import { logOutboundEmailToFirestore } from "../lib/firestore-utils.js";
+import { tenantCollection, tenantDoc } from "../lib/subscriber-paths.js";
 import { fetchWeatherForWeek } from "./components/weather-forecast.js";
 import {
   initializeApp,
@@ -32,6 +33,15 @@ import {
   signOut,
   signInWithEmailAndPassword,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import {
+  MS_PER_DAY,
+  addDays,
+  toDate,
+  resolveFrequencyDays,
+  getFrequencyDisplay,
+  generateOccurrencesInRange,
+  computeNextCleanDates,
+} from "../lib/scheduler-utils.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCLmrWYAY4e7tQD9Cknxp7cKkzqJgndm0I",
@@ -50,6 +60,7 @@ let schedulerInitialised = false;
 let subscriberId = null; // Set if user is a subscriber
 let userRole = null;
 let subscriberCleaners = []; // Store subscriber's cleaners if applicable
+let subscriberSmsSettings = null; // Loaded SMS settings for subscriber tenants
 
 const SYNC_CHANNEL_NAME = "swash-quotes-sync";
 const SYNC_SOURCE = "scheduler";
@@ -72,9 +83,46 @@ const CLEANER_LABEL_OVERRIDES = {
   "Cleaner 1": "Chris",
 };
 
+const AREA_FILTER_UNASSIGNED = "__AREA_UNASSIGNED__";
+
 function getCleanerLabel(value) {
   if (!value) return value;
   return CLEANER_LABEL_OVERRIDES[value] || value;
+}
+
+function resolveCleanerNameRecord(cleaner) {
+  if (!cleaner || typeof cleaner !== 'object') return '';
+  const pieces = [];
+  const first = cleaner.firstName || cleaner.first_name;
+  const last = cleaner.lastName || cleaner.last_name;
+  if (first || last) {
+    const full = `${first || ''} ${last || ''}`.trim();
+    if (full) pieces.push(full);
+  }
+  const fields = [
+    cleaner.name,
+    cleaner.fullName,
+    cleaner.full_name,
+    cleaner.displayName,
+    cleaner.display_name,
+    cleaner.nickname,
+    cleaner.shortName,
+    cleaner.short_name,
+    cleaner.profileName,
+    cleaner.profile_name,
+  ];
+  const nestedProfile = cleaner.profile && typeof cleaner.profile === 'object'
+    ? [cleaner.profile.name, cleaner.profile.fullName, cleaner.profile.displayName]
+    : [];
+  const contactFields = [cleaner.email, cleaner.phone, cleaner.mobile];
+  const candidates = [...pieces, ...fields, ...nestedProfile, ...contactFields].map((value) => {
+    if (!value) return '';
+    return String(value).trim();
+  });
+  for (const value of candidates) {
+    if (value) return value;
+  }
+  return '';
 }
 
 const chatController = createCustomerChatController({
@@ -133,6 +181,7 @@ const elements = {
   selectionTotal: document.getElementById("selectionTotal"),
   clearSelectionBtn: document.getElementById("clearSelectionBtn"),
   logoutBtn: document.getElementById("logoutBtn"),
+  areaFilter: document.getElementById("areaFilter"),
   cleanerFilter: document.getElementById("cleanerFilter"),
   authOverlay: document.getElementById("authOverlay"),
   loginForm: document.getElementById("loginForm"),
@@ -148,10 +197,10 @@ const state = {
   draggingIds: [],
   dragOriginDate: null,
   dragTargetJobId: null, // Track which job we're inserting before
-  weeksVisible: INITIAL_WEEKS,
   selectedJobIds: new Set(),
   messageContext: null,
   cleanerFilter: "",
+  areaFilter: "",
   customTemplates: [], // User-saved templates
   areas: [], // User-defined service areas
   currentUserId: null, // Will be set from auth
@@ -163,6 +212,37 @@ const state = {
 let areasMap = null;
 let areasDrawingManager = null;
 let currentDrawingPolygon = null;
+let areaPolygons = [];
+
+const areaSelectionState = {
+  selectedAreaId: null,
+  selectedCleanerIds: new Set(),
+};
+
+function getAreaById(areaId) {
+  if (!areaId) return null;
+  return state.areas.find((area) => resolveTerritoryIdentifier(area, area.id) === areaId || area.id === areaId) || null;
+}
+
+function resolveAreaColor(area) {
+  return area?.color || area?.colour || '#1d4ed8';
+}
+
+function normalizeAreas(rawAreas) {
+  if (!Array.isArray(rawAreas)) {
+    return [];
+  }
+  return rawAreas
+    .map((area, index) => {
+      if (!area) return null;
+      const id = area.id || area.territoryId || area.name || `area-${index + 1}`;
+      if (area.id !== id) {
+        return { ...area, id };
+      }
+      return area;
+    })
+    .filter(Boolean);
+}
 
 // ===== All Pins (Scheduler) =====
 // Google Maps markers for historical door logs (last 60 days)
@@ -223,17 +303,71 @@ async function getRepDisplay(repId) {
 async function loadAreas() {
   if (!state.currentUserId) return;
   try {
-    const areasRef = doc(db, "users", state.currentUserId, "areas", "all");
-    const snap = await getDoc(areasRef);
-    if (snap.exists()) {
-      state.areas = snap.data().areas || [];
+    if (subscriberId) {
+      const territoriesSnap = await getDocs(tenantCollection(db, subscriberId, "territories"));
+      const territories = territoriesSnap.docs.map((docSnap, index) => {
+        const data = docSnap.data() || {};
+        const baseId = docSnap.id || data.territoryId || data.name || `area-${index + 1}`;
+        const path = Array.isArray(data.path)
+          ? data.path
+              .map((point) => {
+                if (!point || typeof point.lat === "undefined" || typeof point.lng === "undefined") {
+                  return null;
+                }
+                const lat = Number(point.lat);
+                const lng = Number(point.lng);
+                if (Number.isNaN(lat) || Number.isNaN(lng)) {
+                  return null;
+                }
+                return { lat, lng };
+              })
+              .filter(Boolean)
+          : [];
+
+        return {
+          id: baseId,
+          name: data.name || `Area ${index + 1}`,
+          color: data.color || "#2563eb",
+          type: data.type || (path.length ? "polygon" : data.type) || "polygon",
+          path,
+          centroid: data.centroid || null,
+          allowedDays: data.allowedDays || data.serviceDays || null,
+          allowedBookingDays: data.allowedBookingDays || {},
+          territoryId: data.territoryId || baseId,
+          focusFromDate: data.focusFromDate || data.focusPeriodStart || null,
+          focusToDate: data.focusToDate || data.focusPeriodEnd || null,
+          subscriberId,
+        };
+      });
+
+      state.areas = normalizeAreas(territories);
     } else {
-      state.areas = [];
+      const areasRef = doc(db, "users", state.currentUserId, "areas", "all");
+      const snap = await getDoc(areasRef);
+      if (snap.exists()) {
+        state.areas = normalizeAreas(snap.data().areas || []);
+      } else {
+        state.areas = [];
+      }
     }
   } catch (err) {
     console.error("Error loading areas:", err);
     state.areas = [];
   }
+  if (subscriberId) {
+    if (state.areas.length) {
+      const currentId = areaSelectionState.selectedAreaId;
+      if (!currentId || !state.areas.some((area) => resolveTerritoryIdentifier(area, area.id) === currentId || area.id === currentId)) {
+        areaSelectionState.selectedAreaId = resolveTerritoryIdentifier(state.areas[0], state.areas[0].id);
+      }
+    } else {
+      areaSelectionState.selectedAreaId = null;
+    }
+  }
+
+  populateAreaFilter();
+  renderAreasList();
+  renderAreasOnMap();
 }
 
 async function saveAreas() {
@@ -244,6 +378,7 @@ async function saveAreas() {
       areas: state.areas,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
+    populateAreaFilter();
   } catch (err) {
     console.error("Error saving areas:", err);
   }
@@ -299,83 +434,170 @@ function initAreasModal() {
   const saveAreaBtn = document.getElementById("saveAreaBtn");
   const toggleAllPinsCheckbox = document.getElementById("toggleAllPinsScheduler");
   const pinsLoadingEl = document.getElementById("schedulerPinsLoading");
+  const restoreCollapsedBtn = document.getElementById("restoreAreasModal");
 
-  if (!defineAreasBtn) return;
+  if (!defineAreasBtn || !areasModal) return;
 
-  defineAreasBtn.addEventListener("click", () => {
+  if (subscriberId) {
+    [drawAreaBtn, clearAreaBtn, stopDrawingBtn].forEach((btn) => {
+      if (btn) btn.hidden = true;
+    });
+    const nameInput = document.getElementById("areaNameInput");
+    const colorInput = document.getElementById("areaColorInput");
+    if (nameInput) nameInput.setAttribute("disabled", "disabled");
+    if (colorInput) colorInput.setAttribute("disabled", "disabled");
+    const adminControls = document.getElementById("areasAdminControls");
+    if (adminControls) adminControls.hidden = true;
+    const mapToolbar = document.getElementById("areasMapToolbar");
+    if (mapToolbar) mapToolbar.hidden = true;
+    if (toggleAllPinsCheckbox) {
+      const pinsRow = toggleAllPinsCheckbox.closest("div")?.parentElement;
+      if (pinsRow) pinsRow.style.display = "none";
+    }
+    const pinsLoading = document.getElementById("schedulerPinsLoading");
+    if (pinsLoading) pinsLoading.style.display = "none";
+  }
+
+  const openAreasModal = () => {
+    areasModal.classList.remove("areas-modal--collapsed");
+    if (restoreCollapsedBtn) restoreCollapsedBtn.hidden = true;
     areasModal.hidden = false;
-    setTimeout(() => initAreasMapIfNeeded(), 100);
-  });
+    areasModal.style.display = "flex";
+    setTimeout(() => {
+      initAreasMapIfNeeded();
+      if (areasMap && window.google?.maps?.event) {
+        google.maps.event.trigger(areasMap, "resize");
+      }
+    }, 100);
+  };
 
-  closeAreasBtn.addEventListener("click", () => {
+  const closeAreasModal = () => {
     areasModal.hidden = true;
-  });
+    areasModal.style.display = "none";
+    areasModal.classList.remove("areas-modal--collapsed");
+    if (restoreCollapsedBtn) restoreCollapsedBtn.hidden = true;
+  };
 
-  cancelAreasBtn.addEventListener("click", () => {
-    areasModal.hidden = true;
-  });
+  defineAreasBtn.addEventListener("click", openAreasModal);
 
-  drawAreaBtn.addEventListener("click", () => {
-    if (areasDrawingManager) {
-      areasDrawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
-      drawAreaBtn.hidden = true;
-      stopDrawingBtn.hidden = false;
-    }
-  });
+  const minimizeBtn = document.getElementById('minimizeAreasModal');
+  if (minimizeBtn) {
+    minimizeBtn.addEventListener('click', () => {
+      const modal = document.getElementById('areasModal');
+      if (modal) {
+        modal.classList.add('areas-modal--collapsed');
+        if (restoreCollapsedBtn) restoreCollapsedBtn.hidden = false;
+        minimizeBtn.hidden = true;
+      }
+    });
+  }
 
-  stopDrawingBtn.addEventListener("click", () => {
-    if (areasDrawingManager) {
-      areasDrawingManager.setDrawingMode(null);
-      stopDrawingBtn.hidden = true;
-      drawAreaBtn.hidden = false;
-    }
-  });
+  if (closeAreasBtn) {
+    closeAreasBtn.addEventListener("click", closeAreasModal);
+  }
 
-  clearAreaBtn.addEventListener("click", () => {
-    if (currentDrawingPolygon) {
+  if (cancelAreasBtn) {
+    cancelAreasBtn.addEventListener("click", closeAreasModal);
+  }
+
+  if (restoreCollapsedBtn) {
+    restoreCollapsedBtn.addEventListener("click", () => {
+      const modalEl = document.getElementById("areasModal");
+      if (!modalEl) return;
+      modalEl.classList.remove("areas-modal--collapsed");
+      restoreCollapsedBtn.hidden = true;
+      const minimizeBtn = document.getElementById('minimizeAreasModal');
+      if (minimizeBtn) minimizeBtn.hidden = false;
+      modalEl.style.display = "flex";
+      modalEl.hidden = false;
+    });
+  }
+
+  if (drawAreaBtn) {
+    drawAreaBtn.addEventListener("click", () => {
+      if (areasDrawingManager) {
+        areasDrawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+        drawAreaBtn.hidden = true;
+        if (stopDrawingBtn) stopDrawingBtn.hidden = false;
+      }
+    });
+  }
+
+  if (stopDrawingBtn) {
+    stopDrawingBtn.addEventListener("click", () => {
+      if (areasDrawingManager) {
+        areasDrawingManager.setDrawingMode(null);
+        stopDrawingBtn.hidden = true;
+        if (drawAreaBtn) drawAreaBtn.hidden = false;
+      }
+    });
+  }
+
+  if (clearAreaBtn) {
+    clearAreaBtn.addEventListener("click", () => {
+      if (currentDrawingPolygon) {
+        currentDrawingPolygon.setMap(null);
+        currentDrawingPolygon = null;
+      }
+      if (saveAreaBtn) saveAreaBtn.hidden = true;
+      if (drawAreaBtn) drawAreaBtn.hidden = false;
+    });
+  }
+
+  if (saveAreaBtn) {
+    saveAreaBtn.addEventListener("click", async () => {
+      if (subscriberId) {
+        if (!areaSelectionState.selectedAreaId) {
+          alert("Select an area from the list first.");
+          return;
+        }
+        closeAreasModal();
+        try {
+          await initAssignAreaDaysMode(areaSelectionState.selectedAreaId);
+        } catch (error) {
+          console.error('[AssignDays] Failed to start assign mode', error);
+          alert('Unable to open assign mode. Please try again.');
+        }
+        return;
+      }
+
+      const name = document.getElementById("areaNameInput")?.value?.trim() || `Area ${state.areas.length + 1}`;
+      const color = document.getElementById("areaColorInput")?.value || "#a855f7";
+
+      if (!currentDrawingPolygon) {
+        alert("Please draw an area first");
+        return;
+      }
+
+      const path = currentDrawingPolygon.getPath();
+      const polygon = [];
+      path.forEach((latLng) => {
+        polygon.push({ lat: latLng.lat(), lng: latLng.lng() });
+      });
+
+      const area = {
+        id: Date.now().toString(),
+        name,
+        color,
+        type: 'polygon',
+        path: polygon,
+        createdAt: new Date().toISOString(),
+      };
+
+      state.areas.push(area);
+      await saveAreas();
+
       currentDrawingPolygon.setMap(null);
       currentDrawingPolygon = null;
-    }
-    saveAreaBtn.hidden = true;
-    drawAreaBtn.hidden = false;
-  });
-
-  saveAreaBtn.addEventListener("click", async () => {
-    const name = document.getElementById("areaNameInput")?.value?.trim() || `Area ${state.areas.length + 1}`;
-    const color = document.getElementById("areaColorInput")?.value || "#a855f7";
-
-    if (!currentDrawingPolygon) {
-      alert("Please draw an area first");
-      return;
-    }
-
-    const path = currentDrawingPolygon.getPath();
-    const polygon = [];
-    path.forEach(latLng => {
-      polygon.push({ lat: latLng.lat(), lng: latLng.lng() });
+      const nameInputEl = document.getElementById("areaNameInput");
+      if (nameInputEl) nameInputEl.value = "";
+      renderAreasList();
+      renderAreasOnMap();
+      saveAreaBtn.hidden = true;
+      if (drawAreaBtn) drawAreaBtn.hidden = false;
+      alert(`✓ Area "${name}" created!`);
     });
-
-    const area = {
-      id: Date.now().toString(),
-      name: name,
-      color: color,
-      type: 'polygon',
-      path: polygon,
-      createdAt: new Date().toISOString(),
-    };
-
-    state.areas.push(area);
-    await saveAreas();
-
-    currentDrawingPolygon.setMap(null);
-    currentDrawingPolygon = null;
-    document.getElementById("areaNameInput").value = "";
-    renderAreasList();
-    renderAreasOnMap();
-    saveAreaBtn.hidden = true;
-    drawAreaBtn.hidden = false;
-    alert(`✓ Area "${name}" created!`);
-  });
+  }
 
   // Wire up the All Pins toggle inside the Areas modal
   if (toggleAllPinsCheckbox) {
@@ -389,51 +611,154 @@ function renderAreasList() {
   const container = document.getElementById("areasList");
   if (!container) return;
 
+  container.innerHTML = "";
+
   if (!state.areas.length) {
     container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 12px;">No areas created yet</p>';
+    areaSelectionState.selectedAreaId = null;
     return;
   }
 
-  container.innerHTML = state.areas.map(area => `
-    <div style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #f1f5f9; border-radius: 6px;">
-      <div style="width: 20px; height: 20px; background-color: ${area.color}; border-radius: 4px;"></div>
-      <div style="flex: 1; font-size: 14px; font-weight: 600; color: #1e293b;">${escapeHtml(area.name)}</div>
-      <button type="button" class="btn btn-danger btn-sm" onclick="deleteArea('${area.id}')" style="padding: 4px 8px; font-size: 12px;">🗑️</button>
-    </div>
-  `).join('');
+  const allowEditing = !subscriberId;
+  const allAreaIds = new Set();
+  state.areas.forEach((area) => allAreaIds.add(resolveTerritoryIdentifier(area, area.id)));
+  if (areaSelectionState.selectedAreaId && !allAreaIds.has(areaSelectionState.selectedAreaId)) {
+    areaSelectionState.selectedAreaId = null;
+  }
+  const selectedId = areaSelectionState.selectedAreaId;
+
+  state.areas.forEach((area) => {
+    const areaId = resolveTerritoryIdentifier(area, area.id);
+    const wrapper = document.createElement(allowEditing ? "div" : "button");
+    if (!allowEditing) {
+      wrapper.type = "button";
+    }
+    wrapper.className = "areas-list-item";
+    wrapper.dataset.areaId = areaId;
+    if (selectedId && areaId === selectedId) {
+      wrapper.classList.add("is-selected");
+    }
+
+    const assignments = Array.isArray(area.allowedBookingDays)
+      ? area.allowedBookingDays.length
+      : area.allowedBookingDays && typeof area.allowedBookingDays === "object"
+        ? Object.values(area.allowedBookingDays).reduce((acc, dayMap) => {
+            if (!dayMap || typeof dayMap !== "object") return acc;
+            return acc + Object.values(dayMap).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+          }, 0)
+        : 0;
+
+    const metaLabel = assignments
+      ? `${assignments} rota ${assignments === 1 ? "assignment" : "assignments"}`
+      : "No rota days yet";
+
+    wrapper.innerHTML = `
+      <div class="areas-list-item__title">
+        <span class="areas-list-item__swatch" style="background:${area.color || "#1d4ed8"};"></span>
+        ${escapeHtml(area.name || "Untitled area")}
+      </div>
+      <div class="areas-list-item__meta">${escapeHtml(metaLabel)}</div>
+    `;
+
+    if (allowEditing) {
+      const actions = document.createElement("div");
+      actions.style.display = "flex";
+      actions.style.alignItems = "center";
+      actions.style.gap = "8px";
+
+      const selectBtn = document.createElement("button");
+      selectBtn.type = "button";
+      selectBtn.className = "btn btn-secondary btn-sm";
+      selectBtn.textContent = "Select";
+      selectBtn.addEventListener("click", () => handleAreaSelection(areaId, { focusMap: true }));
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "btn btn-danger btn-sm";
+      deleteBtn.textContent = "🗑️";
+      deleteBtn.style.padding = "4px 8px";
+      deleteBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        window.deleteArea(area.id);
+      });
+
+      actions.appendChild(selectBtn);
+      actions.appendChild(deleteBtn);
+      wrapper.appendChild(actions);
+    } else {
+      wrapper.addEventListener("click", () => handleAreaSelection(areaId, { focusMap: true }));
+    }
+
+    container.appendChild(wrapper);
+  });
+
+  if (!areaSelectionState.selectedAreaId && state.areas.length) {
+    const firstId = resolveTerritoryIdentifier(state.areas[0], state.areas[0].id);
+    handleAreaSelection(firstId);
+  } else {
+    highlightSelectedAreaOnMap(areaSelectionState.selectedAreaId);
+  }
 }
 
 window.deleteArea = async function(areaId) {
+  if (subscriberId) return;
   if (!confirm("Delete this area?")) return;
   state.areas = state.areas.filter(a => a.id !== areaId);
+  if (areaSelectionState.selectedAreaId === areaId) {
+    areaSelectionState.selectedAreaId = null;
+  }
   await saveAreas();
   renderAreasList();
   renderAreasOnMap();
+  populateAreaFilter();
 };
 
 function renderAreasOnMap() {
-  if (!areasMap) return;
-  
-  // Clear existing overlays (except current drawing)
-  areasMap.data.forEach((feature) => {
-    areasMap.data.remove(feature);
+  if (!areasMap || !window.google || !google.maps?.Polygon) return;
+
+  if (areaPolygons.length) {
+    areaPolygons.forEach((poly) => poly.setMap(null));
+    areaPolygons = [];
+  }
+
+  const bounds = new google.maps.LatLngBounds();
+  let hasBounds = false;
+
+  state.areas.forEach((area) => {
+    if (area.type !== "polygon" || !Array.isArray(area.path) || area.path.length < 3) {
+      return;
+    }
+
+    const path = area.path.map((point) => ({ lat: point.lat, lng: point.lng }));
+    const areaId = resolveTerritoryIdentifier(area, area.id);
+    const polygon = new google.maps.Polygon({
+      path,
+      geodesic: true,
+      fillColor: area.color || "#2563eb",
+      fillOpacity: 0.3,
+      strokeColor: area.color || "#1d4ed8",
+      strokeWeight: 2,
+      clickable: false,
+      map: areasMap,
+    });
+
+    polygon.__areaId = areaId;
+    polygon.__bounds = new google.maps.LatLngBounds();
+
+    areaPolygons.push(polygon);
+
+    path.forEach((point) => {
+      bounds.extend(new google.maps.LatLng(point.lat, point.lng));
+      polygon.__bounds.extend(new google.maps.LatLng(point.lat, point.lng));
+      hasBounds = true;
+    });
   });
 
-  // Render areas
-  state.areas.forEach(area => {
-    if (area.type === 'polygon' && area.path) {
-      const polygon = new google.maps.Polygon({
-        path: area.path.map(p => ({ lat: p.lat, lng: p.lng })),
-        geodesic: true,
-        fillColor: area.color,
-        fillOpacity: 0.3,
-        strokeColor: area.color,
-        strokeWeight: 2,
-        map: areasMap,
-        title: area.name,
-      });
-    }
-  });
+  if (hasBounds) {
+    areasMap.fitBounds(bounds, 32);
+  }
+
+  highlightSelectedAreaOnMap(areaSelectionState.selectedAreaId);
 }
 
 function getJobMarkerColor(quote) {
@@ -507,6 +832,77 @@ function renderJobMarkersOnMap() {
         alert('Already marked as Paid');
         return;
       }
+}
+
+function highlightSelectedAreaOnMap(areaId, options = {}) {
+  const shouldFit = Boolean(options.fitBounds);
+  if (!areasMap || !Array.isArray(areaPolygons)) return;
+  areaPolygons.forEach((polygon) => {
+    if (!polygon) return;
+    const isSelected = polygon.__areaId === areaId;
+    polygon.setOptions({
+      strokeWeight: isSelected ? 3 : 2,
+      fillOpacity: isSelected ? 0.45 : 0.25,
+      zIndex: isSelected ? 20 : 10,
+    });
+    if (isSelected && shouldFit && polygon.__bounds instanceof google.maps.LatLngBounds) {
+      try {
+        areasMap.fitBounds(polygon.__bounds, 48);
+      } catch (err) {
+        console.warn('[Areas] Failed to fit bounds for selected area', err);
+      }
+    }
+  });
+}
+
+function handleAreaSelection(areaId, { focusMap = false } = {}) {
+  if (!areaId) return;
+  areaSelectionState.selectedAreaId = areaId;
+
+  document
+    .querySelectorAll('#areasList .areas-list-item')
+    .forEach((node) => {
+      if (!node || !node.dataset) return;
+      if (node.dataset.areaId === areaId) {
+        node.classList.add('is-selected');
+      } else {
+        node.classList.remove('is-selected');
+      }
+    });
+
+  const area = getAreaById(areaId);
+
+  highlightSelectedAreaOnMap(areaId, { fitBounds: focusMap });
+
+  if (assignModeState.active) {
+    assignModeState.territoryId = areaId;
+    assignModeState.territory = area || assignModeState.territory;
+    assignModeState.color = resolveAreaColor(assignModeState.territory);
+    assignModeState.selectedDays = cloneAllowedBookingDays(assignModeState.territory?.allowedBookingDays);
+    assignModeState.selectedCleanerIds = deriveCleanerSelectionFromAssignments(assignModeState.selectedDays);
+    ensureCleanerSelectionFallback();
+    renderAssignCleanerPicker();
+    applyAssignedDayStyles();
+    updateAssignSetDaysButtonState();
+    renderAssignSummaryBox();
+  }
+}
+
+function openAssignFloatingPanel() {
+  const panel = document.getElementById('assignModePanel');
+  if (!panel) {
+    console.warn('[AssignMode] Assign panel not found');
+    return;
+  }
+  panel.hidden = false;
+  console.log('[AssignMode] Panel opened');
+  setTimeout(() => {
+    const mapEl = document.getElementById('areasMap');
+    console.log('[AssignMode] Map element:', mapEl, 'dimensions:', mapEl?.offsetWidth, 'x', mapEl?.offsetHeight);
+    initAreasMapIfNeeded();
+    renderAreasOnMap();
+    highlightSelectedAreaOnMap(areaSelectionState.selectedAreaId, { fitBounds: true });
+  }, 100);
 }
 
 
@@ -861,6 +1257,41 @@ async function toggleAllPinsRoutePlanner(checked) {
   }
 }
 
+function populateAreaFilter(selectedValue = state.areaFilter) {
+  if (!elements.areaFilter) return;
+
+  const hasAreas = Array.isArray(state.areas) && state.areas.length > 0;
+  const options = ['<option value="">All areas</option>'];
+
+  if (hasAreas) {
+    options.push(`<option value="${AREA_FILTER_UNASSIGNED}">No area</option>`);
+    state.areas.forEach((area, index) => {
+      const areaId = area?.id || area?.territoryId || area?.name || `area-${index + 1}`;
+      const label = area?.name || areaId;
+      options.push(`<option value="${escapeHtml(areaId)}">${escapeHtml(label)}</option>`);
+      if (!area.id && areaId) {
+        area.id = areaId; // ensure downstream lookups have stable ids
+      }
+    });
+  }
+
+  elements.areaFilter.innerHTML = options.join("");
+  elements.areaFilter.disabled = !hasAreas;
+
+  const allowedValues = new Set([""]);
+  if (hasAreas) {
+    allowedValues.add(AREA_FILTER_UNASSIGNED);
+    state.areas.forEach((area, index) => {
+      const areaId = area?.id || area?.territoryId || area?.name || `area-${index + 1}`;
+      if (areaId) allowedValues.add(areaId);
+    });
+  }
+
+  const desiredValue = allowedValues.has(selectedValue) ? selectedValue : "";
+  elements.areaFilter.value = desiredValue;
+  state.areaFilter = desiredValue;
+}
+
 function populateCleanerSelect(
   select,
   { includePlaceholder = false, placeholderLabel = "Select cleaner", includeAll = false, includeUnassigned = false } = {},
@@ -881,7 +1312,8 @@ function populateCleanerSelect(
   if (subscriberId && subscriberCleaners.length > 0) {
     subscriberCleaners.forEach((cleaner) => {
       const valueSafe = escapeHtml(cleaner.id);
-      const labelSafe = escapeHtml(cleaner.name);
+      const label = resolveCleanerNameRecord(cleaner) || cleaner.id;
+      const labelSafe = escapeHtml(label);
       options.push(`<option value="${valueSafe}">${labelSafe}</option>`);
     });
   } else {
@@ -912,7 +1344,9 @@ function getCleanerDisplay(value) {
   // For subscribers, look up cleaner name from subscriberCleaners
   if (subscriberId && subscriberCleaners.length > 0) {
     const cleaner = subscriberCleaners.find(c => c.id === value);
-    return cleaner ? cleaner.name : value;
+    if (cleaner) {
+      return resolveCleanerNameRecord(cleaner) || value;
+    }
   }
   
   return getCleanerLabel(value);
@@ -949,13 +1383,6 @@ function clearLoginError() {
   setLoginError("");
 }
 
-function toDate(input) {
-  if (!input) return null;
-  if (input.toDate) return input.toDate();
-  const date = new Date(input);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 function formatDate(input) {
   const date = toDate(input);
   return date ? date.toLocaleDateString("en-GB") : "";
@@ -989,39 +1416,23 @@ function normalizeStartDate(date) {
   return normalized;
 }
 
-function addDays(date, days) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
 function toIsoDate(date) {
   return date.toISOString().slice(0, 10);
 }
 
 function getOccurrences(quote, startDate, weeks) {
-  const bookedDate = toDate(quote.bookedDate);
-  if (!bookedDate) return [];
-  const startMs = startDate.getTime();
-  const endDate = addDays(startDate, weeks * 7);
-  const endMs = endDate.getTime();
-  const occurrences = [];
-  let current = new Date(bookedDate);
-  while (current.getTime() < startMs) {
-    current = addDays(current, 28);
-  }
-  while (current.getTime() < endMs) {
-    occurrences.push(new Date(current));
-    current = addDays(current, 28);
-  }
-  return occurrences;
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = addDays(rangeStart, weeks * 7);
+  rangeEnd.setHours(23, 59, 59, 999);
+  return generateOccurrencesInRange(quote, rangeStart, rangeEnd);
 }
 
 async function loadSubscriberCleaners() {
   if (!subscriberId) return [];
   try {
-    console.log('[Scheduler] Loading subscriber cleaners from:', `subscribers/${subscriberId}/cleaners`);
-    const cleanersRef = collection(db, `subscribers/${subscriberId}/cleaners`);
+    const cleanersRef = tenantCollection(db, subscriberId, "cleaners");
+    console.log('[Scheduler] Loading subscriber cleaners from:', cleanersRef.path);
     const snapshot = await getDocs(cleanersRef);
     const cleaners = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -1034,25 +1445,47 @@ async function loadSubscriberCleaners() {
   }
 }
 
+async function loadSubscriberSmsSettings() {
+  if (!subscriberId) {
+    subscriberSmsSettings = null;
+    return null;
+  }
+  try {
+    const settingsRef = tenantDoc(db, subscriberId, "private", "smsSettings");
+    const snap = await getDoc(settingsRef);
+    subscriberSmsSettings = snap.exists() ? (snap.data() || {}) : null;
+    return subscriberSmsSettings;
+  } catch (error) {
+    console.warn('[Scheduler] Failed to load subscriber SMS settings', error);
+    subscriberSmsSettings = null;
+    return null;
+  }
+}
+
+function resolveSmsSender() {
+  const raw = subscriberSmsSettings && subscriberSmsSettings.senderName;
+  if (!raw) return null;
+  const trimmed = String(raw).trim();
+  if (!trimmed) return null;
+  return trimmed.toUpperCase().slice(0, 11);
+}
+
 // Helper to get the correct document reference for quotes/customers based on user role
 function getQuoteDocRef(quoteId) {
-  if (subscriberId) {
-    return doc(db, `subscribers/${subscriberId}/quotes`, quoteId);
-  }
-  return doc(db, "quotes", quoteId);
+  return tenantDoc(db, subscriberId, "quotes", quoteId);
 }
 
 async function fetchBookedQuotes() {
   try {
     console.time('[Scheduler] fetchBookedQuotes');
     
-    // If user is a subscriber, load from their subcollection
+    const quotesRef = tenantCollection(db, subscriberId, "quotes");
+    console.log('[Scheduler] Loading booked quotes from:', quotesRef.path);
+    const bookedQuery = query(quotesRef, where("bookedDate", "!=", null));
+    const snapshot = await getDocs(bookedQuery);
+    console.log('[Scheduler] Booked quote count:', snapshot.size ?? snapshot.docs.length);
+
     if (subscriberId) {
-      console.log('[Scheduler] Loading subscriber quotes from:', `subscribers/${subscriberId}/quotes`);
-      const quotesRef = collection(db, `subscribers/${subscriberId}/quotes`);
-      const q = query(quotesRef, where("bookedDate", "!=", null));
-      const snapshot = await getDocs(q);
-      console.log('[Scheduler] Subscriber booked quotes:', snapshot.size ?? snapshot.docs.length);
       const results = snapshot.docs
         .map((docSnap) => {
           const d = docSnap.data() || {};
@@ -1077,12 +1510,7 @@ async function fetchBookedQuotes() {
       console.timeEnd('[Scheduler] fetchBookedQuotes');
       return results;
     }
-    
-    // Default: load from main quotes collection (for admin/rep)
-    const quotesRef = collection(db, "quotes");
-    const q = query(quotesRef, where("bookedDate", "!=", null));
-    const snapshot = await getDocs(q);
-    console.log('[Scheduler] Firestore booked docs:', snapshot.size ?? snapshot.docs.length);
+
     const results = snapshot.docs
       .map((docSnap) => ({
         id: docSnap.id,
@@ -1107,6 +1535,20 @@ function buildScheduleMap(startDate, weeks) {
       filteredQuotes = state.quotes.filter((q) => !q.assignedCleaner);
     } else {
       filteredQuotes = state.quotes.filter((q) => q.assignedCleaner === filter);
+    }
+  }
+
+  const areaFilter = state.areaFilter;
+  if (areaFilter && state.areas.length) {
+    if (areaFilter === AREA_FILTER_UNASSIGNED) {
+      filteredQuotes = filteredQuotes.filter((quote) => !getAreaForCustomer(quote));
+    } else {
+      filteredQuotes = filteredQuotes.filter((quote) => {
+        const area = getAreaForCustomer(quote);
+        if (!area) return false;
+        const areaId = area.id || area.territoryId || area.name;
+        return areaId === areaFilter;
+      });
     }
   }
 
@@ -1176,7 +1618,7 @@ function subscribeToCustomerUnreadCount(customerId, cardElement) {
   }
   try {
     console.log("[Scheduler] Setting up unread count subscription for customer", customerId);
-    const customerRef = doc(db, "customers", customerId);
+    const customerRef = tenantDoc(db, subscriberId, "customers", customerId);
     const unsubscribe = onSnapshot(
       customerRef,
       (snapshot) => {
@@ -1632,6 +2074,8 @@ function renderSchedule() {
           const pricePerClean = resolvePricePerClean(quote);
           const durationMins = Math.round(pricePerClean);
           const cleaner = escapeHtml(getCleanerDisplay(quote.assignedCleaner));
+          const frequencyLabel = getFrequencyDisplay(quote);
+          const frequencyMarkup = frequencyLabel ? `<span class="job-frequency">${escapeHtml(frequencyLabel)}</span>` : "";
           const details = buildJobDetailsHtml(quote);
           card.innerHTML = `
             <div class="job-header">
@@ -1647,6 +2091,7 @@ function renderSchedule() {
               <div class="job-meta">
                 <span class="job-price">${price}</span>
                 <span class="job-cleaner">${cleaner}</span>
+                ${frequencyMarkup}
                 ${isJobCompleted(quote, toIsoDate(date)) 
                   ? `<span class="job-status-completed" data-quote-id="${quote.id}" data-date="${toIsoDate(date)}" title="Click to undo completion" style="cursor: pointer;" aria-label="Undo job completion">${escapeHtml(getCompletionDisplay(quote, toIsoDate(date)))}</span>`
                   : `<button class="job-mark-done" data-quote-id="${quote.id}" data-date="${toIsoDate(date)}" title="Send customer receipt and mark complete" aria-label="Mark job as done">Mark done</button>`
@@ -1895,17 +2340,17 @@ async function rescheduleQuote(quoteId, newDate) {
     if (current.toDateString() === newDate.toDateString()) return true;
     const updatedBase = new Date(newDate);
     updatedBase.setHours(0, 0, 0, 0);
+
+    const frequencyDays = Math.max(resolveFrequencyDays(quote), 1);
     const payload = {
       bookedDate: updatedBase.toISOString(),
-      nextCleanDates: [
-        updatedBase.toISOString(),
-        addDays(updatedBase, 28).toISOString(),
-        addDays(updatedBase, 56).toISOString(),
-      ],
+      nextCleanDates: computeNextCleanDates(quote, updatedBase),
+      recurringFrequencyDays: frequencyDays,
     };
     await updateDoc(getQuoteDocRef(quoteId), payload);
     quote.bookedDate = payload.bookedDate;
     quote.nextCleanDates = payload.nextCleanDates;
+    quote.recurringFrequencyDays = payload.recurringFrequencyDays;
     updateLocalQuote(quoteId, payload);
     notifyQuotesUpdated();
     return true;
@@ -2429,7 +2874,7 @@ Swash Team
       }
       
       // Update Firestore with email log
-      await updateDoc(doc(db, "quotes", quoteId), {
+      await updateDoc(getQuoteDocRef(quoteId), {
         completedOccurrences: newMap,
         emailLog: arrayUnion({
           type: "receipt",
@@ -2446,7 +2891,7 @@ Swash Team
       });
     } else {
       // Mark as completed without email log
-      await updateDoc(doc(db, "quotes", quoteId), {
+      await updateDoc(getQuoteDocRef(quoteId), {
         completedOccurrences: newMap,
       });
     }
@@ -2485,7 +2930,7 @@ Swash Team
     // Log failed receipt email only if email was attempted
     if (userConfirmed) {
       try {
-        await updateDoc(doc(db, "quotes", quoteId), {
+        await updateDoc(getQuoteDocRef(quoteId), {
           emailLog: arrayUnion({
             type: "receipt",
             subject: "Cleaning Completed - Receipt",
@@ -3749,7 +4194,7 @@ async function handleDeleteSelectedJobs(dateKey) {
   try {
     for (const entry of entries) {
       const quote = entry.quote;
-      await updateDoc(doc(db, "quotes", quote.id), {
+      await updateDoc(getQuoteDocRef(quote.id), {
         deleted: true,
       });
     }
@@ -3866,7 +4311,7 @@ async function handleSendDayMessage() {
             console.warn("[Scheduler] Failed to log outbound day message email", logError);
           }
           emailSuccess = true;
-          await updateDoc(doc(db, "quotes", quote.id), {
+          await updateDoc(getQuoteDocRef(quote.id), {
             emailLog: arrayUnion({
               type: "message",
               subject: templateTitle,
@@ -3913,10 +4358,15 @@ async function handleSendDayMessage() {
             }
             return resp;
           }
-          const resp = await sendSmsWithFallback({ to, message });
+          const smsSender = resolveSmsSender();
+          const payload = smsSender ? { to, message, sender: smsSender } : { to, message };
+          if (!smsSender && subscriberId) {
+            console.warn('[Scheduler] No custom sender configured; falling back to default for tenant', subscriberId);
+          }
+          const resp = await sendSmsWithFallback(payload);
           if (!resp.ok) throw new Error(`SMS failed (${resp.status})`);
           smsSuccess = true;
-          await updateDoc(doc(db, "quotes", quote.id), {
+          await updateDoc(getQuoteDocRef(quote.id), {
             emailLog: arrayUnion({
               type: "sms",
               subject: templateTitle,
@@ -3928,6 +4378,7 @@ async function handleSendDayMessage() {
                 const u = auth?.currentUser || null;
                 return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: "rep-scheduler" };
               })(),
+              sender: smsSender || null,
             })
           });
         }
@@ -3957,6 +4408,7 @@ async function handleSendDayMessage() {
             const u = auth?.currentUser || null;
             return { uid: u?.uid || null, email: u?.email || null, repCode: null, source: 'rep-scheduler' };
           })(),
+          sender: channel === 'sms' ? (smsSender || null) : null,
         });
 
         const updates = [];
@@ -4090,6 +4542,34 @@ function attachEvents() {
       console.error("Sign out failed", error);
     }
   });
+
+  const openAssignBtn = document.getElementById('openAssignMode');
+  if (openAssignBtn) {
+    openAssignBtn.addEventListener('click', async () => {
+      console.log('[AssignMode] Button clicked');
+      console.log('[AssignMode] State areas:', state.areas);
+      console.log('[AssignMode] Subscriber ID:', subscriberId);
+      
+      if (!state.areas || !state.areas.length) {
+        console.warn('[AssignMode] No areas found');
+        alert('No service areas defined yet. Please create areas first.');
+        return;
+      }
+      
+      try {
+        const firstArea = state.areas[0];
+        const areaId = resolveTerritoryIdentifier(firstArea, firstArea.id);
+        console.log('[AssignMode] Opening assign mode for area:', areaId, firstArea);
+        await initAssignAreaDaysMode(areaId);
+      } catch (error) {
+        console.error('[AssignMode] Failed to open assign mode:', error);
+        alert('Failed to open assign mode: ' + error.message);
+      }
+    });
+    console.log('[AssignMode] Button event listener attached successfully');
+  } else {
+    console.warn('[AssignMode] openAssignMode button not found in DOM');
+  }
 
   if (elements.schedule) {
     elements.schedule.addEventListener("dragstart", (event) => {
@@ -4413,6 +4893,22 @@ function attachEvents() {
   // Selection info listeners
   elements.clearSelectionBtn?.addEventListener("click", clearSelectedJobs);
 
+  elements.areaFilter?.addEventListener("change", (event) => {
+    state.areaFilter = event.target.value || "";
+    renderSchedule();
+
+    if (assignModeState && assignModeState.active) {
+      try {
+        ensureAssignInlineButtons();
+        applyAssignedDayStyles();
+        updateAssignSetDaysButtonState();
+        renderAssignSummaryBox();
+      } catch (e) {
+        console.warn('[AssignDays] area change enhance failed', e);
+      }
+    }
+  });
+
   elements.cleanerFilter?.addEventListener("change", (event) => {
     state.cleanerFilter = event.target.value;
     renderSchedule();
@@ -4477,6 +4973,7 @@ export async function startSchedulerApp() {
   // Load subscriber cleaners if applicable
   if (subscriberId) {
     subscriberCleaners = await loadSubscriberCleaners();
+    await loadSubscriberSmsSettings();
   }
   
   // Reflect context in subheading
@@ -4493,6 +4990,7 @@ export async function startSchedulerApp() {
   } catch(_) {}
   
   state.quotes = await fetchBookedQuotes();
+  populateAreaFilter();
   state.weeksVisible = INITIAL_WEEKS;
   state.draggingIds = [];
   clearSelectedJobs();
@@ -4740,6 +5238,7 @@ function buildJobDetailsHtml(quote) {
   const pricePerClean = resolvePricePerClean(quote);
   const durationMins = Math.round(pricePerClean);
   const durationDisplay = durationMins === 1 ? "1 min" : `${durationMins} mins`;
+  const frequencyLabel = getFrequencyDisplay(quote);
 
   const rows = [
     ["Address", safe(quote.address)],
@@ -4754,6 +5253,10 @@ function buildJobDetailsHtml(quote) {
     ["Roof lights", safe(quote.roofLights || quote.rooflights)],
     ["Alternating clean %", safe(quote.partialPercent || quote.alternatingPercent)],
   ];
+
+  if (frequencyLabel) {
+    rows.splice(4, 0, ["Frequency", escapeHtml(frequencyLabel)]);
+  }
   return `
     <dl class="job-details">
       ${rows
@@ -4821,13 +5324,84 @@ function getNavigationUrl(quote) {
 
 // ================= ASSIGN AREA DAYS MODE (Implementation appended) =================
 // selectedDays structure: { weekKey: { dayKey: [cleanerId, ...] } }
+const ROTA_ASSIGN_KEY = 'swashTerritoryAssign';
 let assignModeState = {
   active: false,
   territoryId: null,
   territory: null,
   selectedDays: {},
-  color: '#0078d7'
+  color: '#0078d7',
+  selectedCleanerIds: new Set(),
 };
+
+function getAssignableCleaners() {
+  if (subscriberId && Array.isArray(subscriberCleaners) && subscriberCleaners.length) {
+    return subscriberCleaners
+      .map((cleaner) => {
+        const id = cleaner.id || cleaner.cleanerId || cleaner.uid || cleaner.slug || cleaner.email || cleaner.name;
+        if (!id) return null;
+        const label = resolveCleanerNameRecord(cleaner) || id;
+        return { id, label };
+      })
+      .filter(Boolean);
+  }
+  return CLEANER_OPTIONS.map((value) => ({ id: value, label: getCleanerLabel(value) || value }));
+}
+
+function getAssignCleanerDisplay(cleanerId) {
+  if (!cleanerId) return "Unassigned";
+  if (subscriberId && Array.isArray(subscriberCleaners)) {
+    const match = subscriberCleaners.find((cleaner) => {
+      const candidateId = cleaner.id || cleaner.cleanerId || cleaner.uid || cleaner.slug || cleaner.email || cleaner.name;
+      return candidateId === cleanerId;
+    });
+    if (match) {
+      return resolveCleanerNameRecord(match) || cleanerId;
+    }
+  }
+  return getCleanerLabel(cleanerId) || cleanerId;
+}
+
+function deriveCleanerSelectionFromAssignments(assignments) {
+  const set = new Set();
+  if (!assignments || typeof assignments !== 'object') {
+    return set;
+  }
+  Object.values(assignments).forEach((dayMap) => {
+    if (!dayMap || typeof dayMap !== 'object') return;
+    Object.values(dayMap).forEach((cleaners) => {
+      if (!Array.isArray(cleaners)) return;
+      cleaners.forEach((cleanerId) => {
+        if (cleanerId) set.add(cleanerId);
+      });
+    });
+  });
+  return set;
+}
+
+function ensureCleanerSelectionFallback() {
+  if (assignModeState.selectedCleanerIds && assignModeState.selectedCleanerIds.size > 0) {
+    return;
+  }
+  const available = getAssignableCleaners();
+  if (available.length > 0) {
+    assignModeState.selectedCleanerIds = new Set([available[0].id]);
+  }
+}
+
+function getCurrentAssignCleaners() {
+  if (!assignModeState.selectedCleanerIds) {
+    assignModeState.selectedCleanerIds = new Set();
+  }
+  return Array.from(assignModeState.selectedCleanerIds);
+}
+
+function areCleanerSelectionsEqual(a = [], b = []) {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((value, index) => value === sortedB[index]);
+}
 
 function resolveTerritoryIdentifier(territory, fallbackId) {
   return territory?.id || territory?.territoryId || territory?.name || fallbackId;
@@ -4838,6 +5412,20 @@ function cloneAllowedBookingDays(map) {
     return JSON.parse(JSON.stringify(map || {}));
   } catch (_) {
     return {};
+  }
+}
+
+function getStoredTerritoryMetadata(territoryId) {
+  try {
+    const raw = sessionStorage.getItem(ROTA_ASSIGN_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== 'object') return null;
+    if (territoryId && data.id && data.id !== territoryId) return null;
+    return data;
+  } catch (error) {
+    console.warn('[AssignDays] Failed to parse stored territory metadata', error);
+    return null;
   }
 }
 
@@ -4956,6 +5544,18 @@ async function syncSystemTerritoriesDoc(territory, allowedBookingDays, auditMeta
 }
 
 async function fetchTerritoryById(id) {
+  if (!id) return null;
+  if (subscriberId) {
+    try {
+      const tenantRef = tenantDoc(db, subscriberId, 'territories', id);
+      const tenantSnap = await getDoc(tenantRef);
+      if (tenantSnap.exists()) {
+        return { id: tenantSnap.id, ...tenantSnap.data() };
+      }
+    } catch (e) {
+      console.warn('[AssignDays] Tenant territory fetch failed', e);
+    }
+  }
   try {
     const snap = await getDoc(doc(db, 'territories', id));
     if (snap.exists()) return { id: snap.id, ...snap.data() };
@@ -4978,6 +5578,19 @@ function getRepNameCached() {
   try { return localStorage.getItem('swash:lastRepName') || ''; } catch(_) { return ''; }
 }
 
+function toggleCleanerFilterForAssignMode(active) {
+  if (!elements.cleanerFilter) return;
+  const wrapper = elements.cleanerFilter.closest('.cleaner-filter') || elements.cleanerFilter.parentElement;
+  if (!wrapper) return;
+  if (active) {
+    wrapper.dataset.prevDisplay = wrapper.style.display || '';
+    wrapper.style.display = 'none';
+  } else {
+    const prior = wrapper.dataset.prevDisplay ?? '';
+    wrapper.style.display = prior;
+  }
+}
+
 function ensureAssignInlineButtons() {
   document.querySelectorAll('.schedule-row .day-cell').forEach(cell => {
     if (cell.querySelector('.assign-btn-inline')) return;
@@ -4998,23 +5611,23 @@ function ensureAssignInlineButtons() {
       } else {
         weekStartIso = dayIso;
       }
-      // Multi-cleaner toggle using current cleaner filter
-      const cleanerVal = elements.cleanerFilter?.value || '';
-      if (!cleanerVal || cleanerVal === CLEANER_ALL) {
-        alert('Select a cleaner from the Cleaner dropdown, then click Assign to Area.');
+      // Multi-cleaner toggle using selected cleaners from the assign panel
+      const selectedCleaners = Array.from(new Set(getCurrentAssignCleaners()));
+      if (!selectedCleaners.length) {
+        alert('Select at least one cleaner in the Assign panel before choosing a day.');
         return;
       }
       const weekKey = getWeekKeyFromIso(weekStartIso);
       const dayKey = getDayKeyFromIso(dayIso);
       if (!assignModeState.selectedDays[weekKey]) assignModeState.selectedDays[weekKey] = {};
-      if (!assignModeState.selectedDays[weekKey][dayKey]) assignModeState.selectedDays[weekKey][dayKey] = [];
-      const arr = assignModeState.selectedDays[weekKey][dayKey];
-      const idx = arr.indexOf(cleanerVal);
-      if (idx >= 0) arr.splice(idx, 1); else arr.push(cleanerVal);
-      // Clean up empties
-      if (arr.length === 0) {
+      const existing = assignModeState.selectedDays[weekKey][dayKey] || [];
+      if (areCleanerSelectionsEqual(existing, selectedCleaners)) {
         delete assignModeState.selectedDays[weekKey][dayKey];
-        if (Object.keys(assignModeState.selectedDays[weekKey]).length === 0) delete assignModeState.selectedDays[weekKey];
+        if (Object.keys(assignModeState.selectedDays[weekKey]).length === 0) {
+          delete assignModeState.selectedDays[weekKey];
+        }
+      } else {
+        assignModeState.selectedDays[weekKey][dayKey] = [...selectedCleaners];
       }
       applyAssignedDayStyles();
       updateAssignSetDaysButtonState();
@@ -5024,24 +5637,154 @@ function ensureAssignInlineButtons() {
   });
 }
 
+function renderAssignCleanerPicker() {
+  const panel = document.getElementById('areaSelectionSummary');
+  console.log('[AssignMode] renderAssignCleanerPicker called, panel:', panel, 'active:', assignModeState.active);
+  if (!panel) return;
+  if (!assignModeState.active) {
+    panel.hidden = true;
+    panel.innerHTML = '';
+    return;
+  }
+
+  const area = assignModeState.territory;
+  const areaName = escapeHtml(area?.name || areaSelectionState.selectedAreaId || 'Selected area');
+  const color = resolveAreaColor(area);
+  if (!(assignModeState.selectedCleanerIds instanceof Set)) {
+    assignModeState.selectedCleanerIds = new Set(assignModeState.selectedCleanerIds ? Array.from(assignModeState.selectedCleanerIds) : []);
+  }
+  const selectedIds = Array.from(assignModeState.selectedCleanerIds);
+  const cleaners = getAssignableCleaners();
+  console.log('[AssignMode] Rendering cleaner picker:', {cleaners, selectedIds, areaName});
+  const availabilityLabel = cleaners.length === 1 ? '1 cleaner available' : `${cleaners.length} cleaners available`;
+
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="area-selection-summary__header">
+      <h4 class="area-selection-summary__title">${areaName}</h4>
+      <p class="area-selection-summary__subtitle">Choose which cleaners cover this rota area.</p>
+      <p class="area-selection-summary__note">Tick every cleaner who works this patch, then click the days in the rota to assign or remove them.</p>
+      <div class="area-selection-summary__meta">
+        <span class="area-selection-summary__chip"><span style="width:10px;height:10px;border-radius:999px;background:${color};display:inline-block;"></span>${escapeHtml(availabilityLabel)}</span>
+      </div>
+    </div>
+    <div class="assign-cleaner-options">
+      ${cleaners.length
+        ? cleaners.map((cleaner) => {
+            const checked = selectedIds.includes(cleaner.id);
+            const optionClass = checked ? 'assign-cleaner-option is-active' : 'assign-cleaner-option';
+            return `
+              <label class="${optionClass}">
+                <input type="checkbox" value="${escapeHtml(cleaner.id)}" ${checked ? 'checked' : ''} />
+                <span>${escapeHtml(cleaner.label)}</span>
+              </label>
+            `;
+          }).join('')
+        : '<p style="margin:0;font-size:0.8rem;color:#64748b;">No cleaners found. Add cleaners first.</p>'}
+    </div>
+  `;
+
+  panel.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    input.addEventListener('change', (event) => {
+      const { value, checked } = event.target;
+      if (!(assignModeState.selectedCleanerIds instanceof Set)) {
+        assignModeState.selectedCleanerIds = new Set(assignModeState.selectedCleanerIds ? Array.from(assignModeState.selectedCleanerIds) : []);
+      }
+      if (checked) {
+        assignModeState.selectedCleanerIds.add(value);
+      } else {
+        assignModeState.selectedCleanerIds.delete(value);
+      }
+      const labelEl = event.target.closest('.assign-cleaner-option');
+      if (labelEl) {
+        labelEl.classList.toggle('is-active', checked);
+      }
+      applyAssignedDayStyles();
+      renderAssignSummaryBox();
+      updateAssignSetDaysButtonState();
+    });
+  });
+}
+
+function updateAssignMapPins() {
+  if (!areasMap || !assignModeState.active) return;
+  
+  if (window.assignCustomerMarkers) {
+    window.assignCustomerMarkers.forEach(m => m.setMap(null));
+  }
+  window.assignCustomerMarkers = [];
+
+  const dayDates = [];
+  document.querySelectorAll('.schedule-row.assigned-day').forEach(row => {
+    if (row.dataset.date) dayDates.push(row.dataset.date);
+  });
+
+  const quotesOnSelectedDays = state.quotes.filter(q => {
+    if (!q.bookedDate) return false;
+    const qDate = q.bookedDate.split('T')[0];
+    return dayDates.includes(qDate);
+  });
+
+  console.log('[AssignMode] Showing', quotesOnSelectedDays.length, 'customer pins for', dayDates.length, 'selected days');
+
+  quotesOnSelectedDays.forEach(quote => {
+    const lat = quote.latitude || quote.lat;
+    const lng = quote.longitude || quote.lng || quote.lon;
+    if (!lat || !lng) return;
+
+    const marker = new google.maps.Marker({
+      position: { lat, lng },
+      map: areasMap,
+      title: quote.customerName,
+      icon: createMarkerIcon('#f59e0b', false),
+    });
+
+    marker.addListener('click', () => {
+      showJobInfoWindow(quote, marker, false);
+    });
+
+    window.assignCustomerMarkers.push(marker);
+  });
+
+  const legend = document.getElementById('assignMapLegend');
+  const legendItems = document.getElementById('assignMapLegendItems');
+  if (legend && legendItems) {
+    if (quotesOnSelectedDays.length > 0) {
+      legend.hidden = false;
+      legendItems.innerHTML = quotesOnSelectedDays.map(q => `
+        <div class="assign-map-legend__item">
+          <div class="assign-map-legend__badge" style="background: #f59e0b;"></div>
+          <span>${escapeHtml(q.customerName)}</span>
+        </div>
+      `).join('');
+    } else {
+      legend.hidden = true;
+    }
+  }
+}
+
 function renderAssignSummaryBox() {
   const box = document.getElementById('assignSummaryBox');
   const list = document.getElementById('assignSummaryList');
   if (!box || !list) return;
   const lines = [];
+  const areaLabel = escapeHtml(assignModeState.territory?.name || assignModeState.territoryId || 'Selected area');
   const weekKeys = Object.keys(assignModeState.selectedDays).sort((a,b)=>Number(a.replace('week',''))-Number(b.replace('week','')));
   for (const wk of weekKeys) {
     const dayMap = assignModeState.selectedDays[wk] || {};
     const dayKeys = Object.keys(dayMap).sort(daySortOrder);
     for (const dk of dayKeys) {
       const cleaners = dayMap[dk] || [];
-      cleaners.forEach(c => {
-        lines.push(`${dayLongName(dk)} ${wk.replace('week','Week ')} – ${escapeHtml(getCleanerLabel(c) || c)}`);
+      cleaners.forEach((c) => {
+        lines.push(`${dayLongName(dk)} ${wk.replace('week','Week ')} – ${escapeHtml(getAssignCleanerDisplay(c) || c)} • ${areaLabel}`);
       });
     }
   }
   list.innerHTML = lines.map(l => `<li class="assign-summary__item">${l}</li>`).join('');
-  box.hidden = lines.length === 0;
+  // Hide the selections box unless Assign Mode is currently active.
+  // This prevents the summary from always showing after assignments are saved.
+  box.hidden = !assignModeState.active || lines.length === 0;
+  updateAssignMapPins();
 }
 
 function daySortOrder(a,b){
@@ -5074,31 +5817,46 @@ function applyAssignedDayStyles(){
       const dayKey=getDayKeyFromIso(dayIso);
       const assigned=cleanersForDay(weekKey,dayKey);
       const headerCell=row.querySelector('.day-cell');
+      
+      // Get or create pill in day title
+      const titleEl=headerCell?.querySelector('.day-title');
+      let pill = titleEl?.querySelector('.assign-cleaner-pill');
+      
       if(assigned.length>0){
         row.classList.add('assigned-day');
         row.style.setProperty('--territory-color', assignModeState.color);
-      }else{
+        
+        // Get cleaner initials
+        const cleanerInitials = assigned.map((c) => {
+          const display = getAssignCleanerDisplay(c) || c;
+          // Extract initials (e.g., "John Smith" -> "JS", "Chris" -> "C")
+          const parts = display.trim().split(/\s+/);
+          if (parts.length > 1) {
+            return parts.map(p => p[0]).join('').toUpperCase();
+          }
+          return display.substring(0, 2).toUpperCase();
+        });
+        
+        // Create pill if doesn't exist
+        if (!pill && titleEl) {
+          pill = document.createElement('span');
+          pill.className = 'assign-cleaner-pill';
+          titleEl.appendChild(pill);
+        }
+        
+        if (pill) {
+          pill.textContent = cleanerInitials.join(', ');
+          pill.style.display = 'inline-flex';
+        }
+        
+        // Set tooltip
+        const names = assigned.map(c => getAssignCleanerDisplay(c) || c).join(', ');
+        if (titleEl) titleEl.title = names ? `Assigned: ${names}` : '';
+      } else {
         row.classList.remove('assigned-day');
         row.style.removeProperty('--territory-color');
-      }
-      let badge=headerCell?.querySelector('.assign-multi-badge');
-      if(!badge && headerCell){
-        badge=document.createElement('span');
-        badge.className='assign-multi-badge';
-        headerCell.appendChild(badge);
-      }
-      if(badge){
-        if(assigned.length>1){
-          badge.textContent=`+${assigned.length}`;
-          badge.style.display='inline-block';
-        }else{
-          badge.style.display='none';
-        }
-      }
-      const titleEl=headerCell?.querySelector('.day-title');
-      if(titleEl){
-        const names=assigned.map(c=>getCleanerLabel(c)||c).join(', ');
-        titleEl.title=names?`Assigned: ${names}`:'';
+        if (pill) pill.remove();
+        if (titleEl) titleEl.title = '';
       }
     });
   });
@@ -5119,6 +5877,10 @@ async function saveAssignedDays() {
     updatedBy: auth.currentUser?.uid || null,
   };
   const resolvedId = resolveTerritoryIdentifier(assignModeState.territory, assignModeState.territoryId);
+  if (!resolvedId) {
+    console.warn('[AssignDays] Cannot resolve territory identifier, aborting save');
+    return;
+  }
   
   // Build COMPLETE territory document to ensure name, geoBoundary, color, reps all persist
   const territoryMerge = buildTerritoryDocMergePayload(assignModeState.territory);
@@ -5130,29 +5892,70 @@ async function saveAssignedDays() {
     // Add audit metadata
     ...auditMeta,
   };
+  if (subscriberId) {
+    completePayload.subscriberId = subscriberId;
+  }
   
   const payload = sanitizeFirestoreValue(completePayload);
-  console.log('[AssignDays] Saving to Firestore territories/' + resolvedId, { payload, territory: assignModeState.territory });
+  console.log('[AssignDays] Saving assign days', { resolvedId, payload, territory: assignModeState.territory, subscriberId });
   
   try {
-    // Use setDoc with merge:true to update while preserving existing data
-    await setDoc(doc(db, 'territories', resolvedId), payload, { merge: true });
-    console.log('[AssignDays] Successfully saved to territories/' + resolvedId);
-    
-    // Also sync to system/territories doc for backup
-    await syncSystemTerritoriesDoc(assignModeState.territory, allowedBookingDays, auditMeta, resolvedId);
-    
-    const terrName = assignModeState.territory?.name || assignModeState.territory?.title || 'this area';
-    showAssignToast(`✅ Cleaning days assigned for ${terrName}.`);
-    
-    setTimeout(() => {
-      // Redirect back to map.html which will reload all territories fresh from Firestore
-      window.location.href = '/rep/map.html?toast=daysAssigned';
-    }, 800);
-  } catch (e) {
-    console.error('[AssignDays] Failed to save allowedBookingDays', e);
+    if (subscriberId) {
+      await setDoc(tenantDoc(db, subscriberId, 'territories', resolvedId), payload, { merge: true });
+      console.log('[AssignDays] Saved tenant territory', resolvedId);
+    }
+    if (!subscriberId) {
+      await setDoc(doc(db, 'territories', resolvedId), payload, { merge: true });
+      console.log('[AssignDays] Saved global territory', resolvedId);
+    }
+  } catch (error) {
+    console.error('[AssignDays] Tenant/global territory write failed', error);
     showAssignToast('❌ Failed to save days. Try again.', true);
+    return;
   }
+
+  const canWriteGlobal = !subscriberId || userRole === 'admin';
+  if (canWriteGlobal) {
+    if (subscriberId) {
+      try {
+        await setDoc(doc(db, 'territories', resolvedId), payload, { merge: true });
+        console.log('[AssignDays] Mirrored territory to global collection', resolvedId);
+      } catch (error) {
+        console.warn('[AssignDays] Global territory write skipped or failed', error);
+      }
+    }
+    try {
+      await syncSystemTerritoriesDoc(assignModeState.territory, allowedBookingDays, auditMeta, resolvedId);
+    } catch (error) {
+      console.warn('[AssignDays] system/territories sync failed (non-fatal)', error);
+    }
+  } else {
+    console.log('[AssignDays] Skipping global/system territory sync for subscriber context');
+  }
+
+  const terrName = assignModeState.territory?.name || assignModeState.territory?.title || 'this area';
+  assignModeState.territory = {
+    ...(assignModeState.territory || {}),
+    allowedBookingDays,
+    updatedAt: auditMeta.updatedAt,
+    updatedBy: auditMeta.updatedBy,
+  };
+  showAssignToast(`✅ Cleaning days assigned for ${terrName}.`);
+  
+  setTimeout(() => {
+    exitAssignMode();
+    applyAssignedDayStyles();
+  }, 800);
+}
+
+function exitAssignMode() {
+  assignModeState.active = false;
+  assignModeState.territoryId = null;
+  document.body.classList.remove('assign-mode');
+  const panel = document.getElementById('assignModePanel');
+  if (panel) panel.hidden = true;
+  toggleCleanerFilterForAssignMode(false);
+  applyAssignedDayStyles();
 }
 
 function showAssignToast(message, isError = false) {
@@ -5185,16 +5988,39 @@ async function initAssignAreaDaysMode(territoryId) {
   const titleEl = document.getElementById('assignModeTitle');
   const ctxEl = document.getElementById('assignModeContext');
   const setBtn = document.getElementById('assignSetDaysBtn');
-  if (banner) banner.hidden = false;
-  if (setBtn) setBtn.addEventListener('click', saveAssignedDays);
-  const territory = await fetchTerritoryById(territoryId);
+  if (setBtn && !setBtn.dataset.assignBound) {
+    setBtn.addEventListener('click', saveAssignedDays);
+    setBtn.dataset.assignBound = '1';
+  }
+  const closeBtn = document.getElementById('closeAssignModeBtn');
+  if (closeBtn && !closeBtn.dataset.assignBound) {
+    closeBtn.addEventListener('click', exitAssignMode);
+    closeBtn.dataset.assignBound = '1';
+  }
+  let territory = await fetchTerritoryById(territoryId);
+  const storedMeta = getStoredTerritoryMetadata(territoryId);
+  if (storedMeta) {
+    territory = territory ? { ...storedMeta, ...territory } : storedMeta;
+  }
   assignModeState.territory = territory;
-  assignModeState.color = territory?.color || territory?.colour || '#0078d7';
+  assignModeState.color = territory?.color || territory?.colour || storedMeta?.color || '#0078d7';
+  assignModeState.selectedDays = cloneAllowedBookingDays(territory?.allowedBookingDays);
+  assignModeState.selectedCleanerIds = deriveCleanerSelectionFromAssignments(assignModeState.selectedDays);
+  ensureCleanerSelectionFallback();
+  try {
+    sessionStorage.removeItem(ROTA_ASSIGN_KEY);
+  } catch (_) {
+    /* ignore */
+  }
   if (titleEl) titleEl.textContent = 'Assigning Days';
   const repName = getRepNameCached() || 'Rep';
-  const terrName = territory?.name || territory?.title || territoryId;
+  const terrName = territory?.name || territory?.title || storedMeta?.name || territoryId;
   if (ctxEl) ctxEl.textContent = `${terrName} (Rep: ${repName})`;
+  areaSelectionState.selectedAreaId = territoryId;
+  toggleCleanerFilterForAssignMode(true);
+  openAssignFloatingPanel();
   ensureAssignInlineButtons();
+  handleAreaSelection(territoryId, { focusMap: true });
   applyAssignedDayStyles();
   updateAssignSetDaysButtonState();
   renderAssignSummaryBox();

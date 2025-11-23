@@ -3,16 +3,16 @@
   
   <!-- Homepage - Primary Landing Page -->
   <url>
-    <loc>https://system.swashcleaning.co.uk/</loc>
-    <lastmod>2025-11-14</lastmod>
+    <loc>https://app.swashcleaning.co.uk/</loc>
+    <lastmod>2025-11-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   
   <!-- Main Service Pages -->
   <url>
-    <loc>https://system.swashcleaning.co.uk/rep/add-new-customer.html</loc>
-    <lastmod>2025-11-14</lastmod>
+    <loc>https://app.swashcleaning.co.uk/rep/add-new-customer.html</loc>
+    <lastmod>2025-11-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -22,51 +22,51 @@
   
   <!-- Colchester & Surrounding Areas -->
   <url>
-    <loc>https://system.swashcleaning.co.uk/window-cleaner-colchester</loc>
-    <lastmod>2025-11-14</lastmod>
+    <loc>https://app.swashcleaning.co.uk/window-cleaner-colchester</loc>
+    <lastmod>2025-11-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   
   <url>
-    <loc>https://system.swashcleaning.co.uk/window-cleaner-southend</loc>
-    <lastmod>2025-11-14</lastmod>
+    <loc>https://app.swashcleaning.co.uk/window-cleaner-southend</loc>
+    <lastmod>2025-11-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   
   <url>
-    <loc>https://system.swashcleaning.co.uk/window-cleaner-rayleigh</loc>
-    <lastmod>2025-11-14</lastmod>
+    <loc>https://app.swashcleaning.co.uk/window-cleaner-rayleigh</loc>
+    <lastmod>2025-11-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   
   <url>
-    <loc>https://system.swashcleaning.co.uk/window-cleaner-maldon</loc>
-    <lastmod>2025-11-14</lastmod>
+    <loc>https://app.swashcleaning.co.uk/window-cleaner-maldon</loc>
+    <lastmod>2025-11-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   
   <url>
-    <loc>https://system.swashcleaning.co.uk/window-cleaner-wivenhoe</loc>
-    <lastmod>2025-11-14</lastmod>
+    <loc>https://app.swashcleaning.co.uk/window-cleaner-wivenhoe</loc>
+    <lastmod>2025-11-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   
   <!-- Legal Pages -->
   <url>
-    <loc>https://system.swashcleaning.co.uk/privacy.html</loc>
-    <lastmod>2025-11-14</lastmod>
+    <loc>https://app.swashcleaning.co.uk/privacy.html</loc>
+    <lastmod>2025-11-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>https://system.swashcleaning.co.uk/terms.html</loc>
-    <lastmod>2025-11-14</lastmod>
+    <loc>https://app.swashcleaning.co.uk/terms.html</loc>
+    <lastmod>2025-11-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

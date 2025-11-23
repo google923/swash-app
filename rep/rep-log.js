@@ -8,6 +8,7 @@
 
 import { auth, db } from "../firebase-init.js";
 import { collection, doc, getDoc, setDoc, addDoc, getDocs, query, where, updateDoc, orderBy, collectionGroup, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { tenantCollection, tenantDoc } from "../lib/subscriber-paths.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { createQuoteCalculator } from "./components/quote-calculator.js";
 
@@ -16,6 +17,7 @@ localforage.config({ name: "swash-rep-log", storeName: "repLogStore" });
 const OFFLINE_SHIFT_KEY = "currentShift"; // stores entire shift state
 const PENDING_PREFIX = "pendingLogs:"; // pendingLogs:YYYY-MM-DD
 const SHIFT_QUEUE_KEY = "pendingShiftSummaries"; // array of { id: `${repId}_${date}`, data }
+const LAST_SUBSCRIBER_KEY = "swash:lastSubscriberId";
 
 // ---------- State ----------
 const state = {
@@ -43,6 +45,7 @@ const state = {
   paidTimerId: null,
   userInTraining: false, // Training mode disables auto-pause
   drivingMode: false, // Driving mode: accumulates miles, disables auto-pause
+  subscriberId: null,
 };
 
 // Territories cache (used pre-shift and during shift)
@@ -292,6 +295,13 @@ async function loadSavedShift() {
     
     if (resume) {
       state.shift = saved;
+      state.subscriberId = saved.subscriberId || state.subscriberId || null;
+      if (state.subscriberId) {
+        try { localStorage.setItem(LAST_SUBSCRIBER_KEY, state.subscriberId); } catch(_) {}
+      }
+      if (!state.shift.subscriberId && state.subscriberId) {
+        state.shift.subscriberId = state.subscriberId;
+      }
       enableLoggingButtons();
       renderStats();
       renderRecent();
@@ -363,22 +373,30 @@ async function handleStartDay() {
     const userDoc = await getDoc(doc(db, "users", user.uid));
     const udata = userDoc.exists() ? userDoc.data() : {};
     assignedTerritoryId = udata.assignedTerritoryId || udata.territoryId || null;
-  repDisplayName = udata.repName || udata.displayName || udata.name || null;
-  updateQuoteRepPrefill(repDisplayName);
+    repDisplayName = udata.repName || udata.displayName || udata.name || null;
+    updateQuoteRepPrefill(repDisplayName);
     state.userInTraining = !!udata.training; // Fetch training status
+    state.subscriberId = udata.subscriberId || null;
     // Cache for offline use
     try {
       if (assignedTerritoryId) localStorage.setItem('swash:lastAssignedTerritoryId', assignedTerritoryId);
       if (repDisplayName) localStorage.setItem('swash:lastRepName', repDisplayName);
       localStorage.setItem('swash:userInTraining', state.userInTraining ? '1' : '0');
+      if (state.subscriberId) {
+        localStorage.setItem(LAST_SUBSCRIBER_KEY, state.subscriberId);
+      } else {
+        localStorage.removeItem(LAST_SUBSCRIBER_KEY);
+      }
     } catch(_) {}
   } catch(_) {
     // Offline fallback to cached values
     try {
       assignedTerritoryId = localStorage.getItem('swash:lastAssignedTerritoryId') || null;
-  repDisplayName = localStorage.getItem('swash:lastRepName') || null;
-  updateQuoteRepPrefill(repDisplayName);
+      repDisplayName = localStorage.getItem('swash:lastRepName') || null;
+      updateQuoteRepPrefill(repDisplayName);
       state.userInTraining = localStorage.getItem('swash:userInTraining') === '1';
+      const cachedSubscriber = localStorage.getItem(LAST_SUBSCRIBER_KEY);
+      state.subscriberId = cachedSubscriber ? cachedSubscriber : null;
     } catch(_) {}
   }
 
@@ -489,8 +507,8 @@ async function handleStartDay() {
     const startTimestamp = Date.now();
     const shiftId = `${user.uid}_${dateStr}_${startTimestamp}`;
     state.shift = {
-  repId: user.uid,
-  territoryId: territory ? (territory.id || territory.territoryId || null) : null,
+      repId: user.uid,
+      territoryId: territory ? (territory.id || territory.territoryId || null) : null,
       date: dateStr,
       startTime: nowIso(),
       shiftId: shiftId, // Unique ID for this shift
@@ -499,16 +517,40 @@ async function handleStartDay() {
       drivingIntervals: [],
       lastActivityTs: Date.now(),
       mileageMiles: 0,
+      subscriberId: state.subscriberId,
     };
     // Store display name for per-door writes
-  state.repDisplayName = repDisplayName || null;
-  updateQuoteRepPrefill(state.repDisplayName);
+    state.repDisplayName = repDisplayName || null;
+    updateQuoteRepPrefill(state.repDisplayName);
     await persistShift();
     // Publish initial shift summary so admin dashboard recognises tracking immediately
-  try { await setDoc(doc(db, "repShifts", shiftId), { repId: state.shift.repId, date: state.shift.date, territoryId: state.shift.territoryId, startTime: state.shift.startTime, endTime: null, pauses: [], drivingIntervals: [], totals: { doors: 0, x: 0, o: 0, sales: 0 }, miles: 0, activeMinutes: 0, shiftId: shiftId, training: !!state.userInTraining, autoPauseMs: state.autoPauseMs }, { merge: true }); } catch(e) { console.warn('Initial shift summary write failed', e); }
+    try {
+      await setDoc(
+        tenantDoc(db, state.subscriberId, "repShifts", shiftId),
+        {
+          repId: state.shift.repId,
+          date: state.shift.date,
+          territoryId: state.shift.territoryId,
+          startTime: state.shift.startTime,
+          endTime: null,
+          pauses: [],
+          drivingIntervals: [],
+          totals: { doors: 0, x: 0, o: 0, sales: 0 },
+          miles: 0,
+          activeMinutes: 0,
+          shiftId: shiftId,
+          training: !!state.userInTraining,
+          autoPauseMs: state.autoPauseMs,
+          subscriberId: state.subscriberId || null,
+        },
+        { merge: true },
+      );
+    } catch (e) {
+      console.warn('Initial shift summary write failed', e);
+    }
     // Immediately publish initial live location so admin map sees rep without delay
     try {
-      await setDoc(doc(db, "repLocations", state.shift.repId), {
+      await setDoc(tenantDoc(db, state.subscriberId, "repLocations", state.shift.repId), {
         repId: state.shift.repId,
         timestamp: nowIso(),
         gpsLat: latitude,
@@ -557,8 +599,9 @@ async function writeLiveShiftSummary() {
   if (!state.shift || !state.shift.startTime) return;
   const activeMinutes = computeActiveMinutesSoFar();
   const shiftDocId = state.shift.shiftId || `${state.shift.repId}_${state.shift.date}`;
+  const subscriberContext = state.shift.subscriberId || state.subscriberId || null;
   try {
-    await setDoc(doc(db, "repShifts", shiftDocId), {
+    await setDoc(tenantDoc(db, subscriberContext, "repShifts", shiftDocId), {
       repId: state.shift.repId,
       date: state.shift.date,
       territoryId: state.shift.territoryId,
@@ -577,13 +620,17 @@ async function writeLiveShiftSummary() {
       shiftId: shiftDocId,
       training: !!state.userInTraining,
       autoPauseMs: state.autoPauseMs,
+      subscriberId: subscriberContext,
     }, { merge: true });
   } catch (e) {
     console.warn("Live shift summary write failed", e);
     // Queue summary for later sync
     try {
       const queued = (await localforage.getItem(SHIFT_QUEUE_KEY)) || [];
-      queued.push({ id: shiftDocId, data: {
+      queued.push({
+        id: shiftDocId,
+        subscriberId: subscriberContext,
+        data: {
         repId: state.shift.repId,
         date: state.shift.date,
         territoryId: state.shift.territoryId,
@@ -597,11 +644,13 @@ async function writeLiveShiftSummary() {
           o: state.shift.logs.filter(l => l.status === 'O').length,
           sales: state.shift.logs.filter(l => l.status === 'SignUp').length,
         },
-        miles: state.shift.mileageMiles,
-        activeMinutes,
-        training: !!state.userInTraining,
-        autoPauseMs: state.autoPauseMs,
-      }});
+          miles: state.shift.mileageMiles,
+          activeMinutes,
+          training: !!state.userInTraining,
+          autoPauseMs: state.autoPauseMs,
+          subscriberId: subscriberContext,
+        },
+      });
       await localforage.setItem(SHIFT_QUEUE_KEY, queued);
     } catch(_) {}
   }
@@ -650,27 +699,40 @@ function createLog(status, note, address) {
     const id = `${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
     const pendingKey = PENDING_PREFIX + state.shift.date;
     const pending = (await localforage.getItem(pendingKey)) || [];
-    pending.push({ id, repId: state.shift.repId, date: state.shift.date, territoryId: state.shift.territoryId, ...log });
+    pending.push({
+      id,
+      repId: state.shift.repId,
+      date: state.shift.date,
+      territoryId: state.shift.territoryId,
+      subscriberId: state.shift.subscriberId || state.subscriberId || null,
+      ...log,
+    });
     await localforage.setItem(pendingKey, pending);
 
     // Write flat per-door document to doorsknocked collection (for universal map rendering)
     try {
+      const subscriberContext = state.shift.subscriberId || state.subscriberId || null;
       const doorDocId = `${state.shift.repId}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
-      await setDoc(doc(db, 'doorsknocked', doorDocId), {
-        repId: state.shift.repId,
-        repName: state.repDisplayName || state.shift.repId,
-        date: state.shift.date,
-        territoryId: state.shift.territoryId || null,
-        timestamp: log.timestamp,
-        status: log.status,
-        houseNumber: log.houseNumber || null,
-        roadName: log.roadName || null,
-        notes: log.note || log.addressNotes || null,
-        gpsLat: log.gpsLat,
-        gpsLng: log.gpsLng,
-        accuracy: state.lastLocation?.accuracy || null,
-        source: 'live'
-      }, { merge: true });
+      await setDoc(
+        tenantDoc(db, subscriberContext, 'doorsknocked', doorDocId),
+        {
+          repId: state.shift.repId,
+          repName: state.repDisplayName || state.shift.repId,
+          date: state.shift.date,
+          territoryId: state.shift.territoryId || null,
+          timestamp: log.timestamp,
+          status: log.status,
+          houseNumber: log.houseNumber || null,
+          roadName: log.roadName || null,
+          notes: log.note || log.addressNotes || null,
+          gpsLat: log.gpsLat,
+          gpsLng: log.gpsLng,
+          accuracy: state.lastLocation?.accuracy || null,
+          source: 'live',
+          subscriberId: subscriberContext,
+        },
+        { merge: true },
+      );
     } catch(e) { console.warn('[doorsknocked] write failed', e); }
     renderStats();
     renderRecent();
@@ -685,19 +747,28 @@ function createLog(status, note, address) {
         }
       }
     } catch(_) {}
-  await persistShift();
+    await persistShift();
     // Mirror to flat daily doc for redundancy
     try {
       const dailyId = `${state.shift.repId}_${state.shift.date}`;
-      const dailyRef = doc(db, 'repLogs', dailyId);
+      const dailyRef = tenantDoc(db, state.shift.subscriberId || state.subscriberId || null, 'repLogs', dailyId);
       const existing = await getDoc(dailyRef);
       const arr = existing.exists() && Array.isArray(existing.data().logs) ? existing.data().logs.slice() : [];
       arr.push({ ...log });
-      await setDoc(dailyRef, { repId: state.shift.repId, date: state.shift.date, logs: arr }, { merge: true });
+      await setDoc(
+        dailyRef,
+        {
+          repId: state.shift.repId,
+          date: state.shift.date,
+          subscriberId: state.shift.subscriberId || state.subscriberId || null,
+          logs: arr,
+        },
+        { merge: true },
+      );
     } catch(e) { console.warn('[Mirror] daily doc write failed', e); }
     // Update live location on every door to improve near real-time tracking
     try {
-      await setDoc(doc(db, "repLocations", state.shift.repId), {
+      await setDoc(tenantDoc(db, state.shift.subscriberId || state.subscriberId || null, "repLocations", state.shift.repId), {
         repId: state.shift.repId,
         timestamp: nowIso(),
         gpsLat: latitude,
@@ -917,7 +988,11 @@ async function loadAllPinsFallbackDays(territoryReps, boundary, days) {
   const sinceMs = Date.now() - days*24*60*60*1000;
   let repIds = [];
   try {
-    const repsSnap = await getDocs(query(collection(db, 'users')));
+    let userRef = collection(db, 'users');
+    if (state.subscriberId) {
+      userRef = query(userRef, where('subscriberId', '==', state.subscriberId));
+    }
+    const repsSnap = await getDocs(userRef);
     repsSnap.docs.forEach(d => {
       const data = d.data();
       const role = (data.role||'').toLowerCase();
@@ -937,7 +1012,7 @@ async function loadAllPinsFallbackDays(territoryReps, boundary, days) {
       const dateStr = d.toISOString().slice(0,10);
       const docId = `${repId}_${dateStr}`;
       try {
-        const docRef = doc(db, 'repLogs', docId);
+        const docRef = tenantDoc(db, state.subscriberId || null, 'repLogs', docId);
         console.log(`[DEBUG] Querying Firestore: repLogs/${docId}`);
         const docSnap = await getDoc(docRef);
         if (!docSnap.exists()) {
@@ -980,7 +1055,7 @@ async function loadAllPinsFromDailyDocs(boundary, days) {
   try {
     const cutoff = new Date(Date.now() - days*24*60*60*1000).toISOString().slice(0,10);
     console.log('[DEBUG] Querying ALL daily docs and filtering by ID date >=', cutoff);
-    const snap = await getDocs(collection(db, 'repLogs'));
+    const snap = await getDocs(tenantCollection(db, state.subscriberId || null, 'repLogs'));
     console.log('[DEBUG] Total daily docs returned:', snap.size);
     snap.forEach(docSnap => {
       const data = docSnap.data();
@@ -1235,7 +1310,12 @@ async function fetchDoorsKnockedWindow(startStr, endStr) {
   // Uses range on 'date' field (string YYYY-MM-DD)
   // Firestore double inequality on same field is allowed; orderBy('date') required.
   try {
-    const q = query(collection(db,'doorsknocked'), where('date','>=', startStr), where('date','<=', endStr), orderBy('date'));
+    const q = query(
+      tenantCollection(db, state.subscriberId || null, 'doorsknocked'),
+      where('date','>=', startStr),
+      where('date','<=', endStr),
+      orderBy('date'),
+    );
     const snap = await getDocs(q);
     const out = [];
     snap.forEach(docSnap => out.push(docSnap.data()));
@@ -1342,20 +1422,34 @@ function startLocationTracking() {
       
       try {
         console.log(`[Location Tracking] Writing to repLocations/${state.shift.repId}...`);
-        await setDoc(doc(db, "repLocations", state.shift.repId), { 
-          repId: state.shift.repId, 
-          timestamp: nowIso(), 
-          gpsLat: latitude, 
-          gpsLng: longitude 
-        }, { merge: true });
+        await setDoc(
+          tenantDoc(db, state.shift.subscriberId || state.subscriberId || null, "repLocations", state.shift.repId),
+          {
+            repId: state.shift.repId,
+            timestamp: nowIso(),
+            gpsLat: latitude,
+            gpsLng: longitude,
+            subscriberId: state.shift.subscriberId || state.subscriberId || null,
+          },
+          { merge: true },
+        );
         console.log('[Location Tracking] ✓ repLocations write successful');
         // Opportunistic flush: if online, also mirror a heartbeat into daily doc (keeps doc alive)
         try {
           const dailyId = `${state.shift.repId}_${state.shift.date}`;
-          const dailyRef = doc(db, 'repLogs', dailyId);
+          const dailyRef = tenantDoc(db, state.shift.subscriberId || state.subscriberId || null, 'repLogs', dailyId);
           const snap = await getDoc(dailyRef);
           if (!snap.exists()) {
-            await setDoc(dailyRef, { repId: state.shift.repId, date: state.shift.date, logs: [] }, { merge: true });
+            await setDoc(
+              dailyRef,
+              {
+                repId: state.shift.repId,
+                date: state.shift.date,
+                subscriberId: state.shift.subscriberId || state.subscriberId || null,
+                logs: [],
+              },
+              { merge: true },
+            );
           }
         } catch(_) {}
       } catch (e) { 
@@ -1380,7 +1474,15 @@ async function stopLocationTracking() {
   if (state.shift?.repId) {
     try {
       // Mark inactive instead of deleting (rules may block deletes)
-      await setDoc(doc(db, "repLocations", state.shift.repId), { active: false, offlineAt: nowIso() }, { merge: true });
+      await setDoc(
+        tenantDoc(db, state.shift.subscriberId || state.subscriberId || null, "repLocations", state.shift.repId),
+        {
+          active: false,
+          offlineAt: nowIso(),
+          subscriberId: state.shift.subscriberId || state.subscriberId || null,
+        },
+        { merge: true },
+      );
       console.log('[Location Tracking] Marked repLocation inactive');
     } catch (e) {
       if (console.debug) console.debug('[Location Tracking] Could not mark inactive:', e);
@@ -1431,8 +1533,17 @@ async function autoSyncLogs() {
     let pending = (await localforage.getItem(pendingKey)) || [];
     if (pending.length) {
       for (const item of pending) {
-        const ref = doc(collection(db, 'repLogs', item.repId, 'dates', item.date, 'doorLogs'), item.id);
-        await setDoc(ref, item, { merge: true });
+          const ref = tenantDoc(
+            db,
+            item.subscriberId || state.subscriberId || null,
+            'repLogs',
+            item.repId,
+            'dates',
+            item.date,
+            'doorLogs',
+            item.id,
+          );
+          await setDoc(ref, item, { merge: true });
       }
       pending = [];
       await localforage.setItem(pendingKey, pending);
@@ -1440,9 +1551,18 @@ async function autoSyncLogs() {
     // Also mirror entire logs array to daily doc to ensure redundancy
     try {
       const dailyId = `${state.shift.repId}_${state.shift.date}`;
-      const dailyRef = doc(db, 'repLogs', dailyId);
+      const dailyRef = tenantDoc(db, state.shift.subscriberId || state.subscriberId || null, 'repLogs', dailyId);
       const arr = (state.shift.logs || []).map(l => ({ ...l }));
-      await setDoc(dailyRef, { repId: state.shift.repId, date: state.shift.date, logs: arr }, { merge: true });
+      await setDoc(
+        dailyRef,
+        {
+          repId: state.shift.repId,
+          date: state.shift.date,
+          subscriberId: state.shift.subscriberId || state.subscriberId || null,
+          logs: arr,
+        },
+        { merge: true },
+      );
     } catch(e) { console.warn('[Mirror] autoSync daily doc failed', e); }
   } catch (e) { console.warn("sync failed", e); }
   state.syncInProgress = false;
@@ -1461,7 +1581,16 @@ async function syncAllPendingLogs() {
       const failed = [];
       for (const item of pending) {
         try {
-          const ref = doc(collection(db, 'repLogs', item.repId, 'dates', item.date, 'doorLogs'), item.id);
+          const collectionRef = tenantCollection(
+            db,
+            item.subscriberId || state.subscriberId || null,
+            'repLogs',
+            item.repId,
+            'dates',
+            item.date,
+            'doorLogs',
+          );
+          const ref = doc(collectionRef, item.id);
           await setDoc(ref, item, { merge: true });
         } catch (e) {
           failed.push(item);
@@ -1473,7 +1602,16 @@ async function syncAllPendingLogs() {
         const shift = await localforage.getItem(OFFLINE_SHIFT_KEY);
         if (shift && shift.date && key.endsWith(shift.date)) {
           const dailyId = `${shift.repId}_${shift.date}`;
-          await setDoc(doc(db, 'repLogs', dailyId), { repId: shift.repId, date: shift.date, logs: (shift.logs||[]).map(l=>({...l})) }, { merge: true });
+          await setDoc(
+            tenantDoc(db, shift.subscriberId || state.subscriberId || null, 'repLogs', dailyId),
+            {
+              repId: shift.repId,
+              date: shift.date,
+              subscriberId: shift.subscriberId || state.subscriberId || null,
+              logs: (shift.logs||[]).map(l=>({...l})),
+            },
+            { merge: true },
+          );
         }
       } catch(_) {}
       await localforage.setItem(key, failed);
@@ -1490,7 +1628,13 @@ async function syncQueuedShiftSummaries() {
     const remaining = [];
     for (const entry of queued) {
       try {
-        await setDoc(doc(db, 'repShifts', entry.id), entry.data, { merge: true });
+        const subscriberContext = entry.subscriberId || entry.data?.subscriberId || state.subscriberId || null;
+        const payload = { ...entry.data, subscriberId: subscriberContext };
+        await setDoc(
+          tenantDoc(db, subscriberContext, 'repShifts', entry.id),
+          payload,
+          { merge: true },
+        );
       } catch (e) {
         console.warn('Failed to sync shift summary', entry.id, e);
         remaining.push(entry);
@@ -1516,6 +1660,7 @@ async function endShift(showSummaryModal = true) {
   await persistShift();
   await autoSyncLogs();
   const shiftDocId = state.shift.shiftId || `${state.shift.repId}_${state.shift.date}`;
+  const subscriberContext = state.shift.subscriberId || state.subscriberId || null;
   const shiftData = {
     repId: state.shift.repId,
     date: state.shift.date,
@@ -1534,11 +1679,12 @@ async function endShift(showSummaryModal = true) {
     mileageExpense: parseFloat(mileageExpense.toFixed(2)),
     totalOwed: parseFloat(totalOwed.toFixed(2)),
     activeMinutes,
-    shiftId: shiftDocId
+    shiftId: shiftDocId,
+    subscriberId: subscriberContext,
   };
   console.log('[DEBUG] Writing shift summary to Firestore:', shiftData);
   try {
-    await setDoc(doc(db, "repShifts", shiftDocId), shiftData, { merge: true });
+    await setDoc(tenantDoc(db, subscriberContext, "repShifts", shiftDocId), shiftData, { merge: true });
   } catch (e) {
     console.error("Shift summary write failed", e);
     alert('Shift summary write failed: ' + (e && e.message ? e.message : e));
@@ -1547,25 +1693,30 @@ async function endShift(showSummaryModal = true) {
   if (!isOnline()) {
     try {
       const queued = (await localforage.getItem(SHIFT_QUEUE_KEY)) || [];
-      queued.push({ id: shiftDocId, data: {
-        repId: state.shift.repId,
-        date: state.shift.date,
-        territoryId: state.shift.territoryId,
-        startTime: state.shift.startTime,
-        endTime: state.shift.endTime,
-        pauses: state.shift.pauses,
-        totals: {
-          doors: state.shift.logs.length,
-          x: state.shift.logs.filter(l => l.status === 'X').length,
-          o: state.shift.logs.filter(l => l.status === 'O').length,
-          sales: state.shift.logs.filter(l => l.status === 'SignUp').length,
+      queued.push({
+        id: shiftDocId,
+        subscriberId: subscriberContext,
+        data: {
+          repId: state.shift.repId,
+          date: state.shift.date,
+          territoryId: state.shift.territoryId,
+          startTime: state.shift.startTime,
+          endTime: state.shift.endTime,
+          pauses: state.shift.pauses,
+          totals: {
+            doors: state.shift.logs.length,
+            x: state.shift.logs.filter(l => l.status === 'X').length,
+            o: state.shift.logs.filter(l => l.status === 'O').length,
+            sales: state.shift.logs.filter(l => l.status === 'SignUp').length,
+          },
+          miles,
+          pay: parseFloat(pay.toFixed(2)),
+          mileageExpense: parseFloat(mileageExpense.toFixed(2)),
+          totalOwed: parseFloat(totalOwed.toFixed(2)),
+          activeMinutes,
+          subscriberId: subscriberContext,
         },
-        miles,
-        pay: parseFloat(pay.toFixed(2)),
-        mileageExpense: parseFloat(mileageExpense.toFixed(2)),
-        totalOwed: parseFloat(totalOwed.toFixed(2)),
-        activeMinutes
-      }});
+      });
       await localforage.setItem(SHIFT_QUEUE_KEY, queued);
     } catch(_) {}
   }

@@ -17,6 +17,7 @@
     { "src": "/api/createSubscriberMandate", "dest": "/api/createSubscriberMandate.js" },
     { "src": "/api/finaliseSubscriberMandate", "dest": "/api/finaliseSubscriberMandate.js" },
     { "src": "/api/deleteSubscriber", "dest": "/api/deleteSubscriber.js" },
+    { "src": "/api/gcWebhook", "dest": "/api/gcWebhook.js" },
     { "src": "/confirm-booking", "dest": "/api/confirmBooking.js" },
     { "handle": "filesystem" }
   ]

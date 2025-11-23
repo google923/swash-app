@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Add Customer Settings - Swash Subscriber</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .admin-only, .rep-only, .admin-rep { display: none !important; }
+    .subscriber-only { display: block !important; }
+    .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .settings-grid label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; color: #0f172a; }
+    .settings-grid input,
+    .settings-grid textarea,
+    .settings-grid select { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 500; font-size: 0.95rem; }
+    .settings-grid input[type="number"] { -moz-appearance: textfield; }
+    .settings-grid input[type="number"]::-webkit-inner-spin-button,
+    .settings-grid input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .compound-field { display:flex; gap:8px; align-items:center; }
+    .compound-field input { flex:1 1 auto; }
+    .btn-sm { padding:6px 10px; font-size:0.85rem; }
+    .field-hint { margin-top:6px; font-size:0.8rem; color:#64748b; font-weight:500; }
+    .card-note { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; color: #334155; }
+    .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .section-title h2 { margin: 0; font-size: 1.2rem; color: #0f172a; }
+    .section-title p { margin: 0; color: #64748b; font-size: 0.9rem; }
+    .mini-table { width: 100%; border-collapse: collapse; }
+    .mini-table thead { background: #f8fafc; color: #0f172a; }
+    .mini-table th,
+    .mini-table td { padding: 10px 12px; border: 1px solid #e2e8f0; text-align: left; }
+    .mini-table input { width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; }
+    .toggle-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+    .toggle-row label { font-weight: 600; color: #0f172a; }
+    .actions-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .actions-row button { min-width: 160px; }
+    .preview-wrap { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .preview-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #ffffff; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08); min-height: 240px; }
+    .preview-card h4 { margin-top: 0; margin-bottom: 8px; color: #0f172a; }
+    .preview-card p { margin: 0; color: #475569; font-size: 0.92rem; }
+    .preview-chip { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 999px; background: #e0f2fe; color: #0f172a; font-weight: 600; font-size: 0.8rem; }
+    .snippet-box { display: grid; gap: 12px; border: 1px dashed #94a3b8; border-radius: 10px; padding: 16px; background: #f8fafc; }
+    .snippet-box textarea { width: 100%; min-height: 110px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 0.82rem; color: #0f172a; background: #ffffff; resize: vertical; }
+    .status-line { font-size: 0.9rem; color: #64748b; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; background: #e0f2fe; color: #0369a1; }
+    .helper-guide { display:flex; flex-direction:column; gap:12px; background:#0f172a; color:#f8fafc; border-radius:12px; padding:18px; border:1px solid rgba(255,255,255,0.08); }
+    .helper-guide h3 { margin:0; font-size:1.1rem; }
+    .helper-steps { display:grid; gap:10px; }
+    .helper-step { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; background:rgba(148,163,184,0.1); border-radius:10px; padding:10px 12px; }
+    .helper-step button { white-space:nowrap; }
+    .helper-dismiss { align-self:flex-end; }
+    .highlight-flash { animation: highlightPulse 1.2s ease-in-out; box-shadow:0 0 0 3px rgba(14,165,233,0.45); background:rgba(191,219,254,0.3) !important; }
+    @keyframes highlightPulse {
+      0% { box-shadow:0 0 0 0 rgba(14,165,233,0.6); }
+      60% { box-shadow:0 0 0 6px rgba(14,165,233,0.2); }
+      100% { box-shadow:0 0 0 0 rgba(14,165,233,0); }
+    }
+    .live-preview {
+      display:flex; flex-direction:column; gap:16px;
+      --swash-blue:#0078d7;
+      --swash-blue-dark:#0b63b5;
+      --bg-page:#f5f7fa;
+      --bg-card:#ffffff;
+      --text-body:#1f2933;
+      --text-muted:#64748b;
+      --border-soft:rgba(15,23,42,0.08);
+      --shadow-soft:0 12px 28px rgba(15,23,42,0.08);
+      --preview-stage-bg:#f1f5f9;
+      --preview-stage-border:rgba(15,23,42,0.08);
+      --preview-stage-shadow:0 24px 60px rgba(15,23,42,0.12);
+      --preview-card-border:rgba(15,23,42,0.06);
+      --preview-card-shadow:0 16px 40px rgba(15,23,42,0.08);
+      --preview-result-bg:rgba(0,120,215,0.08);
+      --preview-result-border:rgba(0,120,215,0.2);
+      --preview-schedule-bg:rgba(255,255,255,0.9);
+      --preview-schedule-border:rgba(15,23,42,0.1);
+      --preview-chip-bg:rgba(0,120,215,0.15);
+      --preview-chip-text:#0f172a;
+      --preview-button-text:#ffffff;
+      --preview-card-radius:16px;
+      --preview-input-radius:8px;
+    }
+    .preview-toggle-group { display:inline-flex; gap:8px; background:var(--preview-chip-bg); padding:6px; border-radius:999px; width:fit-content; }
+    .preview-toggle { border:none; padding:8px 16px; border-radius:999px; font-weight:600; font-size:0.9rem; color:var(--preview-chip-text); background:transparent; cursor:pointer; transition:background 0.2s ease, color 0.2s ease, transform 0.2s ease; }
+    .preview-toggle.is-active { background:var(--swash-blue); color:var(--preview-button-text); box-shadow:0 6px 20px rgba(15,23,42,0.18); transform:translateY(-1px); }
+    .preview-stage { border:1px solid var(--preview-stage-border); border-radius:calc(var(--preview-card-radius) + 8px); padding:24px; background:var(--preview-stage-bg); box-shadow:var(--preview-stage-shadow); min-height:480px; display:flex; justify-content:center; align-items:flex-start; transition:background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+    .preview-quote-card { width:100%; max-width:760px; margin:0 auto; display:grid; gap:20px; }
+    .preview-card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+    .preview-card-header-text { flex:1; display:flex; flex-direction:column; gap:6px; }
+    .preview-card-header-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .preview-card-header-logo { display:flex; align-items:center; justify-content:center; padding:8px 12px; border-radius:calc(var(--preview-input-radius) + 6px); background:#ffffff; box-shadow:0 10px 24px rgba(15,23,42,0.16); min-height:52px; }
+    .preview-card-header-logo img { max-height:44px; max-width:180px; width:auto; }
+    .preview-card-header-logo--placeholder { border:1px dashed var(--swash-blue); color:var(--swash-blue); font-weight:700; font-size:0.82rem; letter-spacing:0.05em; text-transform:uppercase; background:rgba(255,255,255,0.82); }
+    .preview-chip-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .preview-chip { display:inline-flex; align-items:center; gap:4px; padding:6px 12px; border-radius:999px; background:var(--preview-chip-bg); color:var(--preview-chip-text); font-weight:600; font-size:0.78rem; letter-spacing:0.02em; text-transform:uppercase; }
+    .preview-hero-thumb { border-radius:calc(var(--preview-card-radius) - 4px); overflow:hidden; box-shadow:0 12px 36px rgba(15,23,42,0.16); }
+    .preview-hero-thumb img { display:block; width:100%; height:100%; max-height:180px; object-fit:cover; }
+    .preview-form-grid { display:grid; gap:16px 18px; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); }
+    .preview-form-grid .form-section { gap:8px; color:var(--text-muted); }
+    .preview-form-grid .inline-two { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:16px; }
+    .preview-form-grid .inline-two.inline-two--mobile-2 { grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); }
+    .preview-toggle-row { display:flex; flex-wrap:wrap; gap:18px; align-items:center; margin:0; }
+    .preview-toggle-row .checkbox { margin:0; }
+    .preview-toggle-note { font-size:0.85rem; color:var(--text-muted); margin-top:6px; }
+    .preview-result-panel { background:var(--preview-result-bg); border-color:var(--preview-result-border); }
+    .preview-result-panel .result-price { font-size:1.2rem; font-weight:700; color:var(--swash-blue); }
+    .preview-result-panel .preview-note { font-size:0.9rem; color:var(--text-muted); margin:6px 0 0; }
+    .preview-result-panel .preview-minimum { font-size:0.8rem; color:var(--text-muted); margin:6px 0 0; }
+    .preview-schedule { padding:20px; border-radius:calc(var(--preview-card-radius) - 6px); background:var(--preview-schedule-bg); border:1px solid var(--preview-schedule-border); }
+    .preview-schedule h3 { margin:0 0 10px; font-size:1rem; color:var(--text-body); }
+    .preview-schedule-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:12px; }
+    .preview-schedule-card { padding:12px; border-radius:var(--preview-input-radius); background:#fff; border:1px solid var(--preview-schedule-border); box-shadow:0 6px 16px rgba(15,23,42,0.08); display:grid; gap:4px; }
+    .preview-schedule-card strong { font-size:0.95rem; color:var(--text-body); }
+    .preview-schedule-label { font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); }
+    .preview-schedule-message { margin:10px 0 0; font-size:0.85rem; color:var(--text-muted); }
+    .preview-cta-row { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:12px; }
+    .preview-cta-row .btn { min-width:180px; }
+    .preview-quantity-note { font-size:0.8rem; color:var(--text-muted); }
+    .preview-status { font-size:0.8rem; color:var(--text-muted); margin:0; }
+    .live-preview input,
+    .live-preview select,
+    .live-preview textarea { border-radius:var(--preview-input-radius); border-color:rgba(15,23,42,0.12); }
+    .live-preview .btn { border-radius:var(--preview-input-radius); }
+    .live-preview .btn-primary { color:var(--preview-button-text) !important; }
+    .live-preview .btn-primary:disabled { color:var(--preview-button-text) !important; }
+    @media (max-width: 768px) {
+      .preview-stage { padding:16px; }
+      .preview-quote-card { padding:20px; }
+      .preview-card-header { flex-direction:column; align-items:flex-start; }
+      .preview-card-header-logo { width:100%; justify-content:flex-start; }
+      .preview-cta-row { justify-content:stretch; }
+      .preview-cta-row .btn { flex:1 1 auto; }
+    }
+    .is-disabled { opacity:0.6; }
+    .color-picker-row { display:flex; gap:8px; align-items:center; }
+    .color-picker-row input[type="color"] { width:52px; height:40px; padding:0; border-radius:8px; border:1px solid #cbd5e1; }
+    .color-picker-row input[type="text"] { flex:1 1 auto; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-weight:500; font-size:0.95rem; }
+    @media (max-width: 640px) {
+      .actions-row { flex-direction: column; align-items: stretch; }
+      .actions-row button { width: 100%; }
+      .helper-step { flex-direction:column; align-items:flex-start; }
+      .helper-step button { width:100%; }
+      .preview-stage { min-height:0; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
+      <h1 style="margin:0 0 0 12px;font-size:1.2rem;">⚙️ Add Customer Settings</h1>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/subscriber-quotes.html" class="subscriber-only">📝 Quote Manager</a>
+          <a href="/subscriber-customers.html" class="subscriber-only">👥 Customer CRM</a>
+          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
+          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
+          <a href="/subscriber-add-customer-settings.html" class="subscriber-only">⚙️ Add Customer Settings</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we confirm your access.</p>
+    </div>
+  </section>
+
+  <main id="settingsContent" class="page" style="display:none;">
+
+    <section class="card">
+      <header class="card-header">
+        <div class="card-header-main section-title">
+          <div>
+            <h2>Quote Engine Configuration</h2>
+            <p>Tailor the pricing model, toggle optional extras, and brand the quote form for your territory.</p>
+          </div>
+          <span class="badge" id="updateBadge" hidden>Last saved <span data-relative-time>--</span></span>
+        </div>
+      </header>
+      <div class="card-body" style="display:flex; flex-direction:column; gap:18px;">
+        <div class="card-note">
+          <strong>Tip:</strong> Changes go live immediately for both the subscriber hub and any embedded quote forms using your workspace link.
+        </div>
+        <div id="helperGuide" class="helper-guide" hidden>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+            <div>
+              <h3>Need a hand?</h3>
+              <p style="margin:4px 0 0; font-size:0.9rem; color:rgba(248,250,252,0.88);">Use these guided steps to tune every field for your business. We'll only show this the first time you visit.</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm helper-dismiss" data-helper-dismiss>Turn helper off</button>
+          </div>
+          <div class="helper-steps">
+            <div class="helper-step">
+              <div>
+                <strong>1. Set your minimum clean price</strong>
+                <p style="margin:4px 0 0; font-size:0.85rem; color:rgba(226,232,240,0.84);">Start with the smallest home you serve. Everything else will scale from here.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" data-focus-target="minimumPrice">Go</button>
+            </div>
+            <div class="helper-step">
+              <div>
+                <strong>2. Review the price grid</strong>
+                <p style="margin:4px 0 0; font-size:0.85rem; color:rgba(226,232,240,0.84);">Make sure the suggested prices match the effort for each property size.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" data-focus-target="sizePricingTable">Go</button>
+            </div>
+            <div class="helper-step">
+              <div>
+                <strong>3. Fine tune extras</strong>
+                <p style="margin:4px 0 0; font-size:0.85rem; color:rgba(226,232,240,0.84);">Adjust extension, conservatory, lantern, and skylight add-ons.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" data-focus-target="pricingExtrasStart">Go</button>
+            </div>
+            <div class="helper-step">
+              <div>
+                <strong>4. Brand the experience</strong>
+                <p style="margin:4px 0 0; font-size:0.85rem; color:rgba(226,232,240,0.84);">Drop in your colours, logo, and button labels so everything feels on-brand.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" data-focus-target="styling.primaryColor">Go</button>
+            </div>
+          </div>
+        </div>
+        <div class="actions-row">
+          <button type="button" class="btn btn-primary" id="saveBtn">Save changes</button>
+          <button type="button" class="btn btn-secondary" id="resetBtn">Restore defaults</button>
+          <button type="button" class="btn btn-secondary" id="copyWebsiteSnippetBtn">Copy website embed</button>
+          <button type="button" class="btn btn-secondary" id="copyInternalSnippetBtn">Copy internal embed</button>
+          <span class="status-line" id="saveStatus"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main section-title">
+          <div>
+            <h2>Service tiers</h2>
+            <p>Rename tiers and adjust what is included in each option.</p>
+          </div>
+        </div>
+      </header>
+      <div class="card-body settings-grid" id="tierSettings">
+        <label>
+          <span>Primary tier name</span>
+          <input id="tierPrimaryName" data-setting-path="tiers.silver.label" placeholder="Silver" />
+        </label>
+        <label>
+          <span>Primary tier description</span>
+          <textarea id="tierPrimaryDescription" data-setting-path="tiers.silver.description" rows="3" placeholder="Windows only, every 4 weeks."></textarea>
+          <span class="field-hint">Outline what the essential plan covers so customers know the baseline service.</span>
+        </label>
+        <label>
+          <span>Premium tier name</span>
+          <input id="tierPremiumName" data-setting-path="tiers.gold.label" placeholder="Gold" />
+        </label>
+        <label>
+          <span>Premium tier description</span>
+          <textarea id="tierPremiumDescription" data-setting-path="tiers.gold.description" rows="3" placeholder="Frames, sills and reminders included."></textarea>
+          <span class="field-hint">Highlight the extras your premium plan includes over the standard service.</span>
+        </label>
+        <label>
+          <span>Premium price multiplier</span>
+          <input type="number" step="0.01" min="1" id="tierPremiumMultiplier" data-setting-path="tiers.gold.multiplier" />
+          <span class="field-hint">This multiplies each property size price to reach the premium total.</span>
+        </label>
+        <label>
+          <span>Special offer label</span>
+          <input id="tierOfferLabel" data-setting-path="tiers.offerLabel" placeholder="Gold upgrade included" />
+          <span class="field-hint">Shown on the quote form button when the upgrade banner is enabled.</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main section-title">
+          <div>
+            <h2>Price baselines</h2>
+            <p>Set the starting price for each property size and minimum clean value.</p>
+          </div>
+        </div>
+      </header>
+      <div class="card-body" style="display:flex; flex-direction:column; gap:16px;">
+        <div class="settings-grid">
+          <label>
+            <span>Minimum clean price</span>
+            <div class="compound-field">
+              <input type="number" step="0.01" min="0" id="minimumPrice" data-setting-path="pricing.minimum" />
+              <button type="button" id="suggestPricingBtn" class="btn btn-secondary btn-sm">Suggested</button>
+            </div>
+            <span class="field-hint">This is the floor price for any clean. Suggested updates scale from here and now support lower than £12.</span>
+          </label>
+          <label>
+            <span>VAT included?</span>
+            <select id="vatIncluded" data-setting-path="pricing.vatIncluded">
+              <option value="true">Yes - show VAT inclusive prices</option>
+              <option value="false">No - prices are before VAT</option>
+            </select>
+            <span class="field-hint">Choose how totals appear on both the customer form and rep screens.</span>
+          </label>
+        </div>
+        <div>
+          <table class="mini-table" id="sizePricingTable" tabindex="-1">
+            <thead>
+              <tr>
+                <th>Property size</th>
+                <th>Base price (£)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2 bed</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="pricing.baseBySize.2 bed" /></td>
+              </tr>
+              <tr>
+                <td>3 bed</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="pricing.baseBySize.3 bed" /></td>
+              </tr>
+              <tr>
+                <td>4 bed</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="pricing.baseBySize.4 bed" /></td>
+              </tr>
+              <tr>
+                <td>5 bed</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="pricing.baseBySize.5 bed" /></td>
+              </tr>
+              <tr>
+                <td>6 bed</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="pricing.baseBySize.6 bed" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="settings-grid">
+          <label id="pricingExtrasStart">
+            <span>Extension add-on (£)</span>
+            <input type="number" step="0.01" min="0" data-setting-path="pricing.extensionAdd" />
+            <span class="field-hint">Added when the customer selects an extension or wrap-around.</span>
+          </label>
+          <label>
+            <span>Conservatory add-on (£)</span>
+            <input type="number" step="0.01" min="0" data-setting-path="pricing.conservatoryAdd" />
+            <span class="field-hint">Use for glass rooms or heavy conservatory cleans.</span>
+          </label>
+          <label>
+            <span>Roof lantern add-on (each, £)</span>
+            <input type="number" step="0.01" min="0" data-setting-path="pricing.roofLanternEach" />
+            <span class="field-hint">Applied per lantern. Customers can choose the quantity in the quote flow.</span>
+          </label>
+          <label>
+            <span>Skylight add-on (each, £)</span>
+            <input type="number" step="0.01" min="0" data-setting-path="pricing.skylightEach" />
+            <span class="field-hint">Use for smaller roof windows that still need attention.</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main section-title">
+          <div>
+            <h2>Property modifiers</h2>
+            <p>Adjust multipliers and behaviour for special cases.</p>
+          </div>
+        </div>
+      </header>
+      <div class="card-body" style="display:flex; flex-direction:column; gap:16px;">
+        <div style="overflow-x:auto;">
+          <table class="mini-table" id="houseTypeTable">
+            <thead>
+              <tr>
+                <th>House type</th>
+                <th>Multiplier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Bungalow</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="houseTypeMultipliers.Bungalow" /></td>
+              </tr>
+              <tr>
+                <td>Maisonette</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="houseTypeMultipliers.Maisonette" /></td>
+              </tr>
+              <tr>
+                <td>Terrace</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="houseTypeMultipliers.Terrace" /></td>
+              </tr>
+              <tr>
+                <td>Semi-Detached</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="houseTypeMultipliers.Semi-Detached" /></td>
+              </tr>
+              <tr>
+                <td>Detached</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="houseTypeMultipliers.Detached" /></td>
+              </tr>
+              <tr>
+                <td>Mobile Home</td>
+                <td><input type="number" step="0.01" min="0" data-setting-path="houseTypeMultipliers.Mobile Home" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="settings-grid">
+          <label>
+            <span>Alternating factor</span>
+            <input type="number" step="0.01" min="0" max="1" data-setting-path="pricing.alternatingFactor" />
+            <span class="field-hint">Multiplier applied when a customer chooses alternating interior/exterior cleans.</span>
+          </label>
+          <label>
+            <span>Front-only factor</span>
+            <input type="number" step="0.01" min="0" max="1" data-setting-path="pricing.frontOnlyFactor" />
+            <span class="field-hint">Reduces the total when only the front of the property is required.</span>
+          </label>
+          <label>
+            <span>Cleaning frequency options</span>
+            <textarea id="frequencyOptionsInput" rows="3" placeholder="Every 4 weeks&#10;Every 8 weeks"></textarea>
+            <span class="field-hint">Enter one option per line. The first value becomes the default shown to customers.</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" data-setting-path="toggles.enableAlternating" />
+            <div>
+              <span>Allow alternating clean option</span>
+              <span class="field-hint">Lets customers alternate front/back windows across visits and applies the factor above automatically.</span>
+            </div>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" data-setting-path="toggles.enableFrontOnly" />
+            <div>
+              <span>Allow front-only pricing</span>
+              <span class="field-hint">Enables a front-only toggle for customers in smaller properties.</span>
+            </div>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" data-setting-path="toggles.showOfferButton" />
+            <div>
+              <span>Show gold upgrade offer button</span>
+              <span class="field-hint">Displays the offer CTA showcasing your premium upgrade label.</span>
+            </div>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" data-setting-path="toggles.showNotesField" />
+            <div>
+              <span>Show notes field by default</span>
+              <span class="field-hint">Helps reps capture access instructions while quoting.</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main section-title">
+          <div>
+            <h2>Branding &amp; styling</h2>
+            <p>Update colours, logo, and action copy to match your brand.</p>
+          </div>
+        </div>
+      </header>
+      <div class="card-body settings-grid">
+        <label>
+          <span>Primary colour</span>
+          <div class="color-picker-row">
+            <input type="color" data-setting-path="styling.primaryColor" aria-label="Primary colour picker" />
+            <input type="text" data-setting-path="styling.primaryColor" placeholder="#0078d7" pattern="^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})$" title="Enter a hex colour such as #0ea5e9" />
+          </div>
+          <span class="field-hint">Pick a colour or paste the exact hex code your brand uses.</span>
+        </label>
+        <label>
+          <span>Accent colour</span>
+          <div class="color-picker-row">
+            <input type="color" data-setting-path="styling.accentColor" aria-label="Accent colour picker" />
+            <input type="text" data-setting-path="styling.accentColor" placeholder="#0ea5e9" pattern="^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})$" title="Enter a hex colour such as #0ea5e9" />
+          </div>
+          <span class="field-hint">Accent applies to buttons and highlights.</span>
+        </label>
+        <label>
+          <span>Background colour</span>
+          <div class="color-picker-row">
+            <input type="color" data-setting-path="styling.backgroundColor" aria-label="Background colour picker" />
+            <input type="text" data-setting-path="styling.backgroundColor" placeholder="#ffffff" pattern="^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})$" title="Enter a hex colour such as #ffffff" />
+          </div>
+          <span class="field-hint">Controls the quote card background colour.</span>
+        </label>
+        <label>
+          <span>Button text colour</span>
+          <div class="color-picker-row">
+            <input type="color" data-setting-path="styling.buttonTextColor" aria-label="Button text colour picker" />
+            <input type="text" data-setting-path="styling.buttonTextColor" placeholder="#ffffff" pattern="^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})$" title="Enter a hex colour such as #ffffff" />
+          </div>
+          <span class="field-hint">Used for text on CTA buttons.</span>
+        </label>
+        <label>
+          <span>Logo URL</span>
+          <input type="url" placeholder="https://..." data-setting-path="styling.logoUrl" />
+        </label>
+        <label>
+          <span>Hero image URL</span>
+          <input type="url" placeholder="https://..." data-setting-path="styling.heroImageUrl" />
+        </label>
+        <label>
+          <span>Button style</span>
+          <select data-setting-path="styling.cornerStyle">
+            <option value="rounded">Rounded</option>
+            <option value="pill">Pill</option>
+            <option value="square">Square</option>
+          </select>
+        </label>
+        <label>
+          <span>Headline</span>
+          <input data-setting-path="previewCopy.heading" placeholder="Get your instant quote" />
+        </label>
+        <label>
+          <span>Subheading</span>
+          <textarea rows="3" data-setting-path="previewCopy.subheading" placeholder="Book a clean in minutes."></textarea>
+        </label>
+        <label>
+          <span>Button label</span>
+          <input data-setting-path="previewCopy.buttonLabel" placeholder="Start quote" />
+        </label>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main section-title">
+          <div>
+            <h2>Previews &amp; embed snippets</h2>
+            <p>Use these previews to see how the quote form will render internally and on your website.</p>
+          </div>
+        </div>
+      </header>
+      <div class="card-body" style="display:flex; flex-direction:column; gap:18px;">
+        <div class="live-preview">
+          <div>
+            <div class="preview-toggle-group" id="previewToggleGroup">
+              <button type="button" class="preview-toggle is-active" data-preview-mode="customer">Customer view</button>
+              <button type="button" class="preview-toggle" data-preview-mode="team">Team view</button>
+            </div>
+          </div>
+          <div class="preview-stage" id="interactivePreviewStage">
+            <div id="interactivePreviewBody"></div>
+          </div>
+        </div>
+        <div class="preview-wrap">
+          <div class="preview-card" id="websitePreview">
+            <h4>Website embed preview</h4>
+            <p>Preview loads after settings initialise.</p>
+          </div>
+          <div class="preview-card" id="internalPreview">
+            <h4>Internal rep preview</h4>
+            <p>Preview loads after settings initialise.</p>
+          </div>
+        </div>
+        <div class="settings-grid">
+          <label>
+            <span>Website embed code</span>
+            <textarea id="websiteSnippet" readonly></textarea>
+          </label>
+          <label>
+            <span>Internal embed code</span>
+            <textarea id="internalSnippet" readonly></textarea>
+          </label>
+        </div>
+      </div>
+    </section>
+
+  </main>
+  <script type="module" src="./nav.js"></script>
+  <script type="module" src="./subscriber-add-customer-settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Rep Tracking - Swash Subscriber</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <style>
+    body { background:#f8fafc; }
+    .admin-only, .rep-only, .admin-rep { display:none !important; }
+    .subscriber-only { display:block !important; }
+    .tracking-layout { display:grid; grid-template-columns: min(360px, 100%) 1fr; gap:20px; margin-top:20px; }
+    .panel { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:18px; box-shadow:0 10px 30px rgba(15,23,42,0.06); }
+    .panel + .panel { margin-top:16px; }
+    .filters-grid { display:flex; flex-direction:column; gap:12px; }
+    .filters-grid label { display:flex; flex-direction:column; font-weight:600; color:#0f172a; font-size:0.9rem; }
+    .filters-grid select,
+    .filters-grid input { margin-top:6px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:10px; font-size:0.95rem; }
+    .filters-actions { display:flex; gap:10px; flex-wrap:wrap; }
+    #subscriberMap { width:100%; height:72vh; min-height:460px; border-radius:18px; overflow:hidden; }
+    .map-wrapper { position:relative; }
+    .map-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(15,23,42,0.5); color:#fff; font-size:1.2rem; font-weight:600; letter-spacing:0.2px; border-radius:18px; text-align:center; padding:30px; }
+    .map-overlay.hidden { display:none; }
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-top:12px; }
+    .stat-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:4px; }
+    .stat-card .label { color:#64748b; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.04em; }
+    .stat-card .value { font-size:1.65rem; font-weight:700; color:#0f172a; }
+    .stat-card .sub { color:#94a3b8; font-size:0.85rem; }
+    .recent-list { display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+    .recent-item { border:1px solid #e2e8f0; border-radius:12px; padding:14px; background:#fff; display:grid; grid-template-columns:1fr auto; gap:10px; cursor:pointer; transition:background 0.15s ease; }
+    .recent-item:hover { background:#f8fbff; }
+    .recent-item strong { font-size:1rem; color:#0f172a; }
+    .recent-item span { font-size:0.9rem; color:#475569; }
+    .recent-empty { text-align:center; color:#94a3b8; padding:32px 16px; border:1px dashed #cbd5e1; border-radius:12px; }
+    dialog::backdrop { background:rgba(15,23,42,0.55); }
+    #shiftSummaryModal { border:none; border-radius:18px; padding:0; width:min(560px, 92vw); }
+    #shiftSummaryModal .modal-content { padding:24px; background:#fff; border-radius:18px; display:flex; flex-direction:column; gap:18px; }
+    #shiftSummaryModal table { width:100%; border-collapse:collapse; }
+    #shiftSummaryModal td { padding:6px 0; border-bottom:1px solid #e2e8f0; font-size:0.9rem; }
+    #shiftSummaryModal td:first-child { font-weight:600; color:#0f172a; width:52%; }
+    #shiftSummaryModal ul { margin:0; padding-left:18px; color:#475569; }
+    .logs-list { max-height:220px; overflow:auto; border:1px solid #e2e8f0; border-radius:12px; padding:10px; }
+    .logs-list li { margin-bottom:6px; color:#475569; font-size:0.9rem; }
+    .badge { display:inline-flex; align-items:center; justify-content:center; padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:600; }
+    .badge-online { background:#dcfce7; color:#166534; }
+    .indicator { margin-left:12px; font-size:0.85rem; color:#0f172a; font-weight:600; background:#e0f2fe; border-radius:999px; padding:6px 12px; }
+    @media (max-width: 1080px) {
+      .tracking-layout { grid-template-columns:1fr; }
+      #subscriberMap { height:60vh; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
+      <span id="companyNameDisplay" class="indicator" style="display:none;"></span>
+      <span id="statusIndicator" class="indicator" style="background:#dcfce7;color:#166534;display:none;">No reps live</span>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts &amp; Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
+          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
+          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
+          <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
+          <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
+          <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
+          <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
+          <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
+          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
+          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
+          <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we load your workspace.</p>
+    </div>
+  </section>
+
+  <main id="trackingContent" class="page" style="display:none;">
+    <section class="card">
+      <header class="card-header" style="border-bottom:none;padding-bottom:0;">
+        <div>
+          <h1 style="margin:0;font-size:1.75rem;">🛰️ Rep Tracking</h1>
+          <p class="text-muted" style="margin-top:6px;">Monitor live reps, analyse door activity, and review shift performance.</p>
+        </div>
+      </header>
+
+      <div class="tracking-layout">
+        <aside class="tracking-sidebar" style="display:flex;flex-direction:column;gap:18px;">
+          <div class="panel">
+            <h3 style="margin:0 0 14px 0;">Filters</h3>
+            <div class="filters-grid">
+              <label for="filterRep">Rep</label>
+              <select id="filterRep">
+                <option value="all">All reps</option>
+              </select>
+              <label for="quickDateRange">Date Range</label>
+              <select id="quickDateRange">
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="last7">Last 7 days</option>
+                <option value="last30">Last 30 days</option>
+                <option value="custom">Custom…</option>
+              </select>
+              <div style="display:flex;gap:10px;">
+                <label style="flex:1;">
+                  Start
+                  <input id="filterDateStart" type="date" />
+                </label>
+                <label style="flex:1;">
+                  End
+                  <input id="filterDateEnd" type="date" />
+                </label>
+              </div>
+            </div>
+            <div class="filters-actions" style="margin-top:14px;">
+              <button id="applyFilters" class="btn btn-primary" type="button">Apply</button>
+              <button id="exportCsv" class="btn btn-secondary" type="button">Export CSV</button>
+            </div>
+            <p id="filtersHint" class="text-muted" style="margin-top:12px;font-size:0.8rem;">Tip: pick a rep to focus the stats and map markers.</p>
+          </div>
+
+          <div class="panel">
+            <h3 style="margin:0 0 10px 0;">Stats</h3>
+            <div class="stat-grid">
+              <div class="stat-card"><span class="label">Doors</span><span id="statDoors" class="value">0</span></div>
+              <div class="stat-card"><span class="label">X</span><span id="statX" class="value">0</span></div>
+              <div class="stat-card"><span class="label">O</span><span id="statO" class="value">0</span></div>
+              <div class="stat-card"><span class="label">Sales</span><span id="statSales" class="value">0</span></div>
+              <div class="stat-card"><span class="label">Conversion</span><span id="statConversion" class="value">0%</span></div>
+              <div class="stat-card"><span class="label">Miles</span><span id="statMiles" class="value">0.0</span></div>
+              <div class="stat-card"><span class="label">Doors / Hour</span><span id="statDph" class="value">0.0</span></div>
+            </div>
+          </div>
+
+          <div class="panel" style="flex:1;display:flex;flex-direction:column;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <h3 style="margin:0;">Shift History</h3>
+              <button id="refreshHistory" class="btn btn-secondary" type="button" style="padding:6px 12px;font-size:0.8rem;">Refresh</button>
+            </div>
+            <div id="shiftHistory" class="recent-list" style="flex:1;margin-top:12px;"></div>
+          </div>
+        </aside>
+
+        <div class="panel" style="position:relative;">
+          <div class="map-wrapper">
+            <div id="subscriberMap"></div>
+            <div id="mapOverlay" class="map-overlay hidden">No live reps or doors in the selected range yet.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="shiftSummaryModal">
+    <div class="modal-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h3 style="margin:0;">Shift Summary</h3>
+        <button id="closeShiftSummary" class="btn btn-secondary" type="button">Close</button>
+      </div>
+      <div id="shiftSummaryBody">Loading…</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button id="highlightShiftBtn" class="btn btn-primary" type="button">Show route on map</button>
+        <button id="downloadShiftBtn" class="btn btn-secondary" type="button">Download logs</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script type="module" src="./subscriber-tracking.js"></script>
+</body>
+</html>

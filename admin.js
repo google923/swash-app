@@ -7,7 +7,9 @@
 import { app, auth, db } from "./firebase-init.js";
 import { authStateReady, handlePageRouting } from "./auth-check.js";
 import { logOutboundEmailToFirestore } from "./lib/firestore-utils.js";
-import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getDocs, addDoc, updateDoc, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { tenantCollection, tenantDoc } from "./lib/subscriber-paths.js";
+import { ensureSubscriberAccess } from "./lib/subscriber-access.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 const EMAIL_SERVICE = window.EMAIL_SERVICE_ID ?? "service_cdy739m";
 const EMAIL_TEMPLATE = window.EMAIL_TEMPLATE_ID ?? "template_d8tlf1p";
@@ -22,6 +24,38 @@ const CLEANER_LABEL_OVERRIDES = {
   "Cleaner 1": "Chris",
 };
 
+const CLEANER_SYNC_CHANNEL_NAME = "swash-cleaners-sync";
+const cleanerSyncChannel =
+  typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(CLEANER_SYNC_CHANNEL_NAME) : null;
+
+const ALL_CYCLE_WEEKS = [1, 2, 3, 4];
+const CLEANER_WEEKDAY_META = [
+  { key: "monday", label: "Monday", dayIndex: 1 },
+  { key: "tuesday", label: "Tuesday", dayIndex: 2 },
+  { key: "wednesday", label: "Wednesday", dayIndex: 3 },
+  { key: "thursday", label: "Thursday", dayIndex: 4 },
+  { key: "friday", label: "Friday", dayIndex: 5 },
+  { key: "saturday", label: "Saturday", dayIndex: 6 },
+  { key: "sunday", label: "Sunday", dayIndex: 0 },
+];
+
+const DAY_KEY_BY_INDEX = {
+  0: "sunday",
+  1: "monday",
+  2: "tuesday",
+  3: "wednesday",
+  4: "thursday",
+  5: "friday",
+  6: "saturday",
+};
+
+const DAY_LABEL_BY_KEY = CLEANER_WEEKDAY_META.reduce((acc, meta) => {
+  acc[meta.key] = meta.label;
+  return acc;
+}, {});
+
+const SCHEDULE_BASELINE_START_DATE = "2025-11-03";
+
 function getCleanerLabel(value) {
   if (!value) return value;
   return CLEANER_LABEL_OVERRIDES[value] || value;
@@ -31,6 +65,28 @@ const syncChannel =
   typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("swash-quotes-sync") : null;
 let syncReloadInProgress = false;
 const SYNC_SOURCE = "admin";
+
+const tenancy = {
+  role: null,
+  subscriberId: null,
+  subscriberProfile: null,
+};
+
+function getQuotesCollection() {
+  return tenantCollection(db, tenancy.subscriberId, "quotes");
+}
+
+function getQuoteDoc(id) {
+  return tenantDoc(db, tenancy.subscriberId, "quotes", id);
+}
+
+function getCleanersCollection() {
+  return tenantCollection(db, tenancy.subscriberId, "cleaners");
+}
+
+function usingSubscriberScope() {
+  return Boolean(tenancy.subscriberId);
+}
 
 function notifyQuotesUpdated(source = SYNC_SOURCE) {
   if (!syncChannel) return;
@@ -45,14 +101,98 @@ function notifyQuotesUpdated(source = SYNC_SOURCE) {
   }
 }
 
+async function resolveTenancyContext(user, role) {
+  tenancy.role = role || null;
+  tenancy.subscriberId = null;
+  tenancy.subscriberProfile = null;
+
+  if (!user) {
+    return true;
+  }
+
+  if (role === "subscriber") {
+    const access = await ensureSubscriberAccess(user);
+    tenancy.subscriberId = access.subscriberId;
+    tenancy.subscriberProfile = access.subscriberProfile;
+
+    if (
+      access.viewerRole === "subscriber" &&
+      access.subscriberProfile &&
+      access.subscriberProfile.billingCompleted === false
+    ) {
+          status,
+      window.location.href = "./subscriber-billing.html";
+      return false;
+      .filter((profile) => profile && (profile.status === "active" || !usingSubscriberScope()));
+
+    console.log(`[Admin] Subscriber scope initialised for ${tenancy.subscriberId}`);
+    resolvedNames = usingSubscriberScope()
+      ? uniqueCleanerList(names)
+      : uniqueCleanerList([...CLEANER_OPTIONS, ...names]);
+  }
+
+  if (role === "admin") {
+    const params = new URLSearchParams(window.location.search || "");
+    const fallback = usingSubscriberScope()
+      ? uniqueCleanerList(quoteCleaners)
+      : uniqueCleanerList([...CLEANER_OPTIONS, ...quoteCleaners]);
+      params.get("subscriberId") || params.get("uid") || params.get("tenant") || "";
+    if (requested) {
+      tenancy.subscriberId = requested;
+      console.log(`[Admin] Overriding scope to subscriber ${tenancy.subscriberId}`);
+    } else {
+      console.log("[Admin] Using global quote scope");
+    }
+    return true;
+  }
+
+  return true;
+}
+
 function resolveCleanerUpdate(selection) {
-  if (selection === undefined || selection === null || selection === "" || selection === CLEANER_ALL) {
+  if (
+    selection === undefined ||
+    selection === null ||
+    selection === "" ||
+    selection === CLEANER_ALL
+  ) {
     return { shouldUpdate: false };
   }
   if (selection === CLEANER_UNASSIGNED) {
-    return { shouldUpdate: true, value: null };
+    return {
+      shouldUpdate: true,
+      updates: {
+        assignedCleaner: null,
+        assignedCleanerName: null,
+        assignedCleanerId: null,
+      },
+      label: "Unassigned",
+    };
   }
-  return { shouldUpdate: true, value: selection };
+  if (usingSubscriberScope()) {
+    const profile = state.cleanerProfilesById.get(selection);
+    if (!profile) {
+      return { shouldUpdate: false };
+    }
+    const label = resolveCleanerLabel(profile, profile.label);
+    return {
+      shouldUpdate: true,
+      updates: {
+        assignedCleaner: label,
+        assignedCleanerName: label,
+        assignedCleanerId: profile.id,
+      },
+      label,
+    };
+  }
+  const label = getCleanerLabel(selection);
+  return {
+    shouldUpdate: true,
+    updates: {
+      assignedCleaner: label,
+    },
+    label,
+  };
 }
 
 function deriveCleanerPrefill(quotes = []) {
@@ -70,6 +210,109 @@ function deriveCleanerPrefill(quotes = []) {
 function getCleanerDisplay(value) {
   if (!value) return "Unassigned";
   return getCleanerLabel(value);
+}
+
+
+function normaliseWeeksEntry(value) {
+  if (value == null) return null;
+  if (value === true) return [...ALL_CYCLE_WEEKS];
+  if (value === false) return [];
+  if (Array.isArray(value)) {
+    const unique = Array.from(
+      new Set(
+        value
+          .map((item) => Number(item))
+          .filter((week) => Number.isInteger(week) && week >= 1 && week <= 4),
+      ),
+    );
+    return unique.length ? unique.sort((a, b) => a - b) : [];
+  }
+  if (typeof value === "object") {
+    const weeks = [];
+    Object.entries(value).forEach(([key, flag]) => {
+      if (!flag) return;
+      const match = key.toString().match(/week(\d)/i);
+      if (!match) return;
+      const week = Number(match[1]);
+      if (Number.isInteger(week) && week >= 1 && week <= 4) {
+        weeks.push(week);
+      }
+    });
+    return weeks.length ? Array.from(new Set(weeks)).sort((a, b) => a - b) : [];
+  }
+  if (typeof value === "string") {
+    const text = value.trim().toLowerCase();
+    if (!text) return null;
+    if (text === "all" || text === "any" || text === "every") {
+      return [...ALL_CYCLE_WEEKS];
+    }
+    const weeks = text
+      .split(/[^0-9]+/g)
+      .map((token) => Number(token))
+      .filter((week) => Number.isInteger(week) && week >= 1 && week <= 4);
+    return weeks.length ? Array.from(new Set(weeks)).sort((a, b) => a - b) : [];
+  }
+  return null;
+}
+
+function normaliseCleanerAvailabilityFromDoc(data = {}) {
+  const availability = {};
+  const rawAvailability = data && typeof data.availability === "object" ? data.availability : {};
+  const daysOff = Array.isArray(data?.daysOff)
+    ? data.daysOff
+        .map((day) => (typeof day === "string" ? day.trim().toLowerCase() : ""))
+        .filter(Boolean)
+    : [];
+
+  CLEANER_WEEKDAY_META.forEach(({ key }) => {
+    if (daysOff.includes(key)) {
+      availability[key] = [];
+      return;
+    }
+    const entry = normaliseWeeksEntry(rawAvailability[key]);
+    availability[key] = entry === null ? null : entry;
+  });
+
+  return availability;
+}
+
+function getDayLabelFromKey(key) {
+  if (!key) return "";
+  return DAY_LABEL_BY_KEY[key] || key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+function normaliseToWeekStart(date) {
+  const base = new Date(date);
+  if (Number.isNaN(base.getTime())) return null;
+  const day = base.getDay();
+  const diff = (day + 6) % 7;
+  base.setDate(base.getDate() - diff);
+  base.setHours(0, 0, 0, 0);
+  return base;
+}
+
+function getCycleWeekNumberForDate(date) {
+  const weekStart = normaliseToWeekStart(date);
+  if (!weekStart) return 1;
+  const baseline = new Date(`${SCHEDULE_BASELINE_START_DATE}T00:00:00`);
+  baseline.setHours(0, 0, 0, 0);
+  const diffWeeks = Math.floor((weekStart - baseline) / (7 * 24 * 60 * 60 * 1000));
+  const mod = ((diffWeeks % 4) + 4) % 4;
+  return mod + 1;
+}
+
+function getDayKeyFromDate(date) {
+  const dayIndex = date.getDay();
+  return DAY_KEY_BY_INDEX[dayIndex] || "monday";
+}
+
+function isCleanerAvailableOnDay(profile, dayKey, cycleWeek) {
+  if (!profile || !dayKey) return true;
+  const entry = profile.availability?.[dayKey];
+  if (entry == null) return true;
+  if (!Array.isArray(entry)) return true;
+  if (!entry.length) return false;
+  return entry.includes(cycleWeek);
 }
 
 
@@ -199,6 +442,9 @@ const state = {
   scheduleCleaner: "",
   emailCleaner: "",
   cleaners: [],
+  cleanerProfiles: [],
+  cleanerProfilesByName: new Map(),
+  cleanerProfilesById: new Map(),
 };
 
 let adminAppInitialised = false;
@@ -241,14 +487,32 @@ function populateCleanerSelect(target, options = {}) {
     defaultValue = "",
   } = options;
 
-  const cleaners = state.cleaners.length ? state.cleaners : CLEANER_OPTIONS;
-  const uniqueCleaners = uniqueCleanerList(cleaners);
+  const subscriberScope = usingSubscriberScope();
   const currentValue = selectedValue !== undefined ? selectedValue : target.value;
+
+  const entries = [];
+  if (subscriberScope) {
+    state.cleanerProfiles
+      .filter((profile) => profile && profile.id)
+      .forEach((profile) => {
+        entries.push({ value: profile.id, label: resolveCleanerLabel(profile, profile.label) });
+      });
+  } else {
+    const cleaners = state.cleaners.length ? state.cleaners : CLEANER_OPTIONS;
+    const uniqueCleaners = uniqueCleanerList(cleaners);
+    uniqueCleaners.forEach((label) => {
+      entries.push({ value: label, label: getCleanerLabel(label) });
+    });
+  }
 
   const createOption = (value, label) => {
     const option = document.createElement("option");
     option.value = value;
     option.textContent = label;
+    option.dataset.cleanerLabel = label;
+    if (subscriberScope && value) {
+      option.dataset.cleanerId = value;
+    }
     return option;
   };
 
@@ -259,10 +523,11 @@ function populateCleanerSelect(target, options = {}) {
   if (includeAll) {
     fragment.appendChild(createOption(CLEANER_ALL, "All cleaners"));
   }
-  uniqueCleaners.forEach((label) => {
-    fragment.appendChild(createOption(label, getCleanerLabel(label)));
+  entries.forEach((entry) => {
+    fragment.appendChild(createOption(entry.value, entry.label));
   });
-  if (includeUnassigned && !uniqueCleaners.includes(CLEANER_UNASSIGNED)) {
+  const hasUnassignedOption = entries.some((entry) => entry.value === CLEANER_UNASSIGNED);
+  if (includeUnassigned && !hasUnassignedOption) {
     fragment.appendChild(createOption(CLEANER_UNASSIGNED, "Unassigned"));
   }
 
@@ -277,21 +542,121 @@ function populateCleanerSelect(target, options = {}) {
   }
 }
 
-export async function populateAllCleanerSelects() {
-  try {
-    const snap = await getDocs(collection(db, "cleaners"));
-    const cleanersFromDb = snap.docs.map((docSnap) => {
-      const data = docSnap.data() || {};
-      return resolveCleanerLabel(data, docSnap.id);
+function applyCleanerAvailabilityConstraints() {
+  const select = elements.scheduleCleaner;
+  if (!select) return;
+
+  const options = Array.from(select.options || []);
+  if (!options.length) return;
+
+  const dateValue = elements.scheduleDate?.value?.trim();
+  if (!dateValue) {
+    options.forEach((option) => {
+      option.disabled = false;
+      option.removeAttribute("data-unavailable");
+      option.title = "";
     });
-    const resolved = uniqueCleanerList(cleanersFromDb.length ? cleanersFromDb : CLEANER_OPTIONS);
-    state.cleaners = resolved.length ? resolved : [...CLEANER_OPTIONS];
+    return;
+  }
+
+  const date = new Date(`${dateValue}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    options.forEach((option) => {
+      option.disabled = false;
+      option.removeAttribute("data-unavailable");
+      option.title = "";
+    });
+    return;
+  }
+
+  const dayKey = getDayKeyFromDate(date);
+  const dayLabel = getDayLabelFromKey(dayKey);
+  const cycleWeek = getCycleWeekNumberForDate(date);
+  const subscriberScope = usingSubscriberScope();
+
+  options.forEach((option) => {
+    const value = option.value;
+    if (!value || value === CLEANER_ALL || value === CLEANER_UNASSIGNED) {
+      option.disabled = false;
+      option.removeAttribute("data-unavailable");
+      option.title = "";
+      return;
+    }
+
+    const subscriberScope = usingSubscriberScope();
+    const profile = subscriberScope
+      ? state.cleanerProfilesById.get(value)
+      : state.cleanerProfilesByName.get(value);
+    const available = isCleanerAvailableOnDay(profile, dayKey, cycleWeek);
+
+    option.disabled = !available;
+    option.dataset.unavailable = available ? "false" : "true";
+    option.title = available ? "" : `Not available on ${dayLabel} (week ${cycleWeek})`;
+
+    if (!available && select.value === value) {
+      select.value = "";
+      state.scheduleCleaner = "";
+    }
+  });
+
+  if (!select.value) {
+    state.scheduleCleaner = "";
+  }
+}
+
+export async function populateAllCleanerSelects() {
+  let profiles = [];
+  let resolvedNames = null;
+
+  try {
+    const cleanersRef = getCleanersCollection();
+    const snap = await getDocs(cleanersRef);
+    const subscriberScope = usingSubscriberScope();
+    profiles = snap.docs
+      .map((docSnap) => {
+        const data = docSnap.data() || {};
+        const label = resolveCleanerLabel(data, docSnap.id);
+        if (!label) return null;
+        const status = (data.status || "active").toLowerCase();
+        return {
+          id: docSnap.id,
+          label,
+          availability: normaliseCleanerAvailabilityFromDoc(data),
+          email: data.email || data.contactEmail || "",
+          phone: data.phone || data.mobile || "",
+          status,
+        };
+      })
+      .filter((profile) => {
+        if (!profile) return false;
+        if (!subscriberScope) return true;
+        return profile.status === "active";
+      });
+
+    const names = profiles.map((profile) => profile.label);
+    const quoteNames = state.quotes
+      .map((quote) => resolveCleanerLabel(quote?.assignedCleaner || "", ""))
+      .filter(Boolean);
+    resolvedNames = subscriberScope
+      ? uniqueCleanerList(names)
+      : uniqueCleanerList([...CLEANER_OPTIONS, ...names, ...quoteNames]);
   } catch (error) {
     const quoteCleaners = state.quotes
       .map((quote) => resolveCleanerLabel(quote?.assignedCleaner || "", ""))
       .filter(Boolean);
-    const fallback = uniqueCleanerList([...CLEANER_OPTIONS, ...quoteCleaners]);
-    state.cleaners = fallback.length ? fallback : [...CLEANER_OPTIONS];
+    const subscriberScope = usingSubscriberScope();
+    const fallback = subscriberScope
+      ? uniqueCleanerList(quoteCleaners)
+      : uniqueCleanerList([...CLEANER_OPTIONS, ...quoteCleaners]);
+    resolvedNames = fallback.length
+      ? fallback
+      : subscriberScope
+        ? []
+        : [...CLEANER_OPTIONS];
+    profiles = [];
+    state.cleanerProfiles = [];
+    state.cleanerProfilesByName = new Map();
+    state.cleanerProfilesById = new Map();
     if (error?.code === "permission-denied") {
       console.warn(
         "[Admin] Cleaners collection requires read access. Using inferred cleaner list from quotes instead.",
@@ -303,6 +668,29 @@ export async function populateAllCleanerSelects() {
     } else {
       console.error("[Admin] Failed to load cleaners list, falling back to defaults", error);
     }
+  }
+
+  state.cleanerProfiles = profiles;
+  state.cleanerProfilesByName = new Map();
+  state.cleanerProfilesById = new Map();
+  profiles.forEach((profile) => {
+    state.cleanerProfilesByName.set(profile.label, profile);
+    if (profile.id) {
+      state.cleanerProfilesById.set(profile.id, profile);
+    }
+  });
+
+  if (!resolvedNames || !resolvedNames.length) {
+    resolvedNames = usingSubscriberScope() ? [] : [...CLEANER_OPTIONS];
+  }
+
+  state.cleaners = resolvedNames;
+  if (!usingSubscriberScope()) {
+    state.cleaners.forEach((label) => {
+      if (!state.cleanerProfilesByName.has(label)) {
+        state.cleanerProfilesByName.set(label, { id: null, label, availability: null });
+      }
+    });
   }
 
   const targets = new Set([
@@ -327,6 +715,7 @@ export async function populateAllCleanerSelects() {
   });
 
   console.log("[Admin] populateAllCleanerSelects OK");
+  applyCleanerAvailabilityConstraints();
 }
 
 
@@ -899,7 +1288,7 @@ async function handleImportConfirm() {
     const rows = parseCsvText(text);
     const records = mapCsvRowsToObjects(rows);
 
-    const quotesCollection = collection(db, "quotes");
+    const quotesCollection = getQuotesCollection();
     let successCount = 0;
     const failures = [];
     const warnings = [];
@@ -999,6 +1388,7 @@ function openScheduleModal() {
   if (elements.scheduleDate) {
     elements.scheduleDate.value = defaultDate;
   }
+  applyCleanerAvailabilityConstraints();
   setScheduleStatus("");
   setSendProgress(0, 0);
   if (elements.scheduleModal) {
@@ -1036,9 +1426,9 @@ async function scheduleCustomers(quotes, firstClean, cleanerSelection = "") {
         nextCleanDates: schedulePlan.nextCleanDates,
       };
       if (cleanerUpdate.shouldUpdate) {
-        payload.assignedCleaner = cleanerUpdate.value;
+        Object.assign(payload, cleanerUpdate.updates || {});
       }
-      await updateDoc(doc(db, "quotes", quote.id), payload);
+      await updateDoc(getQuoteDoc(quote.id), payload);
       Object.assign(quote, payload);
       updateLocalQuote(quote.id, payload);
       successes += 1;
@@ -1394,7 +1784,7 @@ function renderTable(list) {
 
   if (!list.length) {
 
-    elements.quotesBody.innerHTML = '<tr><td colspan="9">No quotes found for the current view.</td></tr>';
+    elements.quotesBody.innerHTML = '<tr><td colspan="8">No quotes found for the current view.</td></tr>';
 
     return;
 
@@ -1463,8 +1853,6 @@ function renderTable(list) {
       <td><div class="contact-info">${phoneHtml}${emailHtml}</div></td>
 
       <td>${formatCurrency(resolvePricePerClean(quote))}</td>
-
-      <td>${formatCurrency(quote.price)}</td>
 
     `;
 
@@ -1872,7 +2260,7 @@ async function loadQuotes() {
   console.log("[Admin] loadQuotes running");
   try {
     console.time('[Admin] loadQuotes Firestore');
-    const q = collection(db, "quotes");
+    const q = getQuotesCollection();
     const snapshot = await getDocs(q);
     console.log('[Admin] Firestore docs:', snapshot.size ?? snapshot.docs.length);
     const quotes = snapshot.docs
@@ -1956,7 +2344,7 @@ async function autoRevertExpiredOffers(quotes) {
         offerExpiresAt: null,
       };
 
-      await updateDoc(doc(db, "quotes", quote.id), updates);
+      await updateDoc(getQuoteDoc(quote.id), updates);
       Object.assign(quote, updates);
       updateLocalQuote(quote.id, updates);
     } catch (error) {
@@ -1978,6 +2366,17 @@ if (syncChannel) {
         .finally(() => {
           syncReloadInProgress = false;
         });
+    }
+  });
+}
+
+if (cleanerSyncChannel) {
+  cleanerSyncChannel.addEventListener("message", (event) => {
+    const data = event.data || {};
+    if (data.type === "cleaners-updated") {
+      populateAllCleanerSelects().catch((error) => {
+        console.error("[Admin] Cleaner sync refresh failed", error);
+      });
     }
   });
 }
@@ -2299,7 +2698,7 @@ function setupDetailForm(detailsEl, quote, parentRow) {
 
     try {
 
-      await updateDoc(doc(db, "quotes", quote.id), updates);
+      await updateDoc(getQuoteDoc(quote.id), updates);
 
       Object.assign(quote, updates);
 
@@ -2558,9 +2957,9 @@ async function sendBookingEmails() {
         })
       };
       if (cleanerUpdate.shouldUpdate) {
-        payload.assignedCleaner = cleanerUpdate.value;
+        Object.assign(payload, cleanerUpdate.updates || {});
       }
-      await updateDoc(doc(db, "quotes", quote.id), payload);
+      await updateDoc(getQuoteDoc(quote.id), payload);
       Object.assign(quote, payload);
       updateLocalQuote(quote.id, payload);
 
@@ -2575,7 +2974,7 @@ async function sendBookingEmails() {
       
       // Log failed email
       try {
-        await updateDoc(doc(db, "quotes", quote.id), {
+        await updateDoc(getQuoteDoc(quote.id), {
           emailLog: arrayUnion({
             type: "booking",
             subject: `Booking confirmation for ${quote.customerName}`,
@@ -2595,7 +2994,7 @@ async function sendBookingEmails() {
 
       const failBody = `Failed booking for ${quote.customerName || "Unknown"} intended for ${firstCleanStr}`;
       try {
-        await updateDoc(doc(db, "quotes", quote.id), {
+        await updateDoc(getQuoteDoc(quote.id), {
           emailLog: arrayUnion({
             type: "booking",
             subject: `Booking confirmation for ${quote.customerName}`,
@@ -2681,7 +3080,7 @@ async function archiveSelected() {
 
     try {
 
-      await updateDoc(doc(db, "quotes", id), {
+      await updateDoc(getQuoteDoc(id), {
 
         deleted: true,
 
@@ -2844,6 +3243,7 @@ function prepareSendEmailAction() {
     placeholderLabel: "Keep current",
     includeUnassigned: true,
   });
+  applyCleanerAvailabilityConstraints();
   if (elements.emailCleaner) {
     let prefill = state.emailCleaner || deriveCleanerPrefill(selected);
     if (prefill && !elements.emailCleaner.querySelector(`option[value="${prefill}"]`)) {
@@ -2937,9 +3337,9 @@ async function handleAssignCleaner() {
   try {
     let updatedCount = 0;
     for (const quote of selectedQuotes) {
-      const updates = { assignedCleaner: assignment.value };
-      await updateDoc(doc(db, "quotes", quote.id), updates);
-      quote.assignedCleaner = assignment.value;
+      const updates = assignment.updates ? { ...assignment.updates } : {};
+      await updateDoc(getQuoteDoc(quote.id), updates);
+      Object.assign(quote, updates);
       updateLocalQuote(quote.id, updates);
       updatedCount += 1;
     }
@@ -2947,8 +3347,7 @@ async function handleAssignCleaner() {
     renderSelectedRecipients();
     updatePreview(state.previewView);
     notifyQuotesUpdated();
-    const label =
-      assignment.value === null ? "Unassigned" : assignment.value || "Unassigned";
+    const label = assignment.label || "Unassigned";
     alert(`Assigned ${updatedCount} customer${updatedCount === 1 ? "" : "s"} to ${label}.`);
   } catch (error) {
     console.error("Failed to assign cleaner", error);
@@ -2981,6 +3380,9 @@ function attachEvents(){
   elements.assignCleanerApply?.addEventListener("click", handleAssignCleaner);
   elements.scheduleCleaner?.addEventListener("change", (event) => {
     state.scheduleCleaner = event.target.value || "";
+  });
+  elements.scheduleDate?.addEventListener("change", () => {
+    applyCleanerAvailabilityConstraints();
   });
   elements.emailCleaner?.addEventListener("change", (event) => {
     state.emailCleaner = event.target.value || "";
@@ -3165,7 +3567,7 @@ function initCustomerLocationModal() {
     }
 
     try {
-      const quoteRef = doc(db, "quotes", currentEditingQuoteId);
+      const quoteRef = getQuoteDoc(currentEditingQuoteId);
       await updateDoc(quoteRef, {
         customerLatitude: lat,
         customerLongitude: lng,
@@ -3327,10 +3729,12 @@ export function initAdmin() {
 
   const bootstrap = async () => {
     try {
-      await authStateReady();
+      const { user, role } = await authStateReady();
       console.log("[Page] Auth ready, userRole:", window.userRole);
-      const routing = await handlePageRouting("admin");
+      const routing = await handlePageRouting("admin-subscriber");
       if (routing.redirected) return;
+      const tenancyReady = await resolveTenancyContext(user, role);
+      if (!tenancyReady) return;
       console.log("[Admin] Auth OK");
       await waitForDomReady();
       await delay(100);

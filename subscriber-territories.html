@@ -9,15 +9,36 @@
   <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
   <link rel="stylesheet" href="./style.css" />
   <style>
-    .admin-only, .rep-only, .admin-rep { display: none !important; }
-    .subscriber-only { display: block !important; }
+    body { background:#f8fafc; }
+    .admin-only, .rep-only, .admin-rep { display:none !important; }
+    .subscriber-only { display:block !important; }
+    .territories-layout { display:grid; grid-template-columns:min(320px, 100%) 1fr; gap:20px; margin-top:20px; }
+    .territory-panel { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:18px; box-shadow:0 10px 30px rgba(15,23,42,0.06); display:flex; flex-direction:column; gap:16px; }
+    .territory-list { display:flex; flex-direction:column; gap:10px; max-height:420px; overflow-y:auto; }
+    .territory-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:12px; background:#fff; font-weight:600; color:#0f172a; cursor:pointer; transition:border-color .15s, transform .15s; text-align:left; }
+    .territory-row:hover { border-color:#93c5fd; transform:translateY(-1px); }
+    .territory-row--active { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,0.12); }
+    .territory-dot { width:14px; height:14px; border-radius:50%; border:2px solid #334155; flex-shrink:0; }
+    .territory-meta { margin-left:auto; font-size:0.8rem; color:#475569; }
+    .territory-empty { text-align:center; color:#94a3b8; padding:40px 16px; border:1px dashed #cbd5e1; border-radius:12px; font-size:0.95rem; }
+    .territory-map-wrapper { position:relative; border-radius:18px; overflow:hidden; border:1px solid #dbeafe; }
+    #territoryMap { width:100%; height:520px; }
+    .drawing-hint { background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:10px 14px; font-size:0.9rem; color:#1e3a8a; }
+    .territory-actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .territory-actions .btn { flex:1; }
+    .status-bar { font-size:0.85rem; color:#0369a1; padding:8px 12px; border-radius:10px; background:#e0f2fe; display:none; }
+    .status-bar[data-visible="true"] { display:block; }
+    @media (max-width: 1080px) {
+      .territories-layout { grid-template-columns:1fr; }
+      #territoryMap { height:420px; }
+    }
   </style>
 </head>
 <body>
 
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
       <h1 style="margin: 0 0 0 12px; font-size: 1.2rem;">🗺️ Territories</h1>
     </div>
     <div class="header-actions">
@@ -27,22 +48,28 @@
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
           <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
-          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
           <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
           <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
           <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
           <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
           <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
-          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts &amp; Logs</a>
           <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
           <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
           <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
-          <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
-          <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
-          <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
-          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
-          <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
-          <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
+          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
+          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
+          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
+          <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
+          <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
+          <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
+          <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
+          <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
+          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
+          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
+          <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
         </nav>
       </div>
     </div>
@@ -57,97 +84,62 @@
 
   <main id="territoriesContent" class="page" style="display:none;">
     <section class="card">
-      <header class="card-header">
-        <div class="card-header-main">
-          <h2>Service Territories</h2>
-          <p class="text-muted">Define and manage your service areas</p>
+      <header class="card-header" style="border-bottom:none;">
+        <div>
+          <h1 style="margin:0;font-size:1.65rem;">🗺️ Territories</h1>
+          <p class="text-muted" style="margin-top:6px;">Draw service areas and link each territory to rota days for simpler scheduling.</p>
         </div>
+        <button id="newTerritoryBtn" class="btn btn-primary" type="button" style="align-self:flex-start;">+ New territory</button>
       </header>
 
-      <div style="padding:20px;">
-        <p style="text-align:center;color:#64748b;padding:60px 20px;">
-          🗺️ Territory management coming soon!<br/>
-          <span style="font-size:14px;margin-top:12px;display:block;">
-            This will allow you to define service areas, set booking days, and organize your routes.
-          </span>
-        </p>
+      <div id="territoryStatus" class="status-bar" role="status"></div>
+
+      <div class="territories-layout">
+        <aside class="territory-panel" id="territoryListPanel">
+          <div>
+            <h3 style="margin:0 0 8px 0;">Your territories</h3>
+            <p class="text-muted" style="margin:0;font-size:0.85rem;">Select a territory to edit the boundary or rota assignments.</p>
+          </div>
+          <div id="territoryList" class="territory-list"></div>
+        </aside>
+
+        <div class="territory-panel" style="gap:18px;">
+          <div class="territory-map-wrapper">
+            <div id="territoryMap" role="presentation" aria-label="Territory map"></div>
+          </div>
+          <div class="drawing-hint" id="drawingHint">Click "Draw boundary" to sketch a service area. Double-click to finish the shape.</div>
+          <form id="territoryForm" autocomplete="off">
+            <div style="display:grid;grid-template-columns:1fr 120px;gap:12px;">
+              <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-weight:600;color:#0f172a;">Territory name</span>
+                <input id="territoryName" type="text" placeholder="e.g., North Route" required />
+              </label>
+              <label style="display:flex;flex-direction:column;gap:6px;">
+                <span style="font-weight:600;color:#0f172a;">Colour</span>
+                <input id="territoryColor" type="color" value="#2563eb" />
+              </label>
+            </div>
+
+            <div>
+            <div class="territory-actions">
+              <button type="button" id="drawBoundaryBtn" class="btn btn-secondary">✏️ Draw boundary</button>
+              <button type="button" id="redrawBoundaryBtn" class="btn btn-secondary">↻ Redraw</button>
+            </div>
+
+            <div class="territory-actions">
+              <button type="submit" id="saveTerritoryBtn" class="btn btn-primary">💾 Save changes</button>
+              <button type="button" id="deleteTerritoryBtn" class="btn btn-danger">🗑️ Delete</button>
+            </div>
+            <div class="territory-actions">
+              <button type="button" id="assignRotaBtn" class="btn btn-secondary" disabled>📅 Assign days in rota</button>
+            </div>
+          </form>
+        </div>
       </div>
     </section>
   </main>
-
-  <script type="module">
-    import { auth, db } from './firebase-init.js';
-    import {
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-    import {
-      doc,
-      getDoc
-    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-    let subscriberId = null;
-
-    const authOverlay = document.getElementById('authOverlay');
-    const territoriesContent = document.getElementById('territoriesContent');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const menuBtn = document.getElementById('menuBtn');
-    const menuDropdown = document.getElementById('menuDropdown');
-
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        window.location.href = './subscriber-login.html';
-        return;
-      }
-
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const viewingUid = urlParams.get('uid');
-
-        const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
-        if (!currentUserDoc.exists()) throw new Error('User not found');
-
-        const currentUserData = currentUserDoc.data();
-
-        if (viewingUid && currentUserData.role === 'admin') {
-          subscriberId = viewingUid;
-        } else {
-          subscriberId = user.uid;
-          if (currentUserData.role !== 'subscriber') {
-            throw new Error('Access denied');
-          }
-          if (!currentUserData.billingCompleted) {
-            window.location.href = './subscriber-billing.html';
-            return;
-          }
-        }
-
-        authOverlay.style.display = 'none';
-        territoriesContent.style.display = 'block';
-
-      } catch (error) {
-        console.error('Auth error:', error);
-        alert(error.message);
-        await signOut(auth);
-        window.location.href = './subscriber-login.html';
-      }
-    });
-
-    logoutBtn.addEventListener('click', async () => {
-      await signOut(auth);
-      window.location.href = './subscriber-login.html';
-    });
-
-    menuBtn.addEventListener('click', () => {
-      menuDropdown.classList.toggle('show');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.menu-box')) {
-        menuDropdown.classList.remove('show');
-      }
-    });
-  </script>
-
+  <script>window.initMapsCallback = () => document.dispatchEvent(new Event('subscriber-maps-ready'));</script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=drawing,geometry&callback=initMapsCallback&loading=async"></script>
+  <script type="module" src="./subscriber-territories.js"></script>
 </body>
 </html>

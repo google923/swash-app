@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Rep Log &amp; Tracking - Swash Subscriber</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+  <style>
+    .admin-only, .rep-only, .admin-rep { display: none !important; }
+    .subscriber-only { display: block !important; }
+    .rep-grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+    .controls-card { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 16px; box-shadow: var(--shadow-soft); text-align: center; }
+    .map-card { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-soft); }
+    #repMap { height: 68vh; min-height: 420px; width: 100%; }
+    .log-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+    .log-buttons .btn { font-size: 1.05rem; padding: 12px; }
+    #btnO { background-color: rgba(255, 140, 0, 0.7); color: #fff; border-color: rgba(255, 140, 0, 0.9); }
+    #btnO:hover:not(:disabled) { background-color: rgba(255, 140, 0, 0.85); }
+    .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; font-weight: 600; font-size: .9rem; }
+    .badge-online { background: rgba(28,156,93,.1); color: var(--swash-green); }
+    .badge-idle { background: #f0f0f0; color: #666; }
+    .badge-offline { background: #fff3cd; color: #8a6d3b; }
+    .small { font-size: .9rem; color: var(--text-muted); }
+    .stats-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; margin-top: 8px; }
+    .stats-card { background: var(--bg-page); border: 1px solid var(--border-soft); border-radius: 8px; padding: 10px; text-align: center; }
+    .stats-card .num { font-weight: 800; font-size: 1.2rem; color: var(--text-body); }
+    .stats-action { grid-column: 1 / -1; }
+    .stats-action .btn { width: 100%; padding: 12px; font-size: 1.02rem; border-radius: 10px; }
+    .recent-list { max-height: 200px; overflow: auto; border: 1px solid var(--border-soft); border-radius: 8px; padding: 8px; background: var(--bg-page); }
+    .recent-item { display: grid; grid-template-columns: 72px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border-soft); font-size: .92rem; align-items:center; }
+    .recent-item:last-child { border-bottom: 0; }
+    .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .icon-btn { width:48px; min-width:48px; height:48px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-size:1.25rem; }
+    .icon-btn.big { width:54px; min-width:54px; height:54px; font-size:1.35rem; }
+    #startDayBtn { height:54px; display:inline-flex; align-items:center; justify-content:center; padding:0 22px; font-size:1.05rem; }
+    #connectionBadge.connection-pill { border:1px solid var(--border-soft); box-shadow: var(--shadow-soft); }
+    #connectionBadge.connection-pill.badge-online { background: rgba(28,156,93,.1); color: var(--swash-green); }
+    #connectionBadge.connection-pill.badge-idle { background: #f0f0f0; color: #666; }
+    #connectionBadge.connection-pill.badge-offline { background: #fff3cd; color: #8a6d3b; }
+    .road-suggestions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    .road-suggestion { background:#fff; border:2px solid #0078d7; color:#0078d7; padding:8px 12px; border-radius:10px; font-size:.8rem; font-weight:600; cursor:pointer; transition:background .15s, color .15s, box-shadow .15s; }
+    .road-suggestion:hover { background:#f0f7ff; }
+    .road-suggestion.selected { background:#0078d7; color:#fff; box-shadow:0 0 0 3px rgba(0,120,215,0.25); }
+    .road-suggestions__loading,
+    .road-suggestions__empty,
+    .road-suggestions__error { width:100%; font-size:.75rem; color:#64748b; }
+    .road-suggestions__error { color:#c43131; }
+    #addressModal { position: fixed; top: 20% !important; left: 50% !important; transform: translateX(-50%) !important; margin: 0 !important; }
+    #signupModal { width:100vw !important; max-width:100vw !important; height:100vh; max-height:100vh; margin:0; padding:0 !important; border:none; }
+    .quote-modal-form { display:flex; flex-direction:column; width:100%; height:100%; max-width:100vw; padding:0; border:none; background:transparent; border-radius:0; }
+    .quote-modal-header { padding:16px 20px 10px; border-bottom:1px solid var(--border-soft); background:#fff; }
+    .quote-modal-body { padding:0; background:var(--bg-page); flex:1; display:flex; min-height:0; }
+    .quote-modal-scroll { width:100%; height:100%; overflow:auto; -webkit-overflow-scrolling: touch; display:block; }
+    .quote-modal-scroll #quote-calculator-root { padding:0 0 16px; }
+    .quote-modal-scroll #quote-calculator-root > .quote-modal-shell { display:block; margin:0; height:auto; width:100%; }
+    .quote-modal-scroll #quote-calculator-root > .quote-modal-shell .page { margin:0; padding:12px; height:auto; width:100%; max-width:100%; }
+    .quote-modal-actions { display:flex; justify-content:flex-end; gap:10px; padding:12px 20px; border-top:1px solid var(--border-soft); background:#fff; }
+    @media (max-width: 768px) {
+      .rep-grid { grid-template-columns: 1fr; }
+      .controls-card { position: sticky; top: 8px; z-index: 5; }
+      #repMap { height: 55vh; min-height: 300px; }
+      .log-buttons { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .log-buttons .btn { padding: 14px 12px; font-size: 1.08rem; min-height: 48px; border-radius: 10px; }
+      .row .btn { min-height: 44px; padding: 10px 12px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 420px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
+      <span class="role-pill" data-role-pill data-role="guest"><strong data-role-label>Guest</strong></span>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts &amp; Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
+          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
+          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
+          <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
+          <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
+          <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
+          <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
+          <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
+          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
+          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
+          <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we verify your account.</p>
+    </div>
+  </section>
+
+  <main id="repLogContent" class="page" style="display:none;">
+    <section class="content-section">
+      <h1 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">📝 Rep Log &amp; Tracking <span id="connectionBadge" class="status-badge badge-online connection-pill">Online</span></h1>
+      <p class="section-subtitle">Log every door. Works offline with auto-sync.</p>
+
+      <div id="offlineBanner" class="training-card" style="display:none;background:#fff3cd;border-left:3px solid #ffc107;">
+        <strong>Offline Mode:</strong> Saving locally. We'll sync when back online.
+      </div>
+
+      <div class="rep-grid">
+        <div class="controls-card">
+          <div style="text-align: center; margin-bottom: 12px;">
+            <button id="startDayBtn" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.1rem;">▶️ Start Day</button>
+          </div>
+          <div style="text-align: center; margin-bottom: 8px;">
+            <p id="shiftStatus" class="small" style="margin:0;">Not started.</p>
+          </div>
+
+          <div class="log-buttons">
+            <button id="btnX" class="btn btn-danger" disabled>X</button>
+            <button id="btnO" class="btn btn-warning" disabled>O</button>
+            <button id="btnSignUp" class="btn btn-success" disabled>Sign Up</button>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stats-card"><div class="num" id="statTotal">0</div><div>Total</div></div>
+            <div class="stats-card"><div class="num" id="statX">0</div><div>Not interested</div></div>
+            <div class="stats-card"><div class="num" id="statO">0</div><div>Out</div></div>
+            <div class="stats-card"><div class="num" id="statSales">0</div><div>Sales</div></div>
+            <div class="stats-card"><div class="num" id="statConv">0%</div><div>Conversion</div></div>
+            <div class="stats-card"><div class="num" id="statMiles">0.0</div><div>Miles</div></div>
+            <div class="stats-card"><div class="num" id="statDph">0.0</div><div>Doors/hr (60m)</div></div>
+            <div class="stats-action">
+              <button id="submitBtn" class="btn btn-primary" disabled>✅ Submit &amp; End Shift</button>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:6px; justify-content:flex-end;">
+            <button id="undoBtn" class="btn btn-secondary icon-btn big" title="Undo last" disabled>↩️</button>
+          </div>
+
+          <h3 style="margin-top:14px;">Recent</h3>
+          <div id="recentList" class="recent-list"></div>
+        </div>
+
+        <div class="map-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border-soft);background:#f8fafc;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span id="allPinsHint" class="small" style="color:#64748b;font-weight:600;">Pins: none loaded yet</span>
+            </div>
+            <div id="allPinsLoading" class="small" style="display:none;color:#64748b;">Loading pins…</div>
+          </div>
+          <div id="repMap"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="summaryModal" style="max-width:720px;width:90%;">
+    <h3>Shift Summary</h3>
+    <div id="summaryContent" class="small"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px;">
+      <button id="summaryClose" class="btn btn-secondary">Close</button>
+    </div>
+  </dialog>
+
+  <dialog id="addressModal" style="max-width:520px;width:92%;">
+    <h3>Address Details</h3>
+    <form id="addressForm" method="dialog">
+      <div class="row" style="gap:12px; margin-top:8px;">
+        <div style="flex:0 0 120px;">
+          <label class="small" for="houseNumber">House No.</label>
+          <input id="houseNumber" name="houseNumber" type="text" class="input" placeholder="e.g., 12" required />
+        </div>
+        <div style="flex:1 1 auto;">
+          <label class="small" for="roadName">Road Name</label>
+          <input id="roadName" name="roadName" type="text" class="input" placeholder="e.g., High Street" required list="recentRoadNames" />
+          <datalist id="recentRoadNames"></datalist>
+        </div>
+      </div>
+      <div id="nearbyRoadSuggestions" class="road-suggestions" aria-live="polite"></div>
+      <div style="margin-top:10px;">
+        <label class="small" for="addrNotes">Notes (optional)</label>
+        <textarea id="addrNotes" name="addrNotes" class="input" rows="3" placeholder="Any extra details"></textarea>
+      </div>
+      <input type="hidden" id="addressStatus" />
+      <div class="row" style="justify-content:flex-end;margin-top:12px;gap:8px;">
+        <button type="button" id="addressCancel" class="btn btn-secondary">Cancel</button>
+        <button type="submit" class="btn btn-primary">Continue</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="signupModal" style="width:100vw;max-width:100vw;padding:0;">
+    <form id="signupForm" class="quote-modal-form">
+      <div class="quote-modal-header">
+        <h3 style="margin:0;">Sign Up Details</h3>
+      </div>
+      <div class="quote-modal-body">
+        <div class="quote-modal-scroll">
+          <div id="quote-calculator-root"></div>
+        </div>
+      </div>
+      <div class="quote-modal-actions">
+        <button type="button" id="signupCancel" class="btn btn-secondary">Cancel</button>
+        <button type="submit" class="btn btn-success">Save Sign Up</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module">
+    import { auth } from "./firebase-init.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import { ensureSubscriberAccess } from "./lib/subscriber-access.js";
+
+    const authOverlay = document.getElementById("authOverlay");
+    const repLogContent = document.getElementById("repLogContent");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    logoutBtn?.addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "./subscriber-login.html";
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "./subscriber-login.html";
+        return;
+      }
+      try {
+        const access = await ensureSubscriberAccess(user);
+        if (access.viewerRole === "subscriber" && !access.viewerProfile.billingCompleted) {
+          window.location.href = "./subscriber-billing.html";
+          return;
+        }
+        if (authOverlay) authOverlay.style.display = "none";
+        if (repLogContent) repLogContent.style.display = "block";
+        window.subscriberContext = access.subscriberId;
+        try { localStorage.setItem("swash:lastSubscriberId", access.subscriberId); } catch (_) {}
+        if (window._repLogState) {
+          window._repLogState.subscriberId = access.subscriberId;
+        }
+      } catch (error) {
+        console.error("Unable to confirm subscriber access", error);
+        alert("Unable to load rep log for this account. Please try again or contact support.");
+        window.location.href = "./subscriber-login.html";
+      }
+    });
+  </script>
+
+  <script type="module" src="./auth-check.js"></script>
+  <script type="module" src="./nav.js"></script>
+  <script type="module" src="./firebase-init.js"></script>
+  <script type="module" src="./rep/rep-log.js"></script>
+</body>
+</html>

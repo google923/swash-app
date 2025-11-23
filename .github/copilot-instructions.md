@@ -7,7 +7,7 @@ Swash is a Firebase-hosted web application for managing window cleaning quotes, 
 
 ### Core Components
 - **`public/index.html` + `script.js`**: Customer quote calculator with offline support
-- **`public/admin.html` + `admin.js`**: Admin dashboard for managing quotes, sending booking emails, bulk scheduling
+- **`pipeline.html` + `admin.js`**: Admin dashboard for managing quotes, sending booking emails, bulk scheduling
 - **`public/scheduler.html` + `scheduler.js`**: 4-week route planner with drag-and-drop rescheduling and 28-day recurring cadence
 - **`public/service-worker.js`**: Provides offline-first caching (network-first for navigation, cache-first for assets)
 - **`public/offline-queue.js`**: Queues quote submissions when offline, auto-syncs on reconnection
@@ -67,7 +67,7 @@ Key fields in Firestore documents:
 - **Email preview**: `createEmailPreviewHtml()` generates inline HTML for desktop/mobile preview tabs
 
 ## Access & Roles
-- Only the owner admin account should access `admin.html` and `scheduler.html` (Firebase Auth login overlay present on both pages).
+- Only the owner admin account should access `pipeline.html` and `scheduler.html` (Firebase Auth login overlay present on both pages).
 - Reps use the quote calculator (`index.html` + `script.js`) and do not have access to admin or scheduler pages.
 - Future: a dedicated Rep Dashboard can be added; keep it separate from admin and scheduler routes.
 
@@ -173,7 +173,7 @@ card.innerHTML = `<div class="job-name">${safe(quote.customerName)}</div>`;
 ```
 public/
 ├── index.html, script.js          # Quote calculator (customer-facing)
-├── admin.html, admin.js            # Admin dashboard (quote management, email, scheduling)
+├── pipeline.html, admin.js         # Admin dashboard (quote management, email, scheduling)
 ├── scheduler.html, scheduler.js    # 4-week route planner (drag-and-drop rescheduling)
 ├── menu.js                         # Shared dropdown navigation
 ├── offline-queue.js                # Offline submission queue + auto-sync

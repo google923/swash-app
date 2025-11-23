@@ -11,29 +11,169 @@
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
   <style>
     /* Assign Area Days mode visuals */
-    body.assign-mode .schedule-job, body.assign-mode .day-total, body.assign-mode .weekly-overview-bar, body.assign-mode .weekly-overview-job { filter: grayscale(1); }
-    body.assign-mode::after { content:''; position:fixed; inset:0; pointer-events:none; background:rgba(0,120,215,0.06); mix-blend-mode:multiply; }
+    body.assign-mode .schedule-job,
+    body.assign-mode .day-total,
+    body.assign-mode .weekly-overview-bar,
+    body.assign-mode .weekly-overview-job {
+      filter: none;
+      opacity: 1;
+    }
+    body.assign-mode::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: rgba(0, 120, 215, 0.04);
+      mix-blend-mode: normal;
+    }
     .assign-days-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px; padding:8px 12px; background:#eff6ff; border-left:4px solid #0078d7; border-radius:6px; }
     .assign-days-header h2 { margin:0; font-size:1rem; font-weight:600; color:#0f3d5d; }
     #assignSetDaysBtn { float:right; }
+    .schedule-row { position: relative; transition: box-shadow 0.2s ease, transform 0.2s ease; }
     .day-cell { position:relative; }
-    .assign-btn-inline { position:absolute; top:4px; right:4px; font-size:11px; padding:4px 6px; opacity:0; transition:opacity .15s; }
+    .assign-btn-inline { position:absolute; top:6px; right:6px; font-size:11px; padding:4px 6px; opacity:0; transition:opacity .15s; }
     body.assign-mode .day-cell:hover .assign-btn-inline { opacity:1; }
-    .assigned-day { outline:2px solid var(--territory-color, #0078d7); background:rgba(0,120,215,0.10) !important; }
+    /* Small cleaner initials pill in day header */
+    .assign-cleaner-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-left: 8px;
+      background: var(--territory-color, #0078d7);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 12px;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
     /* Multi-cleaner badge and summary */
-    .assign-multi-badge { position:absolute; top:4px; left:8px; background: var(--territory-color, #0078d7); color:#fff; font-weight:700; font-size:10px; padding:1px 5px; border-radius:10px; display:none; }
+    .assign-multi-badge { position:absolute; top:6px; left:10px; background: var(--territory-color, #0078d7); color:#fff; font-weight:700; font-size:10px; padding:1px 5px; border-radius:10px; display:none; }
     .assign-summary { position: fixed; top: 70px; left: 12px; z-index: 1200; background: rgba(255,255,255,0.98); border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; max-width: 280px; box-shadow: 0 8px 22px rgba(0,0,0,0.12); }
     .assign-summary__title { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #0f3d5d; }
     .assign-summary__list { margin: 0; padding: 0; list-style: none; max-height: 220px; overflow-y: auto; }
     .assign-summary__item { font-size: 12px; color: #1f2937; padding: 2px 0; border-bottom: 1px dashed #e5e7eb; }
     .assign-summary__item:last-child { border-bottom: none; }
+    .area-selection-summary__title { font-size: 0.9rem; font-weight: 700; color: #0f172a; margin: 0; }
+    .area-selection-summary__subtitle { margin: 2px 0 12px; font-size: 0.8rem; color: #475569; }
+    .assign-cleaner-options { display: grid; gap: 6px; }
+    .assign-cleaner-option { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; padding: 6px 8px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; transition: border-color 0.15s ease, background 0.15s ease; }
+    .assign-cleaner-option input { accent-color: #0078d7; }
+    .assign-cleaner-option.is-active { border-color: #1d4ed8; background: rgba(29, 78, 216, 0.08); }
+    body.assign-mode .cleaner-filter { display: none !important; }
+
+    /* Inline Assign Mode Panel */
+    .assign-mode-panel {
+      margin-bottom: 24px;
+      background: #fff;
+      border-radius: 16px;
+      border: 2px solid #0078d7;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 120, 215, 0.12);
+    }
+    .assign-mode-panel__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 20px 24px;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border-bottom: 2px solid #bfdbfe;
+    }
+    .assign-mode-panel__title {
+      margin: 0;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .assign-mode-panel__subtitle {
+      margin: 4px 0 0;
+      font-size: 0.9rem;
+      color: #475569;
+    }
+    .assign-mode-panel__body {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 0;
+      min-height: 500px;
+    }
+    .assign-mode-panel__sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 20px;
+      border-right: 2px solid #e2e8f0;
+      background: #f8fafc;
+      overflow-y: auto;
+      max-height: 600px;
+    }
+    .assign-mode-panel__map-container {
+      position: relative;
+      background: #f1f5f9;
+    }
+    .assign-mode-panel__map {
+      width: 100%;
+      height: 100%;
+      min-height: 500px;
+    }
+    .assign-map-legend {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      max-width: 280px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .assign-map-legend__title {
+      margin: 0 0 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .assign-map-legend__items {
+      display: grid;
+      gap: 6px;
+      font-size: 0.8rem;
+    }
+    .assign-map-legend__item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      background: #f8fafc;
+    }
+    .assign-map-legend__badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    @media (max-width: 1024px) {
+      .assign-mode-panel__body {
+        grid-template-columns: 1fr;
+      }
+      .assign-mode-panel__sidebar {
+        border-right: none;
+        border-bottom: 2px solid #e2e8f0;
+        max-height: 300px;
+      }
+    }
   </style>
 </head>
 <body>
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
-      <a href="./quote.html" class="btn btn-primary" style="margin-left:12px;font-size:14px;padding:8px 14px;">➕ Add Customer</a>
+      <img class="header-logo" src="../assets/swash-icon-white.png" alt="Swash logo" />
+      <span class="role-pill" data-role-pill data-role="guest">
+        <strong data-role-label>Guest</strong>
+      </span>
     </div>
     <div class="header-actions">
       <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
@@ -42,17 +182,29 @@
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
           <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
-          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
           <a href="/rep/add-new-customer.html">🆕 New Quote</a>
           <a href="./scheduler.html" class="admin-rep">📅 Schedule</a>
           <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
           <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
           <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
           <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
-          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts &amp; Logs</a>
           <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
           <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
           <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
+          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
+          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
+          <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
+          <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
+          <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
+          <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
+          <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
+          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
+          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
+          <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
         </nav>
       </div>
     </div>
@@ -76,17 +228,45 @@
       <div class="assign-summary__title">Selections</div>
       <ul id="assignSummaryList" class="assign-summary__list"></ul>
     </div>
+
+    <section id="assignModePanel" class="assign-mode-panel" hidden>
+      <div class="assign-mode-panel__header">
+        <div>
+          <h3 class="assign-mode-panel__title">Assign Rota Days to Service Areas</h3>
+          <p class="assign-mode-panel__subtitle">Select an area, choose cleaners, then click days in the schedule below to assign.</p>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" class="btn btn-primary" id="assignSetDaysBtn" disabled>Save Assignments</button>
+          <button type="button" class="btn btn-secondary" id="closeAssignModeBtn">Close</button>
+        </div>
+      </div>
+
+      <div class="assign-mode-panel__body">
+        <aside class="assign-mode-panel__sidebar">
+          <section id="areaSelectionSummary" class="area-selection-summary"></section>
+          <section class="areas-list-section">
+            <header class="areas-list-header">
+              <h4>Service areas</h4>
+              <p>Select one to assign rota days.</p>
+            </header>
+            <div id="areasList" class="areas-list"></div>
+          </section>
+        </aside>
+
+        <div class="assign-mode-panel__map-container">
+          <div id="areasMap" class="assign-mode-panel__map"></div>
+          <div id="assignMapLegend" class="assign-map-legend" hidden>
+            <div class="assign-map-legend__title">Selected Days</div>
+            <div id="assignMapLegendItems" class="assign-map-legend__items"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="card">
       <header class="card-header" id="mainSchedulerHeader">
-        <h2>4-week route planner</h2>
+        <h2>Cleaner Rota</h2>
         <p class="text-muted" id="schedulerSubheading">Generate a rolling schedule from booked customers and plan upcoming cleans.</p>
-        <div id="assignModeBanner" class="assign-days-header" hidden>
-          <div>
-            <h2 id="assignModeTitle">Assigning Days</h2>
-            <p id="assignModeContext" style="margin:2px 0 0; font-size:12px; color:#1e3a5f;"></p>
-          </div>
-          <button type="button" id="assignSetDaysBtn" class="btn btn-primary" disabled>Set Days</button>
-        </div>
       </header>
       
       <div class="controls scheduler-controls" aria-label="Scheduler controls">
@@ -99,11 +279,15 @@
             <button id="generate" class="btn btn-primary" type="button">Generate</button>
             <button id="viewToday" class="btn btn-primary" type="button" title="View today's schedule">📅 View Today</button>
             <button id="toggleSaturday" class="btn btn-secondary" type="button" title="Toggle Saturday in view">📆 Show Saturday</button>
-            <button id="defineAreas" class="btn btn-secondary" type="button" title="Define Areas">🗺️ Areas</button>
+            <button id="openAssignMode" class="btn btn-primary" type="button" title="Assign rota days to areas">📍 Assign Days to Areas</button>
             <button id="refresh" class="btn btn-secondary" type="button" title="Refresh data">↻ Refresh</button>
           </div>
           <div class="spacer"></div>
           <div class="filters-cluster">
+            <div class="area-filter">
+              <label class="text-muted" for="areaFilter">Area</label>
+              <select id="areaFilter" disabled></select>
+            </div>
             <div class="cleaner-filter">
               <label class="text-muted" for="cleanerFilter">Cleaner</label>
               <select id="cleanerFilter"></select>
@@ -130,46 +314,7 @@
     </section>
   </main>
 
-  <div id="areasModal" class="modal" hidden>
-    <div class="modal__dialog modal__dialog--large">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h3 style="margin: 0;">Define Service Areas</h3>
-        <button type="button" class="modal__close" id="closeAreasModal" aria-label="Close">×</button>
-      </div>
-      <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 12px;">Draw areas on the map to organize jobs by location. Customers within each area will be highlighted with the area's color.</p>
-      <div class="areas-controls" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px;">
-        <button type="button" id="drawAreaBtn" class="btn btn-secondary">✏️ Draw Area</button>
-        <button type="button" id="clearAreaBtn" class="btn btn-secondary">🗑️ Clear</button>
-        <button type="button" id="stopDrawingBtn" class="btn btn-secondary" hidden>⏹️ Stop Drawing</button>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #e5e7eb;border-bottom:none;border-radius:8px 8px 0 0;background:#f8fafc;">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#334155;">
-            <input id="toggleAllPinsScheduler" type="checkbox" />
-            <span>Show all pins</span>
-          </label>
-          <span id="schedulerPinsHint" class="small" style="color:#64748b;">Last 60 days</span>
-        </div>
-        <div id="schedulerPinsLoading" class="small" style="display:none;color:#64748b;">Loading pins…</div>
-      </div>
-      <div id="areasMap" style="width: 100%; height: 500px; border-radius: 0 0 8px 8px; border: 2px solid #e5e7eb; border-top:none; margin-bottom: 16px;"></div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-        <label class="modal__field">
-          <span>Area Name (optional)</span>
-          <input id="areaNameInput" type="text" placeholder="e.g., Town Centre, East Side" />
-        </label>
-        <label class="modal__field">
-          <span>Area Color</span>
-          <input id="areaColorInput" type="color" value="#a855f7" />
-        </label>
-      </div>
-      <div id="areasList" style="display: grid; gap: 8px; margin-bottom: 16px; max-height: 200px; overflow-y: auto;"></div>
-      <div class="modal__actions">
-        <button type="button" class="btn btn-secondary" id="cancelAreasBtn">Close</button>
-        <button type="button" class="btn btn-primary" id="saveAreaBtn" hidden>💾 Save Area</button>
-      </div>
-    </div>
-  </div>
+
 
   <div id="dayMessageModal" class="modal" hidden>
     <div class="modal__dialog">
@@ -296,9 +441,9 @@
   <script type="module" src="../nav.js"></script>
   <script>window.initMapsCallback = () => console.log('[Maps] API loaded');</script>
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=geometry,drawing,places&callback=initMapsCallback&loading=async"></script>
-  <script defer src="./components/CustomerChatModal.js"></script>
+  <script defer src="./rep/components/CustomerChatModal.js"></script>
   <script type="module">
-    import("./scheduler.js");
+    import("./rep/scheduler.js");
   </script>
 </body>
 </html>

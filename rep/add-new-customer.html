@@ -18,12 +18,18 @@
   </script>
   <style>
     /* Embed mode: show only the quote form content inside modals/iframes */
-    body.embed .header { display: none !important; }
-    body.embed .page { padding-top: 0 !important; }
-    body.embed { background: transparent; }
+    body.embed .header,
+    body.embed-mode .header { display: none !important; }
+    body.embed .page,
+    body.embed-mode .page { padding-top: 0 !important; }
+    body.embed,
+    body.embed-mode { background: transparent; }
     /* In embed, stretch to full height and allow internal scrolling */
     html, body { height:100%; }
-    body.embed html, body.embed { overflow: auto !important; }
+    body.embed html,
+    body.embed,
+    body.embed-mode html,
+    body.embed-mode { overflow: auto !important; }
 
     /* Responsive modals: fit to device screen */
     #setCustomerLocationModal {
@@ -81,7 +87,10 @@
 <body class="quote-page">
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="../assets/swash-icon-white.png" alt="Swash logo" />
+      <span class="role-pill" data-role-pill data-role="guest">
+        <strong data-role-label>Guest</strong>
+      </span>
     </div>
     <div class="header-actions">
       <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
@@ -91,7 +100,7 @@
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Rep Resources</div>
           <a id="rep-home-link" class="hidden" href="./rep-home.html">🏠 Home</a>
-          <a id="add-customer-link" class="hidden" href="./quote.html">➕ Add Customer</a>
+          <a id="add-customer-link" class="hidden" href="./add-new-customer.html">➕ Add Customer</a>
           <a href="/rep/rep-log.html">📝 Log</a>
           <a href="./chat.html">💬 Rep Chat</a>
           <a href="./policy.html">📘 Policy Handbook</a>
@@ -104,8 +113,8 @@
           <div class="dropdown-divider"></div>
           <div class="dropdown-title">System</div>
           <a id="login-link" href="./login.html">Sign in</a>
-          <a id="quotes-link" class="hidden" href="/admin.html">Quotes Dashboard</a>
-          <a id="admin-dashboard-link" class="hidden" href="/admin.html">Admin Dashboard</a>
+          <a id="quotes-link" class="hidden" href="/pipeline.html">Quotes Dashboard</a>
+          <a id="admin-dashboard-link" class="hidden" href="/pipeline.html">Admin Dashboard</a>
           <a id="schedule-link" class="hidden" href="./scheduler.html">Schedule</a>
           <a id="manage-users-link" class="hidden" href="/admin/users.html">Manage Users</a>
         </nav>
@@ -139,6 +148,14 @@
               <select id="serviceTier" name="serviceTier">
                 <option value="gold" selected>Gold</option>
                 <option value="silver">Silver</option>
+              </select>
+            </label>
+
+            <label class="form-section" for="cleaningFrequency">
+              <span>Cleaning Frequency</span>
+              <select id="cleaningFrequency" name="cleaningFrequency">
+                <option value="Every 4 weeks" selected>Every 4 weeks</option>
+                <option value="Every 8 weeks">Every 8 weeks</option>
               </select>
             </label>
 
@@ -206,19 +223,6 @@
               <span>Notes</span>
               <textarea id="notes" rows="3" placeholder="Add any customer notes or access information..."></textarea>
             </label>
-
-            <div style="margin-bottom: 16px; padding: 12px; background: #f0f7ff; border-left: 4px solid #0078d7; border-radius: 4px;">
-              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; color: #1e293b;">
-                <!-- Removed the location checkbox; show only the action button below -->
-              </label>
-              <p style="margin: 8px 0 0 26px; color: #64748b; font-size: 0.85rem;">Click the button below to set the exact customer location on a map.</p>
-            </div>
-            <div style="margin-bottom: 16px;">
-              <button type="button" id="setLocationBtn" class="btn btn-secondary" style="width: 100%;">📍 Set Location on Map</button>
-            </div>
-
-            <input type="hidden" id="customerLatitude" />
-            <input type="hidden" id="customerLongitude" />
           </div>
         </div>
 
@@ -235,6 +239,15 @@
           <label for="address">Address</label>
           <input id="address" autocomplete="street-address" required />
 
+          <div class="location-helper" style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: #f0f7ff; border-radius: 8px; border: 1px solid #c4ddf6;">
+            <p style="margin: 0; font-size: 0.9rem; color: #1e293b;">
+              Set the pin on the map so we can match you to the right cleaning day.
+            </p>
+            <button type="button" id="setLocationBtn" class="btn btn-secondary" style="width: 100%;">📍 Set Location on Map</button>
+            <input type="hidden" id="customerLatitude" />
+            <input type="hidden" id="customerLongitude" />
+          </div>
+
           <label for="mobile">Mobile</label>
           <input id="mobile" autocomplete="tel" required />
 
@@ -243,7 +256,7 @@
         </div>
       </section>
 
-      <div class="form-actions form-actions--end form-actions--compact" style="margin-bottom: 8px;">
+      <div class="form-actions form-actions--start form-actions--compact" style="margin-bottom: 6px;">
         <label class="checkbox checkbox--lg" for="alternating">
           <input type="checkbox" id="alternating" />
           <span>Alternating Clean</span>
@@ -252,8 +265,9 @@
           <input type="checkbox" id="frontOnly" />
           <span>Front Only</span>
         </label>
-        <!-- Upfront payment checkbox removed per requirements -->
-        <button type="button" id="applyOfferBtn" class="btn btn-offer">Apply Special Offer</button>
+      </div>
+      <div class="form-actions form-actions--start" style="width:100%; margin-top: 0; margin-bottom: 8px;">
+        <button type="button" id="applyOfferBtn" class="btn btn-offer" style="flex:1;">Apply Special Offer</button>
       </div>
       <section id="result" class="result-panel" aria-live="polite"></section>
       
@@ -279,7 +293,10 @@
       <section id="queueAlerts" class="queue-alerts" hidden aria-live="polite"></section>
 
       <!-- Booking dates summary (removed as redundant; dates are shown inline above) -->
-      <section id="bookingDatesDisplay" class="customer-section" hidden style="display:none;"><div id="bookingDatesContent"></div></section>
+      <section id="bookingDatesDisplay" class="customer-section" hidden>
+        <h3>Upcoming Cleaning Dates</h3>
+        <div id="bookingDatesContent"></div>
+      </section>
 
       <!-- Hidden duplicate removed for structural compatibility -->
       <section id="customerFields_old" class="customer-section customer-box" hidden style="display:none;">
@@ -312,7 +329,18 @@
         var params = new URLSearchParams(location.search);
         var isEmbed = (function(){ try { return window.self !== window.top; } catch(_) { return true; } })() || params.get('embed') === 'true';
         if (isEmbed) {
-          document.body.classList.add('embed-mode');
+          document.body.classList.add('embed-mode', 'embed');
+        }
+        var isPublic = params.get('mode') === 'public';
+        if (isPublic) {
+          document.body.classList.add('public-mode');
+          var heading = document.querySelector('.card-header h2');
+          if (heading) heading.style.display = 'none';
+          var tierDesc = document.getElementById('tierDescription');
+          if (tierDesc) tierDesc.style.display = 'block';
+          var customerHeadings = document.querySelectorAll('#customerFields h3, #customerFields_old h3');
+          customerHeadings.forEach(function(node){ node.textContent = 'Enter your details'; });
+          document.title = 'Get a Quote & Booking | Swash Cleaning';
         }
         // Prefill from query
         var rep = params.get('rep');
@@ -1390,116 +1418,106 @@
 
       async function loadTerritories() {
         if (territoriesCache) return territoriesCache;
+        const db = window.db;
+        if (!db) return [];
+
+        let firestoreMod;
         try {
-          const db = window.db; if (!db) return [];
-          const { getDocs, collection, getDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
-          // Preferred: top-level territories collection
-          const snap = await getDocs(collection(db, 'territories'));
-          const arr = [];
-          snap.forEach(d => {
-            const data = d.data() || {};
-            const allowed = (data.allowedBookingDays && typeof data.allowedBookingDays === 'object') ? data.allowedBookingDays : {};
+          firestoreMod = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+        } catch (err) {
+          console.warn('[Territories] Failed to load Firestore helpers', err);
+          territoriesCache = [];
+          return territoriesCache;
+        }
 
-            // Normalise polygon paths regardless of stored format
-            let rawPath = [];
-            if (Array.isArray(data.geoBoundary)) {
-              rawPath = data.geoBoundary;
-            } else if (typeof data.geoBoundaryJSON === 'string') {
-              try {
-                rawPath = JSON.parse(data.geoBoundaryJSON) || [];
-              } catch (err) {
-                console.warn('[Territories] Failed to parse geoBoundaryJSON for', d.id, err);
-                rawPath = [];
-              }
-            } else if (Array.isArray(data.path)) {
-              rawPath = data.path;
+        const { getDocs, collection, getDoc, doc } = firestoreMod;
+
+        const normalizeTerritory = (data, fallbackId) => {
+          if (!data || typeof data !== 'object') return null;
+          const allowed = (data.allowedBookingDays && typeof data.allowedBookingDays === 'object') ? data.allowedBookingDays : {};
+          const baseId = data.id || data.territoryId || fallbackId;
+          const name = data.name || data.title || baseId || 'Area';
+
+          let rawPath = Array.isArray(data.geoBoundary)
+            ? data.geoBoundary
+            : Array.isArray(data.path)
+              ? data.path
+              : [];
+          if ((!Array.isArray(rawPath) || !rawPath.length) && typeof data.geoBoundaryJSON === 'string') {
+            try {
+              rawPath = JSON.parse(data.geoBoundaryJSON) || [];
+            } catch (err) {
+              console.warn('[Territories] Failed to parse geoBoundaryJSON for', baseId, err);
+              rawPath = [];
             }
+          }
+          const normalisePoint = (p) => {
+            if (Array.isArray(p) && p.length >= 2) return { lat: Number(p[0]), lng: Number(p[1]) };
+            if (p && typeof p.lat !== 'undefined' && typeof p.lng !== 'undefined') return { lat: Number(p.lat), lng: Number(p.lng) };
+            return null;
+          };
+          const path = Array.isArray(rawPath) ? rawPath.map(normalisePoint).filter(Boolean) : [];
 
-            if (Array.isArray(rawPath) && rawPath.length) {
-              const path = rawPath
-                .map(p => {
-                  if (Array.isArray(p) && p.length >= 2) return { lat: Number(p[0]), lng: Number(p[1]) };
-                  if (p && typeof p.lat !== 'undefined' && typeof p.lng !== 'undefined') return { lat: Number(p.lat), lng: Number(p.lng) };
-                  return null;
-                })
-                .filter(Boolean);
+          if (path.length >= 3) {
+            return {
+              id: baseId,
+              name,
+              type: 'polygon',
+              path,
+              allowedBookingDays: allowed,
+              color: data.color || data.colour || '#0078d7',
+            };
+          }
 
-              if (path.length >= 3) {
-                arr.push({
-                  id: d.id,
-                  name: data.name || d.id,
-                  type: 'polygon',
-                  path,
-                  allowedBookingDays: allowed,
-                  color: data.color || '#0078d7',
-                });
-                return;
-              }
-            }
+          if (data.center && data.radius != null) {
+            const center = Array.isArray(data.center)
+              ? { lat: Number(data.center[0]), lng: Number(data.center[1]) }
+              : { lat: Number(data.center.lat), lng: Number(data.center.lng) };
+            return {
+              id: baseId,
+              name,
+              type: 'circle',
+              center,
+              radius: Number(data.radius),
+              allowedBookingDays: allowed,
+              color: data.color || data.colour || '#0078d7',
+            };
+          }
 
-            if (data.center && data.radius != null) {
-              const center = Array.isArray(data.center)
-                ? { lat: Number(data.center[0]), lng: Number(data.center[1]) }
-                : { lat: Number(data.center.lat), lng: Number(data.center.lng) };
-              const radius = Number(data.radius);
-              arr.push({
-                id: d.id,
-                name: data.name || d.id,
-                type: 'circle',
-                center,
-                radius,
-                allowedBookingDays: allowed,
-                color: data.color || '#0078d7',
-              });
-            }
-          });
-          if (arr.length) { territoriesCache = arr; return territoriesCache; }
-          // Fallback: system/territories aggregated doc
-          const sys = await getDoc(doc(db, 'system', 'territories'));
-          if (sys.exists() && Array.isArray(sys.data().data)) {
-            territoriesCache = sys.data().data.map(t => {
-              // Normalize polygon path from arrays or objects
-              let path = [];
-              let raw = Array.isArray(t.path) ? t.path : (Array.isArray(t.geoBoundary) ? t.geoBoundary : []);
-              if ((!Array.isArray(raw) || !raw.length) && typeof t.geoBoundaryJSON === 'string') {
-                try {
-                  raw = JSON.parse(t.geoBoundaryJSON) || [];
-                } catch (err) {
-                  console.warn('[Territories] Failed to parse legacy geoBoundaryJSON from system doc', err);
-                  raw = [];
-                }
-              }
-              if (Array.isArray(raw)) {
-                path = raw.map(p => {
-                  if (Array.isArray(p) && p.length >= 2) return { lat: Number(p[0]), lng: Number(p[1]) };
-                  if (p && typeof p.lat !== 'undefined' && typeof p.lng !== 'undefined') return { lat: Number(p.lat), lng: Number(p.lng) };
-                  return null;
-                }).filter(Boolean);
-              }
-              // Normalize circle center
-              let center = null; let radius = null;
-              if (t.center && t.radius != null) {
-                center = Array.isArray(t.center)
-                  ? { lat: Number(t.center[0]), lng: Number(t.center[1]) }
-                  : { lat: Number(t.center.lat), lng: Number(t.center.lng) };
-                radius = Number(t.radius);
-              }
-              return {
-                id: t.id || t.territoryId || t.name,
-                name: t.name || t.title || (t.id || 'Area'),
-                type: t.type || (center && radius != null ? 'circle' : 'polygon'),
-                path,
-                center,
-                radius,
-                allowedBookingDays: (t.allowedBookingDays && typeof t.allowedBookingDays === 'object') ? t.allowedBookingDays : {},
-                color: t.color || t.colour || '#0078d7'
-              };
+          return null;
+        };
+
+        const direct = [];
+        if (typeof getDocs === 'function') {
+          try {
+            const snap = await getDocs(collection(db, 'territories'));
+            snap.forEach((docSnap) => {
+              const data = docSnap.data() || {};
+              const normalized = normalizeTerritory({ ...data, id: docSnap.id }, docSnap.id);
+              if (normalized) direct.push(normalized);
             });
+          } catch (err) {
+            console.warn('[Territories] Direct territories collection read failed', err);
+          }
+        }
+
+        if (direct.length) {
+          territoriesCache = direct;
+          return territoriesCache;
+        }
+
+        try {
+          const sysSnap = await getDoc(doc(db, 'system', 'territories'));
+          if (sysSnap.exists() && Array.isArray(sysSnap.data().data)) {
+            territoriesCache = sysSnap.data().data
+              .map((entry, idx) => normalizeTerritory(entry, entry?.id || entry?.territoryId || entry?.name || `territory-${idx}`))
+              .filter(Boolean);
             return territoriesCache;
           }
-        } catch (e) {
-          console.warn('loadTerritories failed', e);
+        } catch (err) {
+          console.warn('[Territories] Fallback system doc read failed', err);
         }
+
         territoriesCache = [];
         return territoriesCache;
       }
@@ -1569,11 +1587,7 @@
         wrap.style.background = '#f8fafc';
         wrap.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:10px;">
-            <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
-              <button type="button" id="savePendingBtn" class="btn btn-secondary">We'll contact you with a date</button>
-            </div>
-            <div id="dummySlots" style="display:none; gap:8px; flex-wrap:wrap; margin-top:8px;">
-            </div>
+            <div id="dummySlots" style="display:none; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
           </div>
         `;
         resultPanel.appendChild(wrap);
@@ -1662,22 +1676,44 @@
             });
             
             confirmBtn = document.getElementById('confirmBookingBtn');
+            const info = (function ensureCapacityInfo(){
+              const existing = document.getElementById('capacityInfo');
+              if (existing) return existing;
+              const el = document.createElement('div');
+              el.id = 'capacityInfo';
+              el.style.fontSize = '0.9rem';
+              el.style.color = '#0f172a';
+              el.style.marginTop = '4px';
+              const container = document.getElementById('postPaymentActions');
+              if (container) container.appendChild(el);
+              return el;
+            })();
             if (confirmBtn) {
               delete confirmBtn.dataset.reason;
             }
-            const info = document.getElementById('capacityInfo');
             const bookingDatesDisplay = document.getElementById('bookingDatesDisplay');
+            const bookingDatesContent = document.getElementById('bookingDatesContent');
             
             if (!selectedBooking || !selectedBooking.dateISO) {
               selectedBookingEligible = false;
               if (info) info.textContent = '';
               if (bookingDatesDisplay) bookingDatesDisplay.hidden = true;
+              if (bookingDatesContent) bookingDatesContent.innerHTML = '';
               if (confirmBtn) updateConfirmBtnState(confirmBtn);
               return;
             }
             
-            // Show booking dates
-            // bookingDatesDisplay suppressed as redundant
+            const { first, second, third } = computeNextDates(selectedBooking.dateISO);
+            if (bookingDatesDisplay) bookingDatesDisplay.hidden = false;
+            if (bookingDatesContent) {
+              bookingDatesContent.innerHTML = `
+                <p style="margin:0 0 6px;"><strong>First clean:</strong> ${formatDateNice(first)}</p>
+                <p style="margin:0 0 6px;"><strong>Second clean:</strong> ${formatDateNice(second)}</p>
+                <p style="margin:0;"><strong>Third clean:</strong> ${formatDateNice(third)}</p>
+                <p style="margin:10px 0 0;font-size:0.85rem;color:#475569;">All visits run on a 28-day rotation.</p>
+              `;
+            }
+
             // Enforce at least +1 day (skip same-day bookings)
             const today = new Date(); today.setHours(0,0,0,0);
             const chosen = new Date(selectedBooking.dateISO); chosen.setHours(0,0,0,0);
@@ -2211,7 +2247,7 @@
   <!-- Thank-you Overlay -->
   <div id="thanksOverlay" hidden style="position: fixed; inset: 0; display:none; align-items:center; justify-content:center; z-index: 1200; background:#004a99;">
     <div style="position:relative; background:#0078d7; border-radius:20px; padding:32px; width:min(92vw,520px); box-shadow:0 25px 45px rgba(0,0,0,0.35); text-align:center; color:#fff;">
-      <img src="../assets/swash-logo.png" alt="Swash" style="height:48px; margin-bottom: 12px; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.25));" />
+      <img src="../assets/swash-icon-white.png" alt="Swash" style="height:48px; margin-bottom: 12px; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.25));" />
       <div class="thanks__message" style="font-size:1.2rem; line-height:1.7; color:#fff;"></div>
       <div style="margin-top:20px;">
         <button type="button" class="btn btn-secondary" style="background:#fff; color:#0078d7; border:none;" onclick="document.getElementById('thanksOverlay').style.display='none'; document.getElementById('thanksOverlay').hidden=true;">Close</button>

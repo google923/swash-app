@@ -93,6 +93,17 @@
       font-weight: 600;
       margin-top: 4px;
     }
+
+    .job-frequency {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0c4a6e;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-top: 4px;
+    }
     
     .day-total {
       margin-top: 8px;
@@ -101,6 +112,34 @@
       font-size: 0.75rem;
       color: #64748b;
       font-weight: 600;
+    }
+
+    .schedule-assignment-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: #ecfeff;
+      border: 1px solid #bae6fd;
+      color: #0c4a6e;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+    }
+
+    .schedule-assignment-banner button {
+      margin-left: auto;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(12, 74, 110, 0.35);
+      background: rgba(12, 74, 110, 0.08);
+      color: #0c4a6e;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .schedule-assignment-banner button:hover {
+      background: rgba(12, 74, 110, 0.16);
     }
     
     .modal {
@@ -164,7 +203,7 @@
 
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
       <h1 style="margin: 0 0 0 12px; font-size: 1.2rem;">📅 Schedule</h1>
     </div>
     <div class="header-actions">
@@ -174,22 +213,28 @@
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
           <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
-          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
           <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
           <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
           <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
           <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
           <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
-          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts &amp; Logs</a>
           <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
           <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
           <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
-          <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
-          <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
-          <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
-          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
-          <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
-          <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
+          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
+          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
+          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
+          <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
+          <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
+          <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
+          <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
+          <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
+          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
+          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
+          <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
         </nav>
       </div>
     </div>
@@ -262,13 +307,19 @@
     } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
     import {
       doc,
-      getDoc,
       collection,
       getDocs,
       updateDoc,
       query,
       where
     } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { ensureSubscriberAccess } from "./lib/subscriber-access.js";
+    import {
+      getFrequencyDisplay,
+      generateOccurrencesInRange,
+    } from "./lib/scheduler-utils.js";
+
+    const ROTA_ASSIGN_KEY = 'swashTerritoryAssign';
 
     let subscriberId = null;
     let allCustomers = [];
@@ -303,29 +354,20 @@
       }
 
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const viewingUid = urlParams.get('uid');
+        const access = await ensureSubscriberAccess(user);
+        subscriberId = access.subscriberId;
 
-        const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
-        if (!currentUserDoc.exists()) throw new Error('User not found');
-
-        const currentUserData = currentUserDoc.data();
-
-        if (viewingUid && currentUserData.role === 'admin') {
-          subscriberId = viewingUid;
-        } else {
-          subscriberId = user.uid;
-          if (currentUserData.role !== 'subscriber') {
-            throw new Error('Access denied');
-          }
-          if (!currentUserData.billingCompleted) {
-            window.location.href = './subscriber-billing.html';
-            return;
-          }
+        if (access.viewerRole === 'subscriber' && !access.viewerProfile.billingCompleted) {
+          window.location.href = './subscriber-billing.html';
+          return;
         }
 
-        authOverlay.style.display = 'none';
-        scheduleContent.style.display = 'block';
+        if (authOverlay) {
+          authOverlay.style.display = 'none';
+        }
+        if (scheduleContent) {
+          scheduleContent.style.display = 'block';
+        }
 
         await initializeScheduler();
 
@@ -341,6 +383,7 @@
       await loadCleaners();
       await loadCustomers();
       populateCleanerFilter();
+      handlePendingTerritoryAssignment();
       
       // Set default start date to current Monday
       const today = new Date();
@@ -348,6 +391,57 @@
       monday.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
       startWeekInput.valueAsDate = monday;
       state.startDate = monday;
+    }
+
+    function handlePendingTerritoryAssignment() {
+      let raw;
+      try {
+        raw = sessionStorage.getItem(ROTA_ASSIGN_KEY);
+      } catch (_) {
+        raw = null;
+      }
+
+      if (!raw) return;
+
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (_) {
+        payload = null;
+      }
+
+      if (!payload) return;
+      if (payload.subscriberId && payload.subscriberId !== subscriberId) return;
+
+      try {
+        sessionStorage.removeItem(ROTA_ASSIGN_KEY);
+      } catch (_) {
+        /* ignore */
+      }
+
+      showAssignmentBanner(payload);
+    }
+
+    function showAssignmentBanner(payload) {
+      const controls = document.querySelector('.scheduler-controls');
+      if (!controls) return;
+
+      const banner = document.createElement('div');
+      banner.className = 'schedule-assignment-banner';
+
+      const name = escapeHtml(payload?.name || 'this territory');
+      const message = document.createElement('span');
+      message.innerHTML = `Assign days in the rota for <strong>${name}</strong>. Choose the week and drag customers into the correct slots.`;
+
+      const dismiss = document.createElement('button');
+      dismiss.type = 'button';
+      dismiss.textContent = 'Dismiss';
+      dismiss.addEventListener('click', () => banner.remove());
+
+      banner.appendChild(message);
+      banner.appendChild(dismiss);
+
+      controls.prepend(banner);
     }
 
     async function loadCleaners() {
@@ -370,21 +464,35 @@
         const snapshot = await getDocs(bookedQuery);
         
         state.quotes = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
+          const data = doc.data() || {};
+          const base = {
             id: doc.id,
-            customerName: data.name,
-            address: data.address,
-            mobile: data.mobile,
-            email: data.email,
-            tier: data.tier,
-            price: data.price,
-            pricePerClean: data.pricePerClean,
-            bookedDate: data.bookedDate,
-            nextCleanDates: data.nextCleanDates || [],
-            assignedCleaner: data.assignedCleaner,
-            status: data.status
+            ...data,
           };
+
+          base.customerName = data.customerName || data.name || '';
+          base.address = data.address || data.fullAddress || '';
+          base.mobile = data.mobile || data.phone || '';
+          base.email = data.email || data.customerEmail || '';
+          base.tier = data.tier || data.serviceTier || '';
+          base.pricePerClean = Number(data.pricePerClean ?? data.price ?? 0);
+          base.price = Number(data.price ?? base.pricePerClean ?? 0);
+          base.bookedDate = data.bookedDate || data.firstCleanDate || null;
+          base.nextCleanDates = Array.isArray(data.nextCleanDates) ? data.nextCleanDates : [];
+          base.assignedCleaner = data.assignedCleanerId || data.assignedCleaner || null;
+          base.assignedCleanerId = base.assignedCleaner;
+          base.assignedCleanerName = data.assignedCleanerName || null;
+          base.status = data.status || '';
+
+          base.cleaningFrequency = data.cleaningFrequency ?? data.frequency ?? base.cleaningFrequency ?? '';
+          base.cleaningFrequencyLabel = data.cleaningFrequencyLabel ?? data.frequencyLabel ?? base.cleaningFrequency ?? '';
+          base.cleaningFrequencyDays = data.cleaningFrequencyDays ?? data.cleaningFrequencyIntervalDays ?? data.recurringFrequencyDays ?? data.frequencyDays ?? null;
+          base.cleaningFrequencyWeeks = data.cleaningFrequencyWeeks ?? data.frequencyWeeks ?? data.recurringFrequencyWeeks ?? null;
+          base.recurringFrequencyDays = data.recurringFrequencyDays ?? data.cleaningFrequencyIntervalDays ?? data.cleaningFrequencyDays ?? null;
+          base.frequencyDays = data.frequencyDays ?? data.cleanFrequencyDays ?? base.cleaningFrequencyDays ?? null;
+          base.frequencyWeeks = data.frequencyWeeks ?? data.cleaningFrequencyWeeks ?? base.cleaningFrequencyWeeks ?? null;
+
+          return base;
         });
       } catch (error) {
         console.error('Error loading customers:', error);
@@ -420,41 +528,8 @@
       return `${day}/${month}/${year}`;
     }
 
-    function getOccurrences(bookedDate, nextCleanDates, startDate, endDate) {
-      const occurrences = [];
-      const start = startDate.getTime();
-      const end = endDate.getTime();
-
-      if (bookedDate) {
-        const firstClean = new Date(bookedDate);
-        if (firstClean.getTime() >= start && firstClean.getTime() <= end) {
-          occurrences.push(firstClean);
-        }
-      }
-
-      if (nextCleanDates && nextCleanDates.length > 0) {
-        nextCleanDates.forEach(dateStr => {
-          const cleanDate = new Date(dateStr);
-          if (cleanDate.getTime() >= start && cleanDate.getTime() <= end) {
-            occurrences.push(cleanDate);
-          }
-        });
-      }
-
-      // Generate recurring 28-day intervals if needed
-      if (bookedDate) {
-        let currentDate = new Date(bookedDate);
-        while (currentDate.getTime() <= end) {
-          if (currentDate.getTime() >= start && currentDate.getTime() <= end) {
-            if (!occurrences.some(d => d.toDateString() === currentDate.toDateString())) {
-              occurrences.push(new Date(currentDate));
-            }
-          }
-          currentDate.setDate(currentDate.getDate() + 28);
-        }
-      }
-
-      return occurrences.sort((a, b) => a - b);
+    function getOccurrences(quote, rangeStart, rangeEnd) {
+      return generateOccurrencesInRange(quote, rangeStart, rangeEnd);
     }
 
     function generateSchedule() {
@@ -477,9 +552,9 @@
 
       if (state.cleanerFilter) {
         if (state.cleanerFilter === 'UNASSIGNED') {
-          filtered = filtered.filter(q => !q.assignedCleaner);
+          filtered = filtered.filter(q => !(q.assignedCleanerId || q.assignedCleaner));
         } else {
-          filtered = filtered.filter(q => q.assignedCleaner === state.cleanerFilter);
+          filtered = filtered.filter(q => (q.assignedCleanerId || q.assignedCleaner) === state.cleanerFilter);
         }
       }
 
@@ -506,30 +581,40 @@
 
         // Days of week
         for (let day = 0; day < 5; day++) {
-          const currentDate = new Date(weekStart);
-          currentDate.setDate(currentDate.getDate() + day);
+          const dayStart = new Date(weekStart);
+          dayStart.setDate(dayStart.getDate() + day);
+          dayStart.setHours(0, 0, 0, 0);
+          const dayEnd = new Date(dayStart);
+          dayEnd.setHours(23, 59, 59, 999);
 
           const dayCell = document.createElement('div');
           dayCell.className = 'day-cell';
-          dayCell.dataset.date = currentDate.toISOString().split('T')[0];
+          dayCell.dataset.date = dayStart.toISOString().split('T')[0];
 
           const dateLabel = document.createElement('div');
           dateLabel.className = 'day-date';
-          dateLabel.textContent = formatDate(currentDate);
+          dateLabel.textContent = formatDate(dayStart);
           dayCell.appendChild(dateLabel);
 
           // Find jobs for this day
           const jobsThisDay = [];
           filtered.forEach(quote => {
             const occurrences = getOccurrences(
-              quote.bookedDate,
-              quote.nextCleanDates,
-              currentDate,
-              currentDate
+              quote,
+              dayStart,
+              dayEnd
             );
             if (occurrences.length > 0) {
               jobsThisDay.push(quote);
             }
+          });
+
+          const dayKey = dayStart.toISOString().slice(0, 10);
+          jobsThisDay.sort((a, b) => {
+            const orderA = a.routeOrder?.[dayKey] ?? 999;
+            const orderB = b.routeOrder?.[dayKey] ?? 999;
+            if (orderA !== orderB) return orderA - orderB;
+            return (a.customerName || '').localeCompare(b.customerName || '');
           });
 
           // Render jobs
@@ -547,26 +632,38 @@
 
             const jobMeta = document.createElement('div');
             jobMeta.className = 'job-meta';
-            jobMeta.textContent = `£${quote.pricePerClean || quote.price || 0}`;
+            const priceValue = Number(quote.pricePerClean ?? quote.price ?? 0);
+            const frequencyLabel = getFrequencyDisplay(quote);
+            const priceText = `£${priceValue.toFixed(2)}`;
+            jobMeta.textContent = priceText;
             jobDiv.appendChild(jobMeta);
 
-            if (quote.assignedCleaner) {
-              const cleanerName = allCleaners.find(c => c.id === quote.assignedCleaner)?.name || 'Unknown';
+            const assignedCleanerId = quote.assignedCleanerId || quote.assignedCleaner;
+            if (assignedCleanerId) {
+              const cleanerName = quote.assignedCleanerName || allCleaners.find(c => c.id === assignedCleanerId)?.name || 'Unknown';
               const badge = document.createElement('div');
               badge.className = 'cleaner-badge';
               badge.textContent = cleanerName;
               jobDiv.appendChild(badge);
             }
 
+            if (frequencyLabel) {
+              const frequencyBadge = document.createElement('div');
+              frequencyBadge.className = 'job-frequency';
+              frequencyBadge.textContent = frequencyLabel;
+              jobDiv.appendChild(frequencyBadge);
+            }
+
             dayCell.appendChild(jobDiv);
-            totalPrice += parseFloat(quote.pricePerClean || quote.price || 0);
+            totalPrice += priceValue;
           });
 
           // Day total
           if (jobsThisDay.length > 0) {
             const totalDiv = document.createElement('div');
             totalDiv.className = 'day-total';
-            totalDiv.textContent = `${jobsThisDay.length} jobs • £${totalPrice.toFixed(2)}`;
+            const jobLabel = jobsThisDay.length === 1 ? 'job' : 'jobs';
+            totalDiv.textContent = `${jobsThisDay.length} ${jobLabel} • £${totalPrice.toFixed(2)}`;
             dayCell.appendChild(totalDiv);
           }
 
@@ -578,8 +675,56 @@
       scheduleDiv.appendChild(grid);
     }
 
+    function buildCleanerOptions(selectedId) {
+      const options = ['<option value="">Unassigned</option>'];
+      allCleaners.forEach(cleaner => {
+        const value = escapeHtml(cleaner.id);
+        const label = escapeHtml(cleaner.name || 'Unnamed cleaner');
+        const selected = selectedId === cleaner.id ? ' selected' : '';
+        options.push(`<option value="${value}"${selected}>${label}</option>`);
+      });
+      return options.join('');
+    }
+
+    async function updateAssignedCleaner(quote, cleanerId) {
+      const statusEl = document.getElementById('jobModalStatus');
+      if (statusEl) {
+        statusEl.textContent = 'Saving...';
+        statusEl.style.color = '#64748b';
+      }
+
+      try {
+        const updateRef = doc(db, `subscribers/${subscriberId}/customers`, quote.id);
+        const cleanerRecord = cleanerId ? allCleaners.find(c => c.id === cleanerId) : null;
+        await updateDoc(updateRef, {
+          assignedCleaner: cleanerId || null,
+          assignedCleanerId: cleanerId || null,
+          assignedCleanerName: cleanerRecord?.name || null
+        });
+
+        quote.assignedCleaner = cleanerId || null;
+        quote.assignedCleanerId = cleanerId || null;
+        quote.assignedCleanerName = cleanerRecord?.name || null;
+        await loadCustomers();
+        generateSchedule();
+
+        if (statusEl) {
+          statusEl.textContent = cleanerId ? 'Cleaner assigned' : 'Cleaner cleared';
+          statusEl.style.color = '#15803d';
+        }
+      } catch (error) {
+        console.error('Failed to update cleaner', error);
+        if (statusEl) {
+          statusEl.textContent = error?.message || 'Failed to update cleaner';
+          statusEl.style.color = '#b91c1c';
+        }
+      }
+    }
+
     function showJobDetails(quote) {
       const modalBody = document.getElementById('jobModalBody');
+      const frequencyText = escapeHtml(getFrequencyDisplay(quote) || 'N/A');
+      const modalPrice = Number(quote.pricePerClean ?? quote.price ?? 0).toFixed(2);
       
       modalBody.innerHTML = `
         <div class="info-row">
@@ -604,19 +749,32 @@
         </div>
         <div class="info-row">
           <span class="info-label">Price per clean:</span>
-          <span class="info-value">£${quote.pricePerClean || quote.price || 0}</span>
+          <span class="info-value">£${modalPrice}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Frequency:</span>
+          <span class="info-value">${frequencyText}</span>
         </div>
         <div class="info-row">
           <span class="info-label">First clean:</span>
           <span class="info-value">${formatDate(quote.bookedDate)}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Assigned cleaner:</span>
-          <span class="info-value">${getCleanerName(quote.assignedCleaner)}</span>
+          <label class="info-label" for="jobCleanerSelect">Assigned cleaner:</label>
+          <select id="jobCleanerSelect" class="info-value" style="padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-weight:500;">
+            ${buildCleanerOptions(quote.assignedCleanerId || quote.assignedCleaner || '')}
+          </select>
         </div>
+        <p id="jobModalStatus" style="margin-top:12px;font-size:0.8rem;color:#64748b;"></p>
       `;
 
       jobModal.classList.add('show');
+
+      const cleanerSelect = document.getElementById('jobCleanerSelect');
+      cleanerSelect.addEventListener('change', (event) => {
+        const value = event.target.value;
+        updateAssignedCleaner(quote, value);
+      });
     }
 
     function getCleanerName(cleanerId) {
@@ -632,12 +790,12 @@
     }
 
     // Event listeners
-    generateBtn.addEventListener('click', () => {
+    generateBtn?.addEventListener('click', () => {
       state.startDate = startWeekInput.valueAsDate;
       generateSchedule();
     });
 
-    viewTodayBtn.addEventListener('click', () => {
+    viewTodayBtn?.addEventListener('click', () => {
       const today = new Date();
       const monday = new Date(today);
       monday.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
@@ -646,37 +804,34 @@
       generateSchedule();
     });
 
-    cleanerFilterSelect.addEventListener('change', (e) => {
+    cleanerFilterSelect?.addEventListener('change', (e) => {
       state.cleanerFilter = e.target.value;
       generateSchedule();
     });
 
-    searchInput.addEventListener('input', (e) => {
+    searchInput?.addEventListener('input', (e) => {
       state.searchTerm = e.target.value;
       generateSchedule();
     });
 
-    closeJobModalBtn.addEventListener('click', () => {
+    closeJobModalBtn?.addEventListener('click', () => {
       jobModal.classList.remove('show');
     });
 
-    cancelJobModalBtn.addEventListener('click', () => {
+    cancelJobModalBtn?.addEventListener('click', () => {
       jobModal.classList.remove('show');
     });
 
-    logoutBtn.addEventListener('click', async () => {
+    logoutBtn?.addEventListener('click', async () => {
       await signOut(auth);
       window.location.href = './subscriber-login.html';
     });
 
-    menuBtn.addEventListener('click', () => {
-      menuDropdown.classList.toggle('show');
+    menuBtn?.addEventListener('click', () => {
+      window.location.href = '/main.html';
     });
 
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('.menu-box')) {
-        menuDropdown.classList.remove('show');
-      }
       if (e.target === jobModal) {
         jobModal.classList.remove('show');
       }

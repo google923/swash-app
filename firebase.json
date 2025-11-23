@@ -11,7 +11,7 @@
       ],
       "rewrites": [
         { "source": "/", "destination": "/index.html" },
-        { "source": "/admin", "destination": "/admin.html" }
+        { "source": "/admin", "destination": "/pipeline.html" }
       ]
     },
     {
@@ -25,10 +25,13 @@
       ],
       "rewrites": [
         { "source": "/", "destination": "/index.html" },
-        { "source": "/admin", "destination": "/admin.html" }
+        { "source": "/admin", "destination": "/pipeline.html" }
       ]
     }
   ],
+  "functions": {
+    "source": "functions"
+  },
   "firestore": {
     "rules": "firestore.rules"
   }

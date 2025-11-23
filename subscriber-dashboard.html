@@ -17,7 +17,7 @@
 
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
       <span id="companyNameDisplay" style="margin-left:16px;font-weight:600;color:#334155;"></span>
     </div>
     <div class="header-actions">
@@ -27,7 +27,7 @@
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
           <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
-          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
           <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
           <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
           <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
@@ -37,12 +37,18 @@
           <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
           <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
           <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
-          <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
-          <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
-          <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
-          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
-          <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
-          <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
+          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
+          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
+           <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
+           <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
+           <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
+           <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
+           <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
+           <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
+           <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
+           <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
+           <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
         </nav>
       </div>
     </div>
@@ -97,34 +103,52 @@
       </header>
       
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;padding:20px;">
-        <a href="/subscriber-quotes.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
-          <div style="font-size:32px;margin-bottom:12px;">📝</div>
-          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">View Quotes</div>
-          <div style="font-size:14px;color:#64748b;">Manage customer quotes</div>
+        <a href="/pipeline.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">📋</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Customer Pipeline</div>
+          <div style="font-size:14px;color:#64748b;">Track prospects and bookings</div>
         </a>
         
-        <a href="/subscriber-customers.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
-          <div style="font-size:32px;margin-bottom:12px;">👥</div>
-          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">View Customers</div>
-          <div style="font-size:14px;color:#64748b;">Manage customer database</div>
-        </a>
-        
-        <a href="/subscriber-schedule.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+        <a href="/schedule.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
           <div style="font-size:32px;margin-bottom:12px;">📅</div>
-          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Schedule Jobs</div>
-          <div style="font-size:14px;color:#64748b;">View and manage schedule</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Cleaning Rota</div>
+          <div style="font-size:14px;color:#64748b;">Assign days and balance workloads</div>
         </a>
         
         <a href="/subscriber-cleaners.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
           <div style="font-size:32px;margin-bottom:12px;">👷</div>
-          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Manage Cleaners</div>
-          <div style="font-size:14px;color:#64748b;">Add and manage your team</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Cleaner Management</div>
+          <div style="font-size:14px;color:#64748b;">Maintain availability and contact info</div>
+        </a>
+
+        <a href="/subscriber-sms-setup.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">📲</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">SMS Centre</div>
+          <div style="font-size:14px;color:#64748b;">Buy credits and manage sender ID</div>
         </a>
         
-        <a href="/subscriber-territories.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+        <a href="/map.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
           <div style="font-size:32px;margin-bottom:12px;">🗺️</div>
-          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Territories</div>
-          <div style="font-size:14px;color:#64748b;">Define service areas</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Territory Map</div>
+          <div style="font-size:14px;color:#64748b;">Draw areas and connect them to the rota</div>
+        </a>
+
+        <a href="/subscriber-rep-dashboard.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">🧾</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Rep Dashboard</div>
+          <div style="font-size:14px;color:#64748b;">Review daily logs and door counts</div>
+        </a>
+
+        <a href="/subscriber-shifts-logs.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">📋</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Shifts &amp; Logs</div>
+          <div style="font-size:14px;color:#64748b;">Audit shift summaries and mileage claims</div>
+        </a>
+
+        <a href="/subscriber-performance.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">🎯</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Performance</div>
+          <div style="font-size:14px;color:#64748b;">Track conversion and retention trends</div>
         </a>
       </div>
     </section>

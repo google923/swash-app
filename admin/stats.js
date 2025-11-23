@@ -474,16 +474,7 @@ async function loadAllQuotes() {
 
 function setupMenuToggle() {
   elements.menuBtn.addEventListener("click", () => {
-    const shown = elements.menuDropdown.classList.toggle("show");
-    elements.menuBtn.setAttribute("aria-expanded", shown ? "true" : "false");
-  });
-
-  // Close menu when clicking outside
-  document.addEventListener("click", (e) => {
-    if (!elements.menuBtn.contains(e.target) && !elements.menuDropdown.contains(e.target)) {
-      elements.menuDropdown.classList.remove("show");
-      elements.menuBtn.setAttribute("aria-expanded", "false");
-    }
+    window.location.href = "/main.html";
   });
 }
 

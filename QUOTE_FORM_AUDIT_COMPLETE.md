@@ -16,7 +16,7 @@ All code changes deployed with comprehensive diagnostics built-in.
 - Quote Date field always shows today's date (e.g., "03/11/2025")
 
 **Test:**
-1. Go to quote.html
+1. Go to rep/add-new-customer.html
 2. Verify Quote Date is populated before you touch anything
 3. Refresh page - date should still be there
 
@@ -37,7 +37,7 @@ All code changes deployed with comprehensive diagnostics built-in.
 
 **Test:**
 1. Log in as rep
-2. Go to quote.html
+2. Go to rep/add-new-customer.html
 3. Check Rep Code field - should be populated
 4. Open DevTools Console (F12) - look for: "[Quote] Rep code prefilled with: [name]"
 

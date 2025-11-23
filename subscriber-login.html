@@ -14,13 +14,20 @@
       font-style: normal;
     }
     
-    body {
+    body.subscriber-login-page {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #0078d7 0%, #005a9e 100%);
+      background-color: #0f172a;
+      background-image: url("./assets/swash-login-bg.png");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
       padding: 20px;
+    }
+    body.subscriber-login-page::before {
+      display: none !important;
     }
     
     .login-container {
@@ -38,7 +45,7 @@
     }
     
     .login-logo img {
-      max-width: 120px;
+      max-width: 240px;
       height: auto;
       display: block;
       margin: 0 auto;
@@ -47,7 +54,7 @@
     .login-logo-text {
       font-family: 'Cocogoose', sans-serif;
       font-size: 20px;
-      font-weight: 700;
+      font-weight: 800;
       color: #6b7280;
       letter-spacing: 2px;
       margin-top: 8px;
@@ -145,7 +152,7 @@
     }
   </style>
 </head>
-<body>
+<body class="subscriber-login-page">
   <div class="login-container">
     <div class="login-logo">
       <img src="./assets/Swash-icon-grey.png" alt="Swash Logo" />
@@ -191,14 +198,24 @@
     const loginBtn = document.getElementById('loginBtn');
     const errorMessage = document.getElementById('errorMessage');
 
+    function resolvePostLoginDestination() {
+      return '/subscriber-dashboard.html';
+    }
+
     // Check if already logged in
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         // Check role
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists() && userDoc.data().role === 'subscriber') {
-          // Already logged in as subscriber, redirect
-          window.location.href = './subscriber-dashboard.html';
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.role === 'subscriber') {
+            if (!userData.billingCompleted) {
+              window.location.href = './subscriber-billing.html';
+              return;
+            }
+            window.location.href = resolvePostLoginDestination();
+          }
         }
       }
     });
@@ -241,8 +258,8 @@
           return;
         }
         
-        // Success - redirect to subscriber dashboard
-        window.location.href = './subscriber-dashboard.html';
+        // Success - redirect to quick actions hub (or requested page)
+        window.location.href = resolvePostLoginDestination();
         
       } catch (error) {
         console.error('Login error:', error);

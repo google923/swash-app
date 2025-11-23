@@ -441,8 +441,10 @@
 <body>
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
-      <a href="./quote.html" class="btn btn-primary" style="margin-left:12px;font-size:14px;padding:8px 14px;">➕ Add Customer</a>
+      <img class="header-logo" src="../assets/swash-icon-white.png" alt="Swash logo" />
+      <span class="role-pill" data-role-pill data-role="guest">
+        <strong data-role-label>Guest</strong>
+      </span>
     </div>
     <div class="header-actions">
       <a href="/rep/rep-home.html" class="btn btn-secondary">← Back to Home</a>
@@ -558,6 +560,7 @@
   </div>
 
   <script type="module" src="../auth-check.js"></script>
+  <script type="module" src="../nav.js"></script>
 
   <!-- Google Maps API -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcI3UKTFSa-J3t3C3eebXr5tpDFqIznpI&libraries=drawing,geometry&loading=async"></script>
@@ -1944,12 +1947,6 @@
           return false;
         }
 
-        // If user is not admin, use localStorage (admins can load from Firestore)
-        if (userRole !== 'admin') {
-          console.log('[territories] rep user, will use localStorage instead of Firestore');
-          return false;
-        }
-
         // Try loading from 'territories' collection first (preferred and authoritative)
         const { getDocs, collection, getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         const tSnap = await getDocs(collection(db, 'territories'));
@@ -2053,7 +2050,7 @@
         console.log('[territories] loaded from collection count:', loaded.length);
         if (loaded.length > 0) {
           territories = loaded;
-          territorySource = 'collection';
+          territorySource = userRole === 'admin' ? 'collection' : 'collection-readonly';
           console.log('[territories] ✓ LOADED from collection:', territories.map(t => ({ id: t.id, name: t.name, type: t.type })));
           // Final defensive dedupe by name (prefer first occurrence from collection)
           const seen = new Set();
@@ -2066,6 +2063,9 @@
           });
           // Keep local in sync
           try { localStorage.setItem('territories', JSON.stringify(territories)); } catch {}
+          if (userRole !== 'admin') {
+            console.log('[territories] rep user using Firestore collection (read-only)');
+          }
           return true;
         }
         console.warn('[territories] no territories found in Firestore collection (loaded.length=0)');

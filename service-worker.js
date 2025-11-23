@@ -1,18 +1,17 @@
 // Swash Service Worker
 // Provides offline caching and forwards sync events to the app shell.
-const CACHE_NAME = 'swash-cache-v53';
+const CACHE_NAME = 'swash-cache-v54';
 const OFFLINE_URLS = [
   "/index.html",
-  "/admin.html",
+  "/pipeline.html",
   "/admin/stats.html",
   "/admin/message-log.html",
   "/add-log.html",
   "/rep/rep-home.html",
-  // Legacy dashboard removed from primary nav; keep out of offline cache
-  "/rep/quote.html",
   // Embedded quote form (must be cached so iframe works offline)
   "/rep/quote-embed.html",
   "/rep/quote-embed.js",
+  "/rep/add-new-customer.html",
   "/rep/scheduler.html",
   "/rep/chat.html",
   "/style.css",

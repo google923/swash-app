@@ -27,13 +27,16 @@
     .assign-summary__list { margin: 0; padding: 0; list-style: none; max-height: 220px; overflow-y: auto; }
     .assign-summary__item { font-size: 12px; color: #1f2937; padding: 2px 0; border-bottom: 1px dashed #e5e7eb; }
     .assign-summary__item:last-child { border-bottom: none; }
+    body.assign-mode .cleaner-filter { display: none !important; }
   </style>
 </head>
 <body>
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
-      <a href="./quote.html" class="btn btn-primary" style="margin-left:12px;font-size:14px;padding:8px 14px;">➕ Add Customer</a>
+      <img class="header-logo" src="../assets/swash-icon-white.png" alt="Swash logo" />
+      <span class="role-pill" data-role-pill data-role="guest">
+        <strong data-role-label>Guest</strong>
+      </span>
     </div>
     <div class="header-actions">
       <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
@@ -42,7 +45,7 @@
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
           <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
-          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
           <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
           <a href="./scheduler.html" class="admin-rep">📅 Schedule</a>
           <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>

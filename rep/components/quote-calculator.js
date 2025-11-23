@@ -149,12 +149,14 @@ function buildTemplate() {
           </div>
         </form>
         <section id="result" class="result-panel" aria-live="polite"></section>
-        <div class="form-actions form-actions--end form-actions--compact">
+        <div class="form-actions form-actions--start form-actions--compact">
           <label class="checkbox checkbox--lg" for="alternating">
             <input type="checkbox" id="alternating" />
             <span>Alternating Clean</span>
           </label>
-          <button type="button" id="applyOfferBtn" class="btn btn-offer">Apply Special Offer</button>
+        </div>
+        <div class="form-actions form-actions--start" style="width:100%; margin-top:0;">
+          <button type="button" id="applyOfferBtn" class="btn btn-offer" style="flex:1;">Apply Special Offer</button>
         </div>
         <div class="form-actions form-actions--end">
           <button type="button" id="submitBtn" class="btn btn-primary">Schedule First Clean</button>
@@ -1406,7 +1408,7 @@ function buildEmbedTemplate() {
               </div>
             </div>
           </form>
-          <div class="form-actions form-actions--end form-actions--compact" style="margin-bottom: 8px;">
+          <div class="form-actions form-actions--start form-actions--compact" style="margin-bottom: 6px;">
             <label class="checkbox checkbox--lg" for="alternating">
               <input type="checkbox" id="alternating" />
               <span>Alternating Clean</span>
@@ -1415,7 +1417,9 @@ function buildEmbedTemplate() {
               <input type="checkbox" id="frontOnly" />
               <span>Front Only</span>
             </label>
-            <button type="button" id="applyOfferBtn" class="btn btn-offer">Apply Special Offer</button>
+          </div>
+          <div class="form-actions form-actions--start" style="width:100%; margin-top:0; margin-bottom: 8px;">
+            <button type="button" id="applyOfferBtn" class="btn btn-offer" style="flex:1;">Apply Special Offer</button>
           </div>
           <section id="result" class="result-panel" aria-live="polite"></section>
           <div class="form-grid">
@@ -1485,11 +1489,8 @@ function buildPricePanelMarkup(pricing = {}) {
 
 function buildQuotePageResultMarkup(pricing = {}, { offerActive = false, expiresAt = null } = {}) {
   const pricePer = Number(pricing.pricePerClean || 0).toFixed(2);
-  const expiresCopy = offerActive && expiresAt
-    ? new Date(expiresAt).toLocaleDateString("en-GB")
-    : null;
   const offerHtml = offerActive
-    ? `<p class="result-offer">Special offer applied${expiresCopy ? ` – expires ${expiresCopy}` : ""}</p>`
+    ? `<p class="result-offer">Special offer applied</p>`
     : "";
   return `
     <div class="result-box">

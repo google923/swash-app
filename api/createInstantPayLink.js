@@ -1,12 +1,29 @@
 // Vercel serverless function: Create a GoCardless Instant Bank Pay session
 // Returns { redirect_url, session_id }
 
-/**
- * Helper: pick GoCardless API host based on env
- */
+function applyCors(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  return true;
+}
+
 function getGcHost() {
   const env = (process.env.GC_ENV || '').toLowerCase();
   return env === 'sandbox' ? 'https://api-sandbox.gocardless.com' : 'https://api.gocardless.com';
+}
+
+function buildReturnUrl(billingRequestId) {
+  const baseUrl = process.env.SMS_PAY_RETURN_URL || 'https://app.swashcleaning.co.uk/subscriber-sms-setup.html';
+  if (!billingRequestId) return baseUrl;
+  try {
+    const url = new URL(baseUrl);
+    url.searchParams.set('billing_request_id', billingRequestId);
+    return url.toString();
+  } catch (_) {
+    return baseUrl;
+  }
 }
 
 /**
@@ -14,9 +31,22 @@ function getGcHost() {
  * Body: { amount: number (pennies), currency?: 'GBP', description?: string }
  */
 module.exports = async (req, res) => {
+  const corsAllowed = applyCors(req, res);
+
+  if (req.method === 'OPTIONS') {
+    if (!corsAllowed) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    return res.status(204).end();
+  }
+
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+    res.setHeader('Allow', 'POST, OPTIONS');
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!corsAllowed) {
+    return res.status(403).json({ error: 'Origin not allowed' });
   }
 
   const apiKey = process.env.GC_API_KEY;
@@ -73,12 +103,15 @@ module.exports = async (req, res) => {
     }
 
     // 2) Create Billing Request Flow to obtain an authorisation URL
+    const returnUrl = buildReturnUrl(billingRequestId);
+
     const brfResp = await fetch(`${host}/billing_request_flows`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         billing_request_flows: {
-          // redirect_uri is optional; GoCardless provides a thank-you page by default
+          redirect_uri: returnUrl,
+          exit_uri: returnUrl,
           links: { billing_request: billingRequestId },
         },
       }),
@@ -91,11 +124,19 @@ module.exports = async (req, res) => {
     const brfData = await brfResp.json();
     const flow = brfData && (brfData.billing_request_flows || brfData.billingRequestFlows);
     const redirectUrl = flow && (flow.authorisation_url || flow.authorization_url || flow.redirect_url);
+    const redirectFlowId = flow && (flow.id || flow.redirect_flow_id || flow.redirectFlowId);
     if (!redirectUrl) {
       return res.status(502).json({ error: 'Authorisation URL not returned' });
     }
 
-    return res.status(200).json({ redirect_url: redirectUrl, session_id: billingRequestId });
+    const credits = req.body && Number(req.body.credits);
+
+    return res.status(200).json({
+      redirect_url: redirectUrl,
+      session_id: billingRequestId,
+      redirect_flow_id: redirectFlowId || null,
+      credits: Number.isFinite(credits) ? credits : null,
+    });
   } catch (err) {
     return res.status(500).json({ error: 'Unexpected error creating payment link', message: String(err && err.message || err) });
   }

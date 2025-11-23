@@ -3,7 +3,7 @@
 ## Critical Path: Rep Sends Quote to Customer
 
 ### 1. Access & Authentication
-- [ ] Log in with rep credentials at `/quote.html`
+- [ ] Log in with rep credentials at `/rep/add-new-customer.html`
 - [ ] Verify "Rep Code" is prefilled with your username
 - [ ] Verify "Quote Date" shows today's date (DD/MM/YYYY format)
 - [ ] Verify menu button works and shows navigation

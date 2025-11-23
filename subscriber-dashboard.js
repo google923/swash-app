@@ -1,14 +1,12 @@
 import { auth, db } from './firebase-init.js';
+import { ensureSubscriberAccess } from './lib/subscriber-access.js';
 import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import {
-  doc,
-  getDoc,
   collection,
   query,
-  where,
   getDocs,
   orderBy,
   limit
@@ -19,6 +17,7 @@ const state = {
   currentUser: null,
   subscriberId: null,
   userData: null,
+  viewerRole: null,
   stats: {
     quotes: 0,
     customers: 0,
@@ -32,14 +31,12 @@ const authOverlay = document.getElementById('authOverlay');
 const dashboardContent = document.getElementById('dashboardContent');
 const logoutBtn = document.getElementById('logoutBtn');
 const menuBtn = document.getElementById('menuBtn');
-const menuDropdown = document.getElementById('menuDropdown');
 const companyNameDisplay = document.getElementById('companyNameDisplay');
 
 // Initialize
 async function init() {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
-      // Not logged in - redirect to subscriber login page
       console.log('[Subscriber Dashboard] No user detected, redirecting to subscriber login');
       window.location.href = './subscriber-login.html';
       return;
@@ -47,107 +44,61 @@ async function init() {
 
     try {
       state.currentUser = user;
-      console.log('[Subscriber Dashboard] User detected:', user.email);
+      const access = await ensureSubscriberAccess(user);
 
-      // Check if viewing someone else's dashboard (admin feature)
-      const urlParams = new URLSearchParams(window.location.search);
-      const viewingUid = urlParams.get('uid');
+      state.subscriberId = access.subscriberId;
+      state.userData = access.subscriberProfile;
+      state.viewerRole = access.viewerRole;
 
-      // Get current user's document
-      const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
-
-      if (!currentUserDoc.exists()) {
-        console.error('[Subscriber Dashboard] User document not found for:', user.uid);
-        throw new Error('User document not found');
-      }
-
-      const currentUserData = currentUserDoc.data();
-      console.log('[Subscriber Dashboard] User data loaded. Role:', currentUserData.role);
-
-      // If admin is viewing another subscriber's dashboard
-      if (viewingUid && currentUserData.role === 'admin') {
-        state.subscriberId = viewingUid;
-        
-        // Get the subscriber's data
-        const subscriberDoc = await getDoc(doc(db, 'users', viewingUid));
-        
-        if (!subscriberDoc.exists()) {
-          throw new Error('Subscriber not found');
-        }
-
-        state.userData = subscriberDoc.data();
-
-        if (state.userData.role !== 'subscriber') {
-          throw new Error('The specified user is not a subscriber');
-        }
-
-      } else {
-        // Regular subscriber viewing their own dashboard
-        state.subscriberId = user.uid;
-        state.userData = currentUserData;
-
-        // Check role
-        if (state.userData.role !== 'subscriber') {
-          throw new Error('Access denied. This dashboard is for subscribers only.');
-        }
-
-        // Check if disabled
+      if (access.viewerRole === 'subscriber') {
         if (state.userData.disabled) {
           throw new Error('Your account has been disabled. Please contact support.');
         }
-
-        // Check if billing is completed
         if (!state.userData.billingCompleted) {
-          // Redirect to billing page
           window.location.href = './subscriber-billing.html';
           return;
         }
       }
 
-      // Show dashboard
-      authOverlay.style.display = 'none';
-      dashboardContent.style.display = 'block';
+      if (authOverlay) authOverlay.style.display = 'none';
+      if (dashboardContent) dashboardContent.style.display = 'block';
 
-      // Display company name
       if (state.userData.companyName) {
         companyNameDisplay.textContent = state.userData.companyName;
+      } else if (state.userData.name) {
+        companyNameDisplay.textContent = state.userData.name;
+      } else {
+        companyNameDisplay.textContent = '';
       }
 
-      // Load dashboard data
       await loadDashboardData();
-
     } catch (error) {
       console.error('Authentication error:', error);
       alert(error.message || 'Failed to authenticate. Please try logging in again.');
       await signOut(auth);
-      window.location.href = './subscriber-login.html';
+      window.location.href = '/index.html';
     }
   });
 
   // Logout button
-  logoutBtn.addEventListener('click', async () => {
-    try {
-      await signOut(auth);
-      window.location.href = './subscriber-login.html';
-    } catch (error) {
-      console.error('Logout error:', error);
-      alert('Failed to sign out');
-    }
-  });
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await signOut(auth);
+        window.location.href = '/index.html';
+      } catch (error) {
+        console.error('Logout error:', error);
+        alert('Failed to sign out');
+      }
+    });
+  }
 
-  // Menu dropdown toggle
-  menuBtn.addEventListener('click', () => {
-    const isExpanded = menuDropdown.classList.toggle('show');
-    menuBtn.setAttribute('aria-expanded', isExpanded);
-  });
-
-  // Close menu on outside click
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.menu-box')) {
-      menuDropdown.classList.remove('show');
-      menuBtn.setAttribute('aria-expanded', 'false');
-    }
-  });
+  // Menu button links to main quick actions hub
+  if (menuBtn) {
+    menuBtn.addEventListener('click', () => {
+      window.location.href = '/main.html';
+    });
+  }
 }
 
 // Load dashboard statistics and recent activity

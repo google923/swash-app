@@ -44,6 +44,7 @@
       <a href="./rep/scheduler.html" class="btn btn-secondary">Schedule</a>
       <a href="./subscriber-cleaners.html" class="btn btn-secondary">Cleaners</a>
       <a href="./subscriber-territories.html" class="btn btn-secondary">Territories</a>
+      <a href="./subscriber-sms-setup.html" class="btn btn-secondary">SMS Centre</a>
       <button id="logoutBtn" class="btn btn-secondary">Logout</button>
     </nav>
   </header>
@@ -102,10 +103,10 @@
       where,
       getDocs,
       doc,
-      getDoc,
       updateDoc,
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { ensureSubscriberAccess } from "./lib/subscriber-access.js";
 
     let subscriberId = null;
     let linkedReps = [];
@@ -128,26 +129,20 @@
       }
 
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const viewingUid = urlParams.get('uid');
+        const access = await ensureSubscriberAccess(user);
+        subscriberId = access.subscriberId;
 
-        const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
-        if (!currentUserDoc.exists()) throw new Error('User not found');
-        const currentUserData = currentUserDoc.data();
-
-        if (viewingUid && currentUserData.role === 'admin') {
-          subscriberId = viewingUid;
-        } else {
-          if (currentUserData.role !== 'subscriber') throw new Error('Access denied');
-          if (!currentUserData.billingCompleted) {
-            window.location.href = './subscriber-billing.html';
-            return;
-          }
-          subscriberId = user.uid;
+        if (access.viewerRole === 'subscriber' && !access.viewerProfile.billingCompleted) {
+          window.location.href = './subscriber-billing.html';
+          return;
         }
 
-        authOverlay.style.display = 'none';
-        usersContent.style.display = 'block';
+        if (authOverlay) {
+          authOverlay.style.display = 'none';
+        }
+        if (usersContent) {
+          usersContent.style.display = 'block';
+        }
 
         await loadLinkedReps();
       } catch (error) {
@@ -209,11 +204,11 @@
     }
     function closeModalFn() { linkModal.classList.remove('show'); }
 
-    linkRepBtn.addEventListener('click', openModal);
-    closeModal.addEventListener('click', closeModalFn);
-    cancelLink.addEventListener('click', closeModalFn);
+    linkRepBtn?.addEventListener('click', openModal);
+    closeModal?.addEventListener('click', closeModalFn);
+    cancelLink?.addEventListener('click', closeModalFn);
 
-    confirmLink.addEventListener('click', async () => {
+    confirmLink?.addEventListener('click', async () => {
       const email = repEmailInput.value.trim().toLowerCase();
       if (!email) {
         alert('Please enter a rep email');
@@ -241,7 +236,7 @@
       }
     });
 
-    logoutBtn.addEventListener('click', async () => {
+    logoutBtn?.addEventListener('click', async () => {
       await signOut(auth);
       window.location.href = './subscriber-login.html';
     });

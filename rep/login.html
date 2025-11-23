@@ -12,7 +12,7 @@
 <body>
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="../assets/swash-icon-white.png" alt="Swash logo" />
     </div>
     <div class="header-actions">
       <a href="../home.html" class="btn btn-secondary">← Back to Website</a>
@@ -42,9 +42,9 @@
     const ALLOW_BYPASS_ON = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
     if (OFFLINE_BYPASS && ALLOW_BYPASS_ON) {
-      // Redirect straight to admin page for offline testing
+      // Redirect straight to the main hub for offline testing
       // Use a root-relative path so it works from any subfolder
-      window.location.href = '/admin.html';
+      window.location.href = '/main.html';
     }
     // ------------------------------------------------------------
 
@@ -95,10 +95,8 @@
         const snap = await getDoc(doc(db, "users", user.uid));
         const role = snap.exists() ? snap.data().role : "none";
         
-        if (role === "rep") {
-          window.location.href = "/rep/rep-home.html";
-        } else if (role === "admin") {
-          window.location.href = "/admin.html";
+        if (role === "rep" || role === "admin" || role === "subscriber") {
+          window.location.href = "/main.html";
         } else {
           showError("Access denied: unknown role.");
           await auth.signOut();

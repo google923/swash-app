@@ -15,6 +15,7 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
+const FieldValue = admin.firestore.FieldValue;
 const BASELINE_START_DATE = '2025-11-03';
 const BOOKING_EMAIL_TITLE = "We've received your payment — let’s get you booked in!";
 const BOOKING_BUTTON_STYLE = 'display:inline-block;padding:12px 18px;margin:8px 0;background:#0078d7;color:#fff;border-radius:6px;text-decoration:none;';
@@ -235,6 +236,65 @@ function buildBookingMessage({ customerName, customerId, slots }) {
   return `Thank you ${safeName}, your payment has been received and recorded.\n\nPlease choose one of the following available booking dates:\n\n${buttonsHtml}\n\nIf none of these dates work, simply reply to this email and we’ll arrange a suitable time.`;
 }
 
+function extractSubscriberIdFromPath(path) {
+  if (!path) return null;
+  const segments = String(path).split('/');
+  const index = segments.indexOf('subscribers');
+  if (index === -1 || index + 1 >= segments.length) return null;
+  return segments[index + 1];
+}
+
+async function processSmsPurchases(billingRequestId) {
+  if (!billingRequestId) {
+    return { handled: false, updated: 0 };
+  }
+  try {
+    const purchasesSnap = await db.collectionGroup('smsPurchases').where('billingRequestId', '==', billingRequestId).get();
+    if (purchasesSnap.empty) {
+      return { handled: false, updated: 0 };
+    }
+
+    let updated = 0;
+    for (const docSnap of purchasesSnap.docs) {
+      const ref = docSnap.ref;
+      const subscriberId = extractSubscriberIdFromPath(ref.path);
+      if (!subscriberId) continue;
+
+      let applied = false;
+      await db.runTransaction(async (tx) => {
+        const latest = await tx.get(ref);
+        if (!latest.exists) return;
+        const data = latest.data() || {};
+        const status = (data.status || '').toLowerCase();
+        if (status === 'completed') return;
+        const credits = Number(data.credits) || 0;
+        if (!credits) return;
+
+        const settingsRef = db.collection('subscribers').doc(subscriberId).collection('private').doc('smsSettings');
+        tx.set(settingsRef, {
+          creditsBalance: FieldValue.increment(credits),
+          lastTopUpAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        tx.set(ref, {
+          status: 'completed',
+          completedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+        applied = true;
+      });
+      if (applied) {
+        updated += 1;
+      }
+    }
+
+    return { handled: true, updated };
+  } catch (error) {
+    console.error('[gcWebhook] Failed to process SMS purchase', error);
+    return { handled: false, updated: 0, error };
+  }
+}
+
 async function sendBookingSelectionEmail({ quoteSnap, quoteData }) {
   const customerRef = quoteSnap.ref.parent.parent;
   if (!customerRef) return { sent: false };
@@ -291,79 +351,97 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid JSON' });
   }
 
-  // Extract billing_request_id / payment state heuristically
-  const billingRequestId = json.billing_request_id || json.billing_request?.id || json.resource?.billing_request?.id || json.resource?.id || null;
-  const eventStatus = json.status || json.event?.status || json.resource?.status || null;
-  const eventType = json.event?.type || json.type || '';
+  const events = Array.isArray(json?.events) && json.events.length ? json.events : [json];
+  let handledAny = false;
+  const summary = [];
 
-  if (!billingRequestId) {
-    return res.status(200).json({ ignored: true, reason: 'No billing_request_id' });
-  }
+  for (const evt of events) {
+    const billingRequestId = evt.billing_request_id || evt.billing_request?.id || evt.resource?.billing_request?.id || evt.resource?.id || evt.links?.billing_request || null;
+    const eventStatus = evt.status || evt.event?.status || evt.resource?.status || null;
+    const eventType = evt.event?.type || evt.type || '';
+    const eventAction = evt.action || '';
 
-  // Only act on successful payment confirmation events
-  const isConfirmed = /confirmed|paid|payment_created|payment_confirmed/i.test(eventStatus || '') || /payment_confirmed|payment_paid/i.test(eventType);
-  if (!isConfirmed) {
-    return res.status(200).json({ ignored: true, reason: 'Not a confirmation event' });
-  }
-
-  try {
-    const quotesQuery = await db.collectionGroup('quotes').where('gocardlessRef', '==', billingRequestId).get();
-    if (quotesQuery.empty) {
-      return res.status(200).json({ success: true, updated: 0 });
+    if (!billingRequestId) {
+      summary.push({ ignored: true, reason: 'No billing_request_id' });
+      continue;
     }
-    let updated = 0;
-    for (const docSnap of quotesQuery.docs) {
-      const data = docSnap.data();
-      if (data.offlineSubmitted) {
-        const paymentIso = new Date().toISOString();
-        const updatePayload = { status: 'paid', offlinePaidAt: paymentIso };
-        if (!data.bookingEmailSent) {
-          try {
-            const bookingResult = await sendBookingSelectionEmail({ quoteSnap: docSnap, quoteData: data });
-            if (bookingResult?.sent) {
-              updatePayload.bookingEmailSent = true;
-              updatePayload.bookingEmailSentAt = new Date().toISOString();
-              updatePayload.bookingOptions = bookingResult.slots;
-              updatePayload.bookingOptionsGeneratedAt = new Date().toISOString();
-            }
-          } catch (bookingError) {
-            console.error('[gcWebhook] booking email dispatch failed', bookingError);
-          }
-        }
-        await docSnap.ref.update(updatePayload);
-        updated++;
-        // Create notification
-        const repId = data.repId || null;
-        await db.collection('notifications').add({
-          type: 'payment_received',
-          repId,
-          customerId: docSnap.ref.parent.parent?.id || null,
-          quotePath: docSnap.ref.path,
-          billingRequestId,
-          timestamp: new Date().toISOString(),
-          offlineSubmitted: true
-        });
-        if (repId) {
-          try {
-            await db.collection('notifications').doc(repId).collection('items').add({
-              type: 'payment_received',
-              customerId: docSnap.ref.parent.parent?.id || null,
-              quotePath: docSnap.ref.path,
-              billingRequestId,
-              timestamp: new Date().toISOString(),
-              offlineSubmitted: true
-            });
-          } catch(_) {}
-        }
-      } else {
-        // Online path could trigger standard flows (currently suppressed here to avoid double-send)
-        await docSnap.ref.update({ status: 'paid' });
-        updated++;
+
+    const isConfirmed = /confirmed|paid|fulfilled|payment_created|payment_confirmed|payment_paid/i.test(eventStatus || '')
+      || /fulfilled|payment_confirmed|payment_paid/i.test(eventType)
+      || /fulfilled/i.test(eventAction);
+
+    if (!isConfirmed) {
+      summary.push({ billingRequestId, ignored: true, reason: 'Not a confirmation event', eventStatus, eventType, eventAction });
+      continue;
+    }
+
+    handledAny = true;
+
+    try {
+      const smsResult = await processSmsPurchases(billingRequestId);
+      const quotesQuery = await db.collectionGroup('quotes').where('gocardlessRef', '==', billingRequestId).get();
+      if (quotesQuery.empty) {
+        summary.push({ billingRequestId, success: true, updated: 0, smsPurchasesUpdated: smsResult.updated || 0 });
+        continue;
       }
+      let updated = 0;
+      for (const docSnap of quotesQuery.docs) {
+        const data = docSnap.data();
+        if (data.offlineSubmitted) {
+          const paymentIso = new Date().toISOString();
+          const updatePayload = { status: 'paid', offlinePaidAt: paymentIso };
+          if (!data.bookingEmailSent) {
+            try {
+              const bookingResult = await sendBookingSelectionEmail({ quoteSnap: docSnap, quoteData: data });
+              if (bookingResult?.sent) {
+                updatePayload.bookingEmailSent = true;
+                updatePayload.bookingEmailSentAt = new Date().toISOString();
+                updatePayload.bookingOptions = bookingResult.slots;
+                updatePayload.bookingOptionsGeneratedAt = new Date().toISOString();
+              }
+            } catch (bookingError) {
+              console.error('[gcWebhook] booking email dispatch failed', bookingError);
+            }
+          }
+          await docSnap.ref.update(updatePayload);
+          updated++;
+          const repId = data.repId || null;
+          await db.collection('notifications').add({
+            type: 'payment_received',
+            repId,
+            customerId: docSnap.ref.parent.parent?.id || null,
+            quotePath: docSnap.ref.path,
+            billingRequestId,
+            timestamp: new Date().toISOString(),
+            offlineSubmitted: true
+          });
+          if (repId) {
+            try {
+              await db.collection('notifications').doc(repId).collection('items').add({
+                type: 'payment_received',
+                customerId: docSnap.ref.parent.parent?.id || null,
+                quotePath: docSnap.ref.path,
+                billingRequestId,
+                timestamp: new Date().toISOString(),
+                offlineSubmitted: true
+              });
+            } catch(_) {}
+          }
+        } else {
+          await docSnap.ref.update({ status: 'paid' });
+          updated++;
+        }
+      }
+      summary.push({ billingRequestId, success: true, updated, smsPurchasesUpdated: smsResult.updated || 0 });
+    } catch (error) {
+      console.error('[gcWebhook] error', error);
+      summary.push({ billingRequestId, success: false, error: error?.message || String(error) });
     }
-    return res.status(200).json({ success: true, updated });
-  } catch (e) {
-    console.error('[gcWebhook] error', e);
-    return res.status(500).json({ error: 'Internal webhook error' });
   }
+
+  if (!handledAny) {
+    return res.status(200).json({ ignored: true, summary });
+  }
+
+  return res.status(200).json({ success: true, summary });
 }

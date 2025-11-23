@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Swash Route Planner</title>
+  <script>
+    const search = window.location.search || "";
+    const target = `/subscriber-schedule-full.html${search}`;
+    window.location.replace(target);
+    window.__swashScheduleRedirect = target;
+  </script>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; }
+    p { font-size: 1rem; }
+    a { color: #0078d7; }
+  </style>
+</head>
+<body>
+  <p>Redirecting to the subscriber route planner… If you are not redirected, <a id="scheduleRedirectLink" href="/subscriber-schedule-full.html">click here</a>.</p>
+  <script>
+    const fallback = document.getElementById("scheduleRedirectLink");
+    if (fallback && window.__swashScheduleRedirect) {
+      fallback.href = window.__swashScheduleRedirect;
+    }
+  </script>
+</body>
+</html>

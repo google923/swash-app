@@ -136,6 +136,7 @@ const PAGE_TYPE = (() => {
   // Subscriber pages - completely separate auth system
   if (/\/subscriber-/.test(path)) return "subscriber";
 
+  if (/\/pipeline\.html$/.test(path)) return "admin-subscriber";
   if (/\/admin\.html$/.test(path) || /\/admin\//.test(path)) return "admin";
   if (/\/rep\/scheduler\.html$/.test(path)) return "shared";
 
@@ -291,18 +292,7 @@ export async function handlePageRouting(pageType = "login") {
 
   if (pageType === "login") {
     if (!user) return status;
-    if (role === "admin") {
-      status.redirected = scheduleRedirect("/admin.html");
-      return status;
-    }
-    if (role === "rep") {
-      status.redirected = scheduleRedirect("/rep/rep-home.html");
-      return status;
-    }
-    if (role === "subscriber") {
-      status.redirected = scheduleRedirect("/subscriber-dashboard.html");
-      return status;
-    }
+    status.redirected = scheduleRedirect("/main.html");
     return status;
   }
 
@@ -313,6 +303,15 @@ export async function handlePageRouting(pageType = "login") {
 
   if (pageType === "shared") {
     console.log("[Auth] Shared page access granted");
+    return status;
+  }
+
+  if (pageType === "admin-subscriber") {
+    if (role !== "admin" && role !== "subscriber") {
+      status.redirected = scheduleRedirect(loginUrl);
+      return status;
+    }
+    console.log("[Auth] Admin/subscriber page access granted");
     return status;
   }
 

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Performance Analytics - Swash Subscriber</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .admin-only, .rep-only, .admin-rep { display:none !important; }
+    .subscriber-only { display:block !important; }
+    .metrics-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; padding:20px; }
+    .metric-card { background:#fff; border:2px solid #e2e8f0; border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:8px; }
+    .metric-card h3 { margin:0; font-size:0.9rem; color:#475569; text-transform:uppercase; letter-spacing:0.05em; }
+    .metric-card span { font-size:2rem; font-weight:700; color:#0f172a; }
+    .metric-card small { font-size:0.8rem; color:#94a3b8; }
+    .card-section { padding:20px; }
+    .card-section h3 { margin:0 0 8px 0; font-size:1.1rem; color:#0f172a; }
+    .card-section p { margin:0 0 16px 0; color:#64748b; }
+    .table-wrap { overflow:auto; border:1px solid #e2e8f0; border-radius:12px; background:#fff; }
+    table { width:100%; border-collapse:collapse; }
+    thead { background:#f1f5f9; }
+    th, td { padding:12px; text-align:left; font-size:0.9rem; border-bottom:1px solid #f1f5f9; white-space:nowrap; }
+    tbody tr:hover { background:#f8fafc; }
+    .trend-list { display:flex; flex-direction:column; gap:12px; }
+    .trend-item { border:1px solid #e2e8f0; border-radius:10px; padding:14px; display:flex; justify-content:space-between; align-items:center; }
+    .trend-item strong { font-size:1rem; color:#0f172a; }
+    .trend-meta { display:flex; gap:16px; font-size:0.9rem; color:#475569; }
+    @media (max-width:720px) {
+      .trend-item { flex-direction:column; align-items:flex-start; gap:8px; }
+      .trend-meta { flex-wrap:wrap; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
+      <span id="companyNameDisplay" style="margin-left:16px;font-weight:600;color:#334155;"></span>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts &amp; Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
+          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
+          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
+          <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
+          <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
+          <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
+          <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
+          <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
+          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
+          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
+          <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Preparing performance analytics.</p>
+    </div>
+  </section>
+
+  <main id="performancePage" class="page" style="display:none;">
+    <section class="card">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h2>Performance Analytics</h2>
+          <p class="text-muted">Measure conversions, door activity, and rep contribution across your routes.</p>
+        </div>
+      </header>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <h3>Doors this month</h3>
+          <span id="metricDoorsMonth">0</span>
+          <small>Across all tracked shifts</small>
+        </div>
+        <div class="metric-card">
+          <h3>Signups this month</h3>
+          <span id="metricSignupsMonth">0</span>
+          <small>Total confirmed sales</small>
+        </div>
+        <div class="metric-card">
+          <h3>Conversion rate</h3>
+          <span id="metricConversionMonth">0%</span>
+          <small>Signups ÷ doors</small>
+        </div>
+        <div class="metric-card">
+          <h3>Miles this month</h3>
+          <span id="metricMilesMonth">0</span>
+          <small>Logged from shift summaries</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <div class="card-section">
+        <h3>Top performers</h3>
+        <p>Ranked by signups over the last 30 days.</p>
+        <div class="table-wrap">
+          <table aria-label="Top performing reps">
+            <thead>
+              <tr>
+                <th scope="col">Rep</th>
+                <th scope="col">Doors</th>
+                <th scope="col">Signups</th>
+                <th scope="col">Conversion</th>
+              </tr>
+            </thead>
+            <tbody id="topRepsBody">
+              <tr><td colspan="4" style="text-align:center;color:#94a3b8;">Loading performance data…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <div class="card-section">
+        <h3>Weekly trend</h3>
+        <p>Door and signup totals grouped by week (starting Monday).</p>
+        <div id="weeklyTrend" class="trend-list">
+          <div class="trend-item" style="color:#94a3b8;">Loading weekly breakdown…</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./auth-check.js"></script>
+  <script type="module" src="./nav.js"></script>
+  <script type="module" src="./firebase-init.js"></script>
+  <script type="module" src="./subscriber-performance.js"></script>
+</body>
+</html>

@@ -3,38 +3,205 @@
 
 function qs(id) { return document.getElementById(id); }
 
+const ROLE_LABELS = {
+  admin: "Admin",
+  rep: "Rep",
+  subscriber: "Subscriber",
+  guest: "Guest",
+  unauthorised: "Guest",
+};
+
+const SUBSCRIBER_NAME_KEY = "swashActiveSubscriberName";
+
+function formatRoleLabel(role) {
+  if (!role) return ROLE_LABELS.guest;
+  const key = role.toLowerCase();
+  return ROLE_LABELS[key] || role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function loadStoredSubscriberName() {
+  try {
+    return sessionStorage.getItem(SUBSCRIBER_NAME_KEY) || localStorage.getItem(SUBSCRIBER_NAME_KEY) || "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function storeSubscriberName(name) {
+  try {
+    if (name) {
+      sessionStorage.setItem(SUBSCRIBER_NAME_KEY, name);
+      localStorage.setItem(SUBSCRIBER_NAME_KEY, name);
+    } else {
+      sessionStorage.removeItem(SUBSCRIBER_NAME_KEY);
+      localStorage.removeItem(SUBSCRIBER_NAME_KEY);
+    }
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function setCompanyName(name) {
+  const headerLeft = document.querySelector('.header-left');
+  if (!headerLeft) return;
+
+  let chip = headerLeft.querySelector('[data-company-name]');
+  if (!chip && name) {
+    chip = document.createElement('span');
+    chip.className = 'header-company';
+    chip.dataset.companyName = '';
+    const logo = headerLeft.querySelector('.header-logo');
+    if (logo && logo.parentElement === headerLeft) {
+      headerLeft.insertBefore(chip, logo.nextSibling);
+    } else {
+      headerLeft.insertBefore(chip, headerLeft.firstChild);
+    }
+  }
+
+  if (chip) {
+    if (name) {
+      chip.textContent = name;
+      chip.hidden = false;
+    } else {
+      chip.textContent = '';
+      chip.hidden = true;
+    }
+  }
+}
+
+function handleSubscriberProfileEvent(event) {
+  const detail = event?.detail || {};
+  const name = detail.name || '';
+  storeSubscriberName(name);
+  setCompanyName(name);
+}
+
+function buildRoleBadge(role) {
+  const resolvedRole = (role || "guest").toLowerCase();
+  const badge = document.createElement("span");
+  badge.className = "role-badge";
+  badge.dataset.roleBadge = "";
+  badge.dataset.role = resolvedRole;
+  badge.innerHTML = 'Role: <strong data-role-label></strong>';
+  const label = badge.querySelector('[data-role-label]');
+  if (label) {
+    label.textContent = formatRoleLabel(resolvedRole);
+  }
+  return badge;
+}
+
+function updateRoleBadge() {
+  const role = (window.userRole || "guest").toLowerCase();
+  const labelText = formatRoleLabel(role);
+  const badges = document.querySelectorAll('[data-role-badge]');
+  if (!badges.length) {
+    const legacy = document.querySelector('[data-role-pill]');
+    if (legacy) {
+      legacy.removeAttribute('data-role-pill');
+      legacy.classList.remove('role-pill');
+      legacy.classList.add('role-badge');
+      legacy.dataset.roleBadge = '';
+      legacy.dataset.role = role;
+      legacy.innerHTML = `Role: <strong data-role-label>${labelText}</strong>`;
+      return;
+    }
+    return;
+  }
+
+  badges.forEach((badge, index) => {
+    if (index > 0) {
+      badge.remove();
+      return;
+    }
+    badge.dataset.role = role;
+    const label = badge.querySelector('[data-role-label]');
+    if (label) label.textContent = labelText;
+  });
+
+  if (role === 'subscriber' || role === 'admin') {
+    setCompanyName(loadStoredSubscriberName());
+  } else {
+    setCompanyName('');
+    storeSubscriberName('');
+  }
+}
+
+function ensureRoleBadge() {
+  const header = document.querySelector('.header');
+  if (!header) return;
+  const headerActions = header.querySelector('.header-actions');
+  if (!headerActions) return;
+
+  header.querySelectorAll('.header-left [data-role-pill], .header-left .role-pill, .header-left .role-badge').forEach((node) => {
+    node.remove();
+  });
+
+  let badge = headerActions.querySelector('[data-role-badge]');
+
+  if (!badge) {
+    const legacy = headerActions.querySelector('[data-role-pill]');
+    if (legacy) {
+      legacy.removeAttribute('data-role-pill');
+      legacy.classList.remove('role-pill');
+      legacy.classList.add('role-badge');
+      legacy.dataset.roleBadge = '';
+      legacy.dataset.role = (window.userRole || 'guest').toLowerCase();
+      legacy.innerHTML = 'Role: <strong data-role-label></strong>';
+      const label = legacy.querySelector('[data-role-label]');
+      if (label) label.textContent = formatRoleLabel(window.userRole || 'guest');
+      badge = legacy;
+    }
+  }
+
+  if (!badge) {
+    badge = buildRoleBadge((window.userRole || 'guest').toLowerCase());
+    headerActions.insertBefore(badge, headerActions.firstChild || null);
+  }
+
+  const duplicates = headerActions.querySelectorAll('[data-role-badge]');
+  duplicates.forEach((node, index) => {
+    if (index === 0) return;
+    node.remove();
+  });
+
+  const activeBadge = headerActions.querySelector('[data-role-badge]');
+  if (activeBadge && activeBadge !== headerActions.firstElementChild) {
+    headerActions.insertBefore(activeBadge, headerActions.firstElementChild);
+  }
+
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    headerActions.insertBefore(logoutBtn, activeBadge ? activeBadge.nextSibling : headerActions.firstChild);
+  }
+
+  headerActions.querySelectorAll('[data-role-pill]').forEach((node) => {
+    node.remove();
+  });
+
+  const existingName = loadStoredSubscriberName();
+  if (existingName) {
+    setCompanyName(existingName);
+  }
+}
+
 function initMenuDropdown() {
   const menuBtn = qs("menuBtn");
   const menuDropdown = qs("menuDropdown");
-  if (!menuBtn || !menuDropdown) return;
+  if (!menuBtn) return;
   if (menuBtn.dataset.menuInit) return;
   menuBtn.dataset.menuInit = "1";
 
-  // Ensure closed by default
-  menuDropdown.classList.remove("show");
+  // Replace dropdown with direct link into the main hub
+  menuBtn.textContent = "Quick Actions";
+  menuBtn.setAttribute("aria-haspopup", "false");
   menuBtn.setAttribute("aria-expanded", "false");
-
-  menuBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const shown = menuDropdown.classList.toggle("show");
-    menuBtn.setAttribute("aria-expanded", shown ? "true" : "false");
+  menuBtn.addEventListener("click", () => {
+    window.location.href = "/main.html";
   });
 
-  document.addEventListener("click", (e) => {
-    if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
-      menuDropdown.classList.remove("show");
-      menuBtn.setAttribute("aria-expanded", "false");
-    }
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      menuDropdown.classList.remove("show");
-      menuBtn.setAttribute("aria-expanded", "false");
-      menuBtn.blur();
-    }
-  });
-  console.log("[Nav] Dropdown initialized");
+  // Remove dropdown markup to avoid hidden duplicate navigation
+  if (menuDropdown) menuDropdown.remove();
+  console.log("[Nav] Menu button redirects to main hub");
 }
 
 function applyRepViewFlag(enabled) {
@@ -81,7 +248,7 @@ function initRepViewToggle() {
     }
     if (!enabled && isRepPage) {
       // Return to admin dashboard when disabling rep view on rep pages
-      location.href = "/admin.html";
+      location.href = "/pipeline.html";
     }
   });
   
@@ -134,7 +301,7 @@ function initModalHandlers() {
     }
     const backBtn = e.target.closest("[data-back]");
     if (backBtn) {
-      const fallback = backBtn.getAttribute("data-fallback") || (window.userRole === "admin" ? "/admin.html" : "/rep/rep-home.html");
+      const fallback = backBtn.getAttribute("data-fallback") || (window.userRole === "admin" ? "/pipeline.html" : "/rep/rep-home.html");
       if (history.length > 1) history.back();
       else location.href = fallback;
     }
@@ -205,9 +372,11 @@ function updateMenuVisibility() {
       showForSubscriber.forEach(el => el.classList.remove('hidden'));
       // Rep-only items should also be hidden for subscribers on shared pages
       document.querySelectorAll('.rep-only').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.subscriber-sms-only').forEach(el => el.classList.remove('hidden'));
     } else {
       // When not a subscriber, do not force-hide these elements here
       // Let existing admin/rep logic above control visibility
+      document.querySelectorAll('.subscriber-sms-only').forEach(el => el.classList.add('hidden'));
     }
   } catch (e) {
     console.warn('[Nav] Subscriber menu toggle failed', e);
@@ -218,16 +387,25 @@ function initNav() {
   initMenuDropdown();
   initModalHandlers();
   initRepViewToggle();
+  ensureRoleBadge();
+  updateRoleBadge();
+
+  const storedName = loadStoredSubscriberName();
+  if (storedName) {
+    setCompanyName(storedName);
+  }
   
   // Update menu visibility based on role
   if (window.userRole) {
     updateMenuVisibility();
+    updateRoleBadge();
   }
   
   // Re-check when user role is set (after auth loads)
   const checkInterval = setInterval(() => {
     if (window.userRole) {
       updateMenuVisibility();
+      updateRoleBadge();
       clearInterval(checkInterval);
     }
   }, 100);
@@ -235,9 +413,25 @@ function initNav() {
   // Update status indicator on network change
   window.addEventListener('online', updateMenuVisibility);
   window.addEventListener('offline', updateMenuVisibility);
+
+  if (typeof window.onAuthStateChange === "function") {
+    try {
+      window.onAuthStateChange(() => {
+        updateRoleBadge();
+        updateMenuVisibility();
+      });
+    } catch (e) {
+      console.warn('[Nav] Failed to subscribe to auth updates for role badge', e);
+    }
+  }
+
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('swash:subscriber-profile', handleSubscriberProfileEvent);
 }
 
 document.addEventListener("DOMContentLoaded", initNav);
 
-export { initNav, initMenuDropdown, initRepViewToggle, updateMenuVisibility };
+export { initNav, initMenuDropdown, initRepViewToggle, updateMenuVisibility, updateRoleBadge, ensureRoleBadge };
 export default initNav;

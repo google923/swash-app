@@ -6,6 +6,7 @@ console.log("[Quote DEBUG] script.js module loading...");
 import { initMenuDropdown } from "./menu.js";
 import { authStateReady, handlePageRouting } from "../auth-check.js";
 import { logOutboundEmailToFirestore } from "../lib/firestore-utils.js";
+import { tenantCollection, tenantDoc } from "../lib/subscriber-paths.js";
 console.log("[Quote DEBUG] menu.js imported successfully");
 import {
   queueOfflineSubmission,
@@ -54,9 +55,164 @@ let offerApplied = false;
 let offerExpiresAt = null;
 let messageTouched = false;
 
+const DEFAULT_SUBSCRIBER_SETTINGS = {
+  tiers: {
+    silver: {
+      label: "Silver",
+      description: "Window panes only, every 4 weeks, notifications not included.",
+    },
+    gold: {
+      label: "Gold",
+      description: "Windows, frames, sills and doors, every 4 weeks, notifications included.",
+      multiplier: 1.35,
+    },
+    offerLabel: "Gold upgrade included",
+  },
+  pricing: {
+    minimum: 16,
+    vatIncluded: true,
+    baseBySize: {
+      "2 bed": 16,
+      "3 bed": 21,
+      "4 bed": 26,
+      "5 bed": 31,
+      "6 bed": 36,
+    },
+    extensionAdd: 4,
+    conservatoryAdd: 7,
+    roofLanternEach: 10,
+    skylightEach: 1.5,
+    alternatingFactor: 0.5,
+    frontOnlyFactor: 0.5,
+  },
+  houseTypeMultipliers: {
+    "Bungalow": 0.9,
+    "Maisonette": 0.94,
+    "Terrace": 0.97,
+    "Semi-Detached": 1,
+    "Detached": 1.05,
+    "Mobile Home": 0.9,
+  },
+  toggles: {
+    enableAlternating: true,
+    enableFrontOnly: true,
+    showOfferButton: true,
+    showNotesField: true,
+  },
+  styling: {
+    primaryColor: "#0078d7",
+    accentColor: "#0b63b5",
+    backgroundColor: "#ffffff",
+    buttonTextColor: "#ffffff",
+    logoUrl: "",
+  },
+  frequencyOptions: ["Every 4 weeks", "Every 8 weeks"],
+};
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function deepMerge(target, source) {
+  const base = Array.isArray(target) ? [...target] : { ...target };
+  Object.entries(source || {}).forEach(([key, value]) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      base[key] = deepMerge(target?.[key] ?? {}, value);
+    } else {
+      base[key] = value;
+    }
+  });
+  return base;
+}
+
+function ensureFrequencyOptions(options) {
+  if (!Array.isArray(options) || !options.length) {
+    return [...DEFAULT_SUBSCRIBER_SETTINGS.frequencyOptions];
+  }
+  const cleaned = options
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter((value, index, arr) => value.length && arr.indexOf(value) === index);
+  return cleaned.length ? cleaned : [...DEFAULT_SUBSCRIBER_SETTINGS.frequencyOptions];
+}
+
+function normalizeHexColor(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || !trimmed.startsWith("#")) return null;
+  const hex = trimmed.slice(1);
+  if (![3, 6, 8].includes(hex.length)) return null;
+  const normalized = hex.length === 3
+    ? hex.split("").map((char) => char + char).join("")
+    : hex.length === 8
+      ? hex.slice(0, 6)
+      : hex;
+  return /^[0-9a-fA-F]{6}$/.test(normalized) ? `#${normalized.toLowerCase()}` : null;
+}
+
+function resolveFrequencyDays(label) {
+  if (!label) return 28;
+  const lower = label.trim().toLowerCase();
+  const match = lower.match(/every\s+(\d+(?:\.\d+)?)\s*(week|day|month)/);
+  if (match) {
+    const value = Number.parseFloat(match[1]);
+    if (Number.isFinite(value) && value > 0) {
+      const unit = match[2];
+      if (unit.startsWith("week")) return Math.round(value * 7);
+      if (unit.startsWith("month")) return Math.round(value * 30);
+      if (unit.startsWith("day")) return Math.round(value);
+    }
+  }
+  if (lower.includes("fortnight")) return 14;
+  if (lower.includes("monthly")) return 30;
+  if (lower.includes("two")) return 14;
+  return 28;
+}
+
+const subscriberSettingsState = {
+  subscriberId: "",
+  loaded: false,
+  settings: clone(DEFAULT_SUBSCRIBER_SETTINGS),
+};
+
+function getActiveSettings() {
+  return subscriberSettingsState.settings || DEFAULT_SUBSCRIBER_SETTINGS;
+}
+
+async function loadSubscriberSettings() {
+  if (!subscriberSettingsState.subscriberId || subscriberSettingsState.loaded) {
+    subscriberSettingsState.settings = {
+      ...clone(DEFAULT_SUBSCRIBER_SETTINGS),
+      ...subscriberSettingsState.settings,
+      frequencyOptions: ensureFrequencyOptions(subscriberSettingsState.settings?.frequencyOptions),
+    };
+    return;
+  }
+  try {
+    const docRef = tenantDoc(db, subscriberSettingsState.subscriberId, "private", "addCustomerSettings");
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      subscriberSettingsState.settings = deepMerge(clone(DEFAULT_SUBSCRIBER_SETTINGS), snap.data());
+    } else {
+      subscriberSettingsState.settings = clone(DEFAULT_SUBSCRIBER_SETTINGS);
+    }
+  } catch (error) {
+    console.warn("[Quote] Failed to load subscriber settings", error);
+    subscriberSettingsState.settings = clone(DEFAULT_SUBSCRIBER_SETTINGS);
+  } finally {
+    subscriberSettingsState.settings.frequencyOptions = ensureFrequencyOptions(
+      subscriberSettingsState.settings.frequencyOptions,
+    );
+    subscriberSettingsState.loaded = true;
+  }
+}
+
 // ✅ DETECT EMBED MODE FIRST (before using it)
 var params = new URLSearchParams(window.location.search);
 var isEmbedMode = params.get("embed") === "true" || window.self !== window.top;
+const subscriberIdParam = (params.get("subscriber") || "").trim();
+if (subscriberIdParam) {
+  subscriberSettingsState.subscriberId = subscriberIdParam;
+}
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function waitForDomReady() {
@@ -106,6 +262,8 @@ async function bootstrap() {
     }
   }
 
+  await loadSubscriberSettings();
+
   Object.assign(selectors, {
     repCode: document.getElementById("repCode"),
     quoteDate: document.getElementById("quoteDate"),
@@ -113,6 +271,7 @@ async function bootstrap() {
     tierDescription: document.getElementById("tierDescription"),
     houseType: document.getElementById("houseType"),
     houseSize: document.getElementById("houseSize"),
+    cleaningFrequency: document.getElementById("cleaningFrequency"),
     conservatory: document.getElementById("conservatory"),
     extension: document.getElementById("extension"),
     roofLanterns: document.getElementById("roofLanterns"),
@@ -142,6 +301,8 @@ async function bootstrap() {
     frontOnly: document.getElementById("frontOnly"),
     emailMessage: document.getElementById("emailMessage"),
   });
+
+  applySubscriberConfiguration();
 
   console.log("[Quote DEBUG] Selectors initialized. Checking key elements:", {
     repCode: !!selectors.repCode,
@@ -225,130 +386,69 @@ function normaliseEmail(value) {
   return emailPattern.test(cleaned) ? cleaned : "";
 }
 
-// --- PRICING CONSTANTS & TABLES (Wix logic) ---
-const MIN_NET_PRICE = 16.0;
-const GOLD_FACTOR = 1.35;
-const ROOF_LANTERN_ADDON = 10.0;
-const VELUX_ADDON_EACH = 1.5;
-
 const tierDetails = {
   silver: "Window panes only, every 4 weeks, notifications not included.",
   gold: "Windows, frames, sills and doors, every 4 weeks, notifications included.",
   "gold-for-silver": "Windows, frames, sills and doors, every 4 weeks, notifications included - FREE Upgrade.",
 };
 
-const priceTableBase = {
-  "2 bed": { "semi": { silver:{ base:16, ext:20, cons:23, both:26 } }, "detached": { silver:{ base:19, ext:23, cons:26, both:29 } } },
-  "3 bed": { "semi": { silver:{ base:21, ext:25, cons:28, both:31 } }, "detached": { silver:{ base:24, ext:28, cons:31, both:34 } } },
-  "4 bed": { "semi": { silver:{ base:26, ext:30, cons:33, both:36 } }, "detached": { silver:{ base:29, ext:33, cons:36, both:39 } } },
-  "5 bed": { "semi": { silver:{ base:31, ext:35, cons:38, both:41 } }, "detached": { silver:{ base:34, ext:38, cons:41, both:44 } } },
-  "6 bed": { "semi": { silver:{ base:36, ext:40, cons:43, both:46 } }, "detached": { silver:{ base:39, ext:43, cons:46, both:49 } } }
-};
-
-// Robust normalization for house type dropdown values
-const HOUSE_TYPE_BAND_MAP = {
-  "semi":"semi","semi-detached":"semi","terrace":"semi","terraced":"semi",
-  "maisonette":"semi","bungalow":"semi",
-  "detached":"detached","caravan":"detached","mobile home":"detached","house":"detached"
-};
-const HOUSE_TYPE_MULT = {
-  "caravan":0.90,"mobile home":0.90,"bungalow":0.90,"maisonette":0.94,
-  "terrace":0.97,"terraced":0.97,"semi":1.00,"semi-detached":1.00,"detached":1.05,"house":1.05
-};
-
-function normalizeSize(s){
-  const v = String(s).toLowerCase();
-  if (v.includes('1') && v.includes('bed')) return '2 bed';
-  if (v.includes('2') && v.includes('bed')) return '2 bed';
-  if (v.includes('3') && v.includes('bed')) return '3 bed';
-  if (v.includes('4') && v.includes('bed')) return '4 bed';
-  if (v.includes('5') && v.includes('bed')) return '5 bed';
-  if (v.includes('6') && v.includes('bed')) return '6 bed';
-  return '2 bed';
-}
-
-function normalizeHouseTypeKey(s) {
-  // Accepts dropdown value or label, returns mapped key
-  const v = String(s).toLowerCase().replace(/\s+/g,' ').trim();
-  if (v.includes('bungalow')) return 'bungalow';
-  if (v.includes('mobile')) return 'caravan'; // treat 'Mobile Home' as 'caravan' for multiplier
-  if (v.includes('caravan')) return 'caravan';
-  if (v.includes('maisonette')) return 'maisonette';
-  if (v.includes('terrace')) return 'terrace';
-  if (v.includes('semi')) return 'semi';
-  if (v.includes('detached')) return 'detached';
-  if (v.includes('house')) return 'house';
-  return 'semi';
-}
-
-function getBandAndMult(houseType) {
-  const key = normalizeHouseTypeKey(houseType);
-  return {
-    band: HOUSE_TYPE_BAND_MAP[key] || 'semi',
-    mult: HOUSE_TYPE_MULT[key] ?? 1.00
-  };
-}
-
 function calculatePricing() {
-  // --- Wix logic pricing (with partial cleaning retained, no VAT multiplier) ---
-  if (!selectors.serviceTier) {
-    console.warn("[Quote] Service tier selector missing; returning minimum pricing fallback");
-    const fallback = Number(MIN_NET_PRICE.toFixed(2));
-    return {
-      pricePerClean: fallback,
-      priceUpfront: Number((fallback * 3).toFixed(2)),
-    };
+  const settings = getActiveSettings();
+  const pricingConfig = settings.pricing || {};
+  const toggles = settings.toggles || {};
+
+  const minimum = Number(pricingConfig.minimum ?? 0) || 0;
+  const selectedSize = selectors.houseSize?.value || "2 bed";
+  const selectedHouseType = selectors.houseType?.value || "Semi-Detached";
+  const basePrice = Number(pricingConfig.baseBySize?.[selectedSize] ?? minimum);
+  const houseMultiplier = Number(settings.houseTypeMultipliers?.[selectedHouseType] ?? 1);
+
+  const tierRaw = selectors.serviceTier?.value || "gold";
+  const isOffer = offerApplied && tierRaw === "gold";
+  const effectiveTier = isOffer ? "silver" : tierRaw;
+  const tierMultiplier = effectiveTier === "gold"
+    ? Number(settings.tiers?.gold?.multiplier ?? 1)
+    : 1;
+
+  let price = basePrice * houseMultiplier * (Number.isFinite(tierMultiplier) && tierMultiplier > 0 ? tierMultiplier : 1);
+
+  if (selectors.extension?.checked) {
+    price += Number(pricingConfig.extensionAdd ?? 0);
   }
-  const tierValue = selectors.serviceTier.value;
-  // Special offer: Gold tier becomes Silver pricing
-  const effectiveTier = offerApplied && tierValue === "gold" ? "silver" : tierValue;
-  const isGold = effectiveTier === "gold";
-  const houseTypeRaw = selectors.houseType.value || "semi";
-  const houseSizeRaw = selectors.houseSize.value || "2 bed";
-  const sizeKey = normalizeSize(houseSizeRaw);
-  const { band, mult } = getBandAndMult(houseTypeRaw);
-
-  // Get base row
-  const row = priceTableBase[sizeKey]?.[band]?.silver;
-  let price = row ? row.base : MIN_NET_PRICE;
-
-  // Conservatory / Extension logic
-  const hasExt = selectors.extension.checked;
-  const hasCons = selectors.conservatory.checked;
-  if (hasExt && hasCons) price = row ? row.both : price;
-  else if (hasExt) price = row ? row.ext : price;
-  else if (hasCons) price = row ? row.cons : price;
-
-  // Apply house type multiplier
-  price *= mult;
-
-  // Add roof lanterns & skylights
-  const lanterns = clamp(Number(selectors.roofLanterns.value) || 0, 0, 50);
-  const skylights = clamp(Number(selectors.skylights.value) || 0, 0, 50);
-  price += ROOF_LANTERN_ADDON * lanterns;
-  price += VELUX_ADDON_EACH * skylights;
-
-  // Gold tier logic (skipped if offer applied)
-  if (isGold) price *= GOLD_FACTOR;
-
-  // Alternating or Front Only logic (applied AFTER gold factor)
-  if (selectors.alternating.checked || (selectors.frontOnly && selectors.frontOnly.checked)) {
-    price /= 2;
+  if (selectors.conservatory?.checked) {
+    price += Number(pricingConfig.conservatoryAdd ?? 0);
   }
 
-  // Minimum price enforcement
-  if (price < MIN_NET_PRICE) price = MIN_NET_PRICE;
+  const lanterns = clamp(Number(selectors.roofLanterns?.value) || 0, 0, 50);
+  const skylights = clamp(Number(selectors.skylights?.value) || 0, 0, 50);
+  price += lanterns * Number(pricingConfig.roofLanternEach ?? 0);
+  price += skylights * Number(pricingConfig.skylightEach ?? 0);
 
-  // Partial cleaning percentage (rep can reduce by % if windows inaccessible)
-  const partialPercentage = clamp(Number(selectors.partialCleaning.value) || 100, 0, 100);
-  price *= (partialPercentage / 100);
+  if (selectors.alternating?.checked && (toggles.enableAlternating !== false)) {
+    const alternatingFactor = Number(pricingConfig.alternatingFactor ?? 1);
+    price *= Number.isFinite(alternatingFactor) && alternatingFactor > 0 ? alternatingFactor : 1;
+  }
 
-  // Final rounding & return
-  price = Math.max(price, MIN_NET_PRICE);
+  if (selectors.frontOnly?.checked && (toggles.enableFrontOnly !== false)) {
+    const frontOnlyFactor = Number(pricingConfig.frontOnlyFactor ?? 1);
+    price *= Number.isFinite(frontOnlyFactor) && frontOnlyFactor > 0 ? frontOnlyFactor : 1;
+  }
+
+  const partialPercentage = clamp(Number(selectors.partialCleaning?.value) || 100, 0, 100);
+  price *= partialPercentage / 100;
+
+  if (!Number.isFinite(price) || price <= 0) {
+    price = minimum;
+  }
+
+  price = Math.max(price, minimum);
+
+  const perClean = Math.round(price * 100) / 100;
+  const upfront = Math.round(perClean * 3 * 100) / 100;
 
   return {
-    pricePerClean: Number(price.toFixed(2)),
-    priceUpfront: Number((price * 3).toFixed(2)),
+    pricePerClean: Number(perClean.toFixed(2)),
+    priceUpfront: Number(upfront.toFixed(2)),
   };
 }
 
@@ -361,14 +461,20 @@ function renderPricing(pricing) {
     return;
   }
 
+  const settings = getActiveSettings();
+  const vatIncluded = settings.pricing?.vatIncluded !== false;
+  const minimumPrice = Number(settings.pricing?.minimum ?? 0);
   const offerActive = offerApplied && selectors.serviceTier?.value === "gold";
-  const expiresCopy = offerActive && offerExpiresAt
-    ? new Date(offerExpiresAt).toLocaleDateString("en-GB")
-    : null;
+  const frequencyLabel = selectors.cleaningFrequency?.value || settings.frequencyOptions?.[0];
 
   const offerHtml = offerActive
-    ? `<p class="result-offer">Special offer applied${expiresCopy ? ` – expires ${escapeHtml(expiresCopy)}` : ""}</p>`
+    ? `<p class="result-offer">${escapeHtml(settings.tiers?.offerLabel || "Special offer applied")}</p>`
     : "";
+  const minimumHtml = Number.isFinite(minimumPrice) && minimumPrice > 0
+    ? `<p class="result-minimum">Minimum clean price: ${formatCurrency(minimumPrice)}</p>`
+    : "";
+  const vatHtml = vatIncluded ? "" : `<p class="result-note">Prices exclude VAT.</p>`;
+  const frequencyHtml = frequencyLabel ? `<p class="result-note">Cleaning frequency: ${escapeHtml(frequencyLabel)}</p>` : "";
 
   // Find or create the result-box (preserve status messages)
   let resultBox = selectors.resultPanel.querySelector(".result-box");
@@ -383,6 +489,9 @@ function renderPricing(pricing) {
     <p class="result-price"><strong>Price per clean:</strong> ${formatCurrency(computed.pricePerClean)}</p>
     ${showUpfront ? `<p class="result-upfront">Advance payment (3 cleans): ${formatCurrency(computed.priceUpfront)}</p>` : ""}
     ${offerHtml}
+    ${minimumHtml}
+    ${vatHtml}
+    ${frequencyHtml}
   `;
 
   selectors.resultPanel.hidden = false;
@@ -396,6 +505,118 @@ function renderPricing(pricing) {
     priceUpfront: computed.priceUpfront,
     offerApplied: offerActive,
   });
+}
+
+function applyThemeVariables() {
+  const styling = getActiveSettings().styling || {};
+  const primary = normalizeHexColor(styling.primaryColor) || "#0078d7";
+  const accent = normalizeHexColor(styling.accentColor) || primary;
+  const buttonText = normalizeHexColor(styling.buttonTextColor) || "#ffffff";
+  const background = normalizeHexColor(styling.backgroundColor);
+
+  const root = document.documentElement;
+  if (root) {
+    root.style.setProperty("--swash-blue", primary);
+    root.style.setProperty("--swash-blue-dark", accent);
+  }
+
+  const primaryButtons = [selectors.submitBtn].filter(Boolean);
+  primaryButtons.forEach((btn) => {
+    btn.style.backgroundColor = accent;
+    btn.style.borderColor = accent;
+    btn.style.color = buttonText;
+  });
+
+  if (selectors.applyOfferBtn) {
+    selectors.applyOfferBtn.style.backgroundColor = primary;
+    selectors.applyOfferBtn.style.borderColor = primary;
+    selectors.applyOfferBtn.style.color = buttonText;
+  }
+
+  if (background) {
+    document.body.style.backgroundColor = background;
+  }
+}
+
+function applySubscriberConfiguration() {
+  const settings = getActiveSettings();
+  try {
+    if (selectors.serviceTier) {
+      const goldOption = selectors.serviceTier.querySelector('option[value="gold"]');
+      const silverOption = selectors.serviceTier.querySelector('option[value="silver"]');
+      if (goldOption && settings.tiers?.gold?.label) {
+        goldOption.textContent = settings.tiers.gold.label;
+      }
+      if (silverOption && settings.tiers?.silver?.label) {
+        silverOption.textContent = settings.tiers.silver.label;
+      }
+    }
+
+    if (selectors.applyOfferBtn) {
+      if (settings.tiers?.offerLabel) {
+        selectors.applyOfferBtn.textContent = settings.tiers.offerLabel;
+      }
+      const offerWrapper = selectors.applyOfferBtn.closest(".form-actions");
+      if (offerWrapper) {
+        const visible = settings.toggles?.showOfferButton !== false;
+        offerWrapper.style.display = visible ? "" : "none";
+        if (!visible) {
+          offerApplied = false;
+          offerExpiresAt = null;
+        }
+      }
+    }
+
+    if (selectors.notes) {
+      const notesLabel = selectors.notes.closest("label");
+      if (notesLabel) {
+        const showNotes = settings.toggles?.showNotesField !== false;
+        notesLabel.style.display = showNotes ? "" : "none";
+        if (!showNotes) selectors.notes.value = "";
+        selectors.notes.disabled = !showNotes;
+      }
+    }
+
+    const alternatingLabel = selectors.alternating?.closest("label");
+    if (selectors.alternating && alternatingLabel) {
+      const enabled = settings.toggles?.enableAlternating !== false;
+      alternatingLabel.style.display = enabled ? "" : "none";
+      selectors.alternating.disabled = !enabled;
+      if (!enabled) selectors.alternating.checked = false;
+    }
+
+    const frontOnlyLabel = selectors.frontOnly?.closest("label");
+    if (selectors.frontOnly && frontOnlyLabel) {
+      const enabled = settings.toggles?.enableFrontOnly !== false;
+      frontOnlyLabel.style.display = enabled ? "" : "none";
+      selectors.frontOnly.disabled = !enabled;
+      if (!enabled) selectors.frontOnly.checked = false;
+    }
+
+    if (selectors.cleaningFrequency) {
+      const existingValue = selectors.cleaningFrequency.value;
+      selectors.cleaningFrequency.innerHTML = "";
+      const options = ensureFrequencyOptions(settings.frequencyOptions);
+      options.forEach((label, index) => {
+        const option = document.createElement("option");
+        option.value = label;
+        option.textContent = label;
+        if ((existingValue && existingValue === label) || (!existingValue && index === 0)) {
+          option.selected = true;
+        }
+        selectors.cleaningFrequency.appendChild(option);
+      });
+      if (!selectors.cleaningFrequency.value && options.length) {
+        selectors.cleaningFrequency.value = options[0];
+      }
+    }
+  } catch (error) {
+    console.warn("[Quote] Failed to apply subscriber configuration", error);
+  }
+
+  applyThemeVariables();
+  updateTierCopy();
+  renderPricing(calculatePricing());
 }
 // Debug helper: logs pricing calculation steps for sample configurations
 window.debugPricing = function debugPricing(samples = []) {
@@ -433,6 +654,7 @@ function buildEmailMessage(quote) {
   const planLabel = (quote.tier || "Silver").charAt(0).toUpperCase() + (quote.tier || "Silver").slice(1);
   const offerApplied = !!quote.offerApplied && quote.tier === "gold";
   const offerExpiresAt = quote.offerExpiresAt;
+  const frequencyLabel = quote.cleaningFrequency || "Every 4 weeks";
   let offerLine = "";
   if (offerApplied) {
     const expires = offerExpiresAt ? new Date(offerExpiresAt) : null;
@@ -443,7 +665,7 @@ function buildEmailMessage(quote) {
     `Hi ${quote.customerName}, your ${quote.houseSize} ${quote.houseType}` +
       `${extrasLabel && extrasLabel !== "Standard clean" ? ` with ${extrasLabel}` : ""}` +
       ` will all be kept clean soon at ${quote.address}.`,
-    `You are on our ${planLabel} plan${offerApplied ? " (special offer applied)" : ""}, and the price per clean every 4 weeks is ${pricePer}.` + offerLine,
+    `You are on our ${planLabel} plan${offerApplied ? " (special offer applied)" : ""}, and the price per clean (${frequencyLabel}) is ${pricePer}.` + offerLine,
     `We collect payment for regular window cleaning services 3 months in advance so we can focus on doing a great job with less time messing around with payments.`,
     `Use the details below to make a bank transfer using this reference code: ${quote.refCode}`,
     `Business Acc Name: SWASH CLEANING LTD`,
@@ -507,8 +729,26 @@ function buildExtrasLabel(quote) {
 // (removed stray preview rendering block)
 
 function updateTierCopy() {
-  const tierKey = selectors.serviceTier.value === "gold-for-silver" ? "gold-for-silver" : selectors.serviceTier.value;
-  const copy = tierDetails[tierKey] || "";
+  if (!selectors.tierDescription || !selectors.serviceTier) return;
+  const settings = getActiveSettings();
+  const rawValue = selectors.serviceTier.value || "gold";
+  const isOffer = offerApplied && rawValue === "gold";
+  const effectiveTier = isOffer ? "silver" : rawValue;
+  let copy = "";
+  if (effectiveTier === "gold" && settings.tiers?.gold?.description) {
+    copy = settings.tiers.gold.description;
+  } else if (effectiveTier === "silver" && settings.tiers?.silver?.description) {
+    copy = settings.tiers.silver.description;
+  }
+  if (!copy && offerApplied && rawValue === "gold" && settings.tiers?.offerLabel) {
+    copy = settings.tiers.offerLabel;
+  }
+  if (!copy && tierDetails[effectiveTier]) {
+    copy = tierDetails[effectiveTier];
+  }
+  if (!copy) {
+    copy = "Select a service tier to see the details.";
+  }
   selectors.tierDescription.textContent = copy;
 }
 
@@ -553,11 +793,17 @@ async function sendQuoteEmail(
     // Log successful send to Firestore if quote has ID
     if (quote.id && window.db) {
       try {
-        const { doc, updateDoc, arrayUnion, serverTimestamp } = await import(
+        const { updateDoc, arrayUnion } = await import(
           "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
         );
         const sentBy = getRepIdentity();
-        await updateDoc(doc(window.db, "quotes", quote.id), {
+        const quoteDocRef = tenantDoc(
+          window.db,
+          quote.subscriberId || subscriberSettingsState.subscriberId,
+          "quotes",
+          quote.id,
+        );
+        await updateDoc(quoteDocRef, {
           emailLog: arrayUnion({
             type: "quote",
             subject: "Your Swash Window Cleaning Quote",
@@ -581,11 +827,17 @@ async function sendQuoteEmail(
     // Log failed send to Firestore if quote has ID
     if (quote.id && window.db) {
       try {
-        const { doc, updateDoc, arrayUnion } = await import(
+        const { updateDoc, arrayUnion } = await import(
           "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js"
         );
         const sentBy = getRepIdentity();
-        await updateDoc(doc(window.db, "quotes", quote.id), {
+        const quoteDocRef = tenantDoc(
+          window.db,
+          quote.subscriberId || subscriberSettingsState.subscriberId,
+          "quotes",
+          quote.id,
+        );
+        await updateDoc(quoteDocRef, {
           emailLog: arrayUnion({
             type: "quote",
             subject: "Your Swash Window Cleaning Quote",
@@ -726,7 +978,8 @@ window.addEventListener("swashQueueSynced", async (event) => {
 
 async function persistQuote(quote) {
   try {
-    const docRef = await addDoc(collection(db, "quotes"), {
+    const targetCollection = tenantCollection(db, quote.subscriberId || subscriberSettingsState.subscriberId, "quotes");
+    const docRef = await addDoc(targetCollection, {
       ...quote,
       createdAt: serverTimestamp(),
     });
@@ -820,6 +1073,11 @@ async function handleSubmit() {
   }
   selectors.email.value = emailValue;
 
+  const frequencySelection = selectors.cleaningFrequency?.value || getActiveSettings().frequencyOptions?.[0] || "Every 4 weeks";
+  const frequencyDaysRaw = resolveFrequencyDays(frequencySelection);
+  const frequencyDays = Number.isFinite(frequencyDaysRaw) && frequencyDaysRaw > 0 ? frequencyDaysRaw : 28;
+  const frequencyWeeks = Math.round((frequencyDays / 7) * 100) / 100;
+
   const quote = {
     repCode: repCodeValue.toUpperCase(),
     date: new Date().toISOString(),
@@ -838,6 +1096,10 @@ async function handleSubmit() {
     alternating: selectors.alternating.checked,
     pricePerClean: pricing.pricePerClean,
     price: pricing.priceUpfront,
+    cleaningFrequency: frequencySelection,
+    cleaningFrequencyIntervalDays: frequencyDays,
+    cleaningFrequencyDays: frequencyDays,
+    cleaningFrequencyWeeks: frequencyWeeks,
     refCode: generateReference(),
     status: "Pending Payment",
     notes: selectors.notes.value.trim(),
@@ -847,6 +1109,7 @@ async function handleSubmit() {
     offerApplied: !!offerApplied,
     offerType: offerApplied ? "gold-for-silver" : null,
     offerExpiresAt: offerApplied && offerExpiresAt ? offerExpiresAt : null,
+    subscriberId: subscriberSettingsState.subscriberId || null,
   };
 
   console.log("[Quote] Quote object created:", quote);
@@ -1026,6 +1289,31 @@ function updateLocationPickerPosition(lat, lng, options = {}) {
   }
 }
 
+function geocodeCustomerAddress(address) {
+  return new Promise((resolve) => {
+    if (!address) {
+      resolve(null);
+      return;
+    }
+
+    if (!window.google?.maps?.Geocoder) {
+      console.warn('[Location] Geocoder unavailable');
+      resolve(null);
+      return;
+    }
+
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address }, (results, status) => {
+      if (status === 'OK' && results && results[0]) {
+        resolve(results[0]);
+      } else {
+        console.warn('[Location] Geocode failed for address', address, 'status:', status);
+        resolve(null);
+      }
+    });
+  });
+}
+
 function requestCurrentPositionForLocationModal() {
   const statusEl = document.getElementById("locationGpsStatus");
   if (!navigator?.geolocation) {
@@ -1101,7 +1389,7 @@ function initLocationModal() {
     
     setCustomerLocationModal.hidden = false;
     await delay(100);
-    initLocationMapIfNeeded(address);
+    const geocoded = await initLocationMapIfNeeded(address);
 
     const lat = parseFloat(customerLatitude?.value);
     const lng = parseFloat(customerLongitude?.value);
@@ -1112,7 +1400,7 @@ function initLocationModal() {
         locationGpsStatus.style.color = "#475569";
         locationGpsStatus.textContent = "Using the previously saved location for this customer.";
       }
-    } else {
+    } else if (!geocoded) {
       requestCurrentPositionForLocationModal();
     }
   });
@@ -1171,8 +1459,8 @@ function initLocationModal() {
   });
 }
 
-function initLocationMapIfNeeded(address) {
-  if (locationMap) return; // Already initialized
+async function initLocationMapIfNeeded(address) {
+  if (locationMap) return false; // Already initialized
 
   console.log('[Location] initLocationMapIfNeeded called with address:', address);
 
@@ -1180,10 +1468,11 @@ function initLocationMapIfNeeded(address) {
   const locationAddressDisplay = document.getElementById("locationAddressDisplay");
   const locationLatInput = document.getElementById("locationLatInput");
   const locationLngInput = document.getElementById("locationLngInput");
+  const locationGpsStatus = document.getElementById("locationGpsStatus");
 
   if (!mapElement) {
     console.error('[Location] mapElement not found');
-    return;
+    return false;
   }
 
   locationAddressDisplay.textContent = address;
@@ -1232,6 +1521,47 @@ function initLocationMapIfNeeded(address) {
     locationLngInput.value = lng.toFixed(6);
     console.log('[Location] Map clicked, marker moved to:', { lat, lng });
   });
+
+  let usedGeocode = false;
+  const hasSavedCoords = Boolean(customerLatitude?.value && customerLongitude?.value);
+  if (!hasSavedCoords && address) {
+    if (locationGpsStatus) {
+      locationGpsStatus.style.display = "block";
+      locationGpsStatus.style.color = "#0369a1";
+      locationGpsStatus.textContent = "Locating the property…";
+    }
+
+    const geocodeResult = await geocodeCustomerAddress(address);
+    if (geocodeResult?.geometry?.location) {
+      const location = geocodeResult.geometry.location;
+      const lat = location.lat();
+      const lng = location.lng();
+
+      const options = {};
+      if (!geocodeResult.geometry.viewport) {
+        options.zoom = 17;
+      }
+
+      updateLocationPickerPosition(lat, lng, options);
+      if (geocodeResult.geometry.viewport && locationMap) {
+        locationMap.fitBounds(geocodeResult.geometry.viewport);
+      }
+
+      usedGeocode = true;
+      if (locationGpsStatus) {
+        locationGpsStatus.style.display = "block";
+        locationGpsStatus.style.color = "#047857";
+        const formatted = geocodeResult.formatted_address || address;
+        locationGpsStatus.textContent = `Pinned using customer address: ${formatted}. Adjust if needed.`;
+      }
+    } else if (locationGpsStatus) {
+      locationGpsStatus.style.display = "block";
+      locationGpsStatus.style.color = "#b45309";
+      locationGpsStatus.textContent = "Couldn't find that address automatically. Use device location or drag the pin.";
+    }
+  }
+
+  return usedGeocode;
 }
 
 function registerEvents() {
@@ -1279,6 +1609,12 @@ function registerEvents() {
   if (selectors.houseSize) {
     selectors.houseSize.addEventListener("change", () => {
       console.log("[DEBUG] House size changed");
+      renderPricing(calculatePricing());
+    });
+  }
+  if (selectors.cleaningFrequency) {
+    selectors.cleaningFrequency.addEventListener("change", () => {
+      console.log("[DEBUG] Cleaning frequency changed", selectors.cleaningFrequency.value);
       renderPricing(calculatePricing());
     });
   }
@@ -1362,7 +1698,8 @@ function registerEvents() {
   if (selectors.applyOfferBtn) {
     const syncOfferButtonUi = () => {
       if (!selectors.applyOfferBtn) return;
-      selectors.applyOfferBtn.textContent = offerApplied ? "Remove Special Offer" : "Apply Special Offer";
+      const label = getActiveSettings().tiers?.offerLabel || "Apply Special Offer";
+      selectors.applyOfferBtn.textContent = offerApplied ? "Remove Special Offer" : label;
       // Ensure gold styling stays consistent; remove secondary styling if present
       selectors.applyOfferBtn.classList.remove("btn-secondary", "btn-primary");
       selectors.applyOfferBtn.classList.add("btn-offer");
@@ -1383,6 +1720,7 @@ function registerEvents() {
         offerExpiresAt = null;
       }
       syncOfferButtonUi();
+      updateTierCopy();
       renderPricing(calculatePricing());
     });
   }
@@ -1454,7 +1792,7 @@ async function initApp() {
     syncQueue();
   }
 
-  // Setup logout button for authenticated users on quote.html
+  // Setup logout button for authenticated users on add-new-customer.html
   const logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {

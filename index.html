@@ -51,13 +51,6 @@
       margin: 0 0 8px;
     }
 
-    .login-container__subtitle {
-      text-align: center;
-      font-size: 14px;
-      color: #64748b;
-      margin-bottom: 32px;
-    }
-
     .login-form__field {
       margin-bottom: 20px;
     }
@@ -113,6 +106,20 @@
       cursor: not-allowed;
     }
 
+    .login-form__alt-link {
+      display: block;
+      margin-top: 16px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #0078d7;
+      text-decoration: none;
+    }
+
+    .login-form__alt-link:hover {
+      text-decoration: underline;
+    }
+
     .login-form__error {
       color: #dc2626;
       font-size: 14px;
@@ -161,8 +168,6 @@
     <div class="login-container__logo">
       <img src="./assets/blue-logo.png" alt="Swash logo" />
     </div>
-    <p class="login-container__subtitle">Field Sales Management</p>
-
     <form id="loginForm" class="login-form">
       <div id="errorMessage" class="login-form__error"></div>
       <div id="loadingMessage" class="login-form__loading">Signing in...</div>
@@ -192,6 +197,7 @@
       </div>
 
       <button type="submit" class="login-form__submit" id="submitBtn">Sign In</button>
+      <a class="login-form__alt-link" href="./subscriber-login.html">Sign in as subscriber</a>
     </form>
   </div>
 

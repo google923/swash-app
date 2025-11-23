@@ -85,7 +85,7 @@
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Rep Resources</div>
           <a id="rep-home-link" class="hidden" href="./rep-home.html">🏠 Home</a>
-          <a id="add-customer-link" class="hidden" href="./quote.html">➕ Add Customer</a>
+          <a id="add-customer-link" class="hidden" href="./add-new-customer.html">➕ Add Customer</a>
           <a href="/rep/rep-log.html">📝 Log</a>
           <a href="./chat.html">💬 Rep Chat</a>
           <a href="./policy.html">📘 Policy Handbook</a>
@@ -98,8 +98,8 @@
           <div class="dropdown-divider"></div>
           <div class="dropdown-title">System</div>
           <a id="login-link" href="./login.html">Sign in</a>
-          <a id="quotes-link" class="hidden" href="/admin.html">Quotes Dashboard</a>
-          <a id="admin-dashboard-link" class="hidden" href="/admin.html">Admin Dashboard</a>
+          <a id="quotes-link" class="hidden" href="/pipeline.html">Quotes Dashboard</a>
+          <a id="admin-dashboard-link" class="hidden" href="/pipeline.html">Admin Dashboard</a>
           <a id="schedule-link" class="hidden" href="./scheduler.html">Schedule</a>
           <a id="manage-users-link" class="hidden" href="/admin/users.html">Manage Users</a>
         </nav>
@@ -238,7 +238,7 @@
         </div>
       </section>
 
-      <div class="form-actions form-actions--end form-actions--compact" style="margin-bottom: 8px;">
+      <div class="form-actions form-actions--start form-actions--compact" style="margin-bottom: 6px;">
         <label class="checkbox checkbox--lg" for="alternating">
           <input type="checkbox" id="alternating" />
           <span>Alternating Clean</span>
@@ -251,7 +251,9 @@
           <input type="checkbox" id="upfrontPayment" />
           <span>Upfront payment (3 cleans)</span>
         </label>
-        <button type="button" id="applyOfferBtn" class="btn btn-offer">Apply Special Offer</button>
+      </div>
+      <div class="form-actions form-actions--start" style="width:100%; margin-top: 0; margin-bottom: 8px;">
+        <button type="button" id="applyOfferBtn" class="btn btn-offer" style="flex:1;">Apply Special Offer</button>
       </div>
       <section id="result" class="result-panel" aria-live="polite"></section>
       
@@ -1247,11 +1249,7 @@
         wrap.style.background = '#f8fafc';
         wrap.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:10px;">
-            <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
-              <button type="button" id="savePendingBtn" class="btn btn-secondary">We'll contact you with a date</button>
-            </div>
-            <div id="dummySlots" style="display:none; gap:8px; flex-wrap:wrap; margin-top:8px;">
-            </div>
+            <div id="dummySlots" style="display:none; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
           </div>
         `;
         resultPanel.appendChild(wrap);

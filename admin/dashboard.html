@@ -164,7 +164,7 @@
 <body>
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="../assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="../assets/swash-icon-white.png" alt="Swash logo" />
     </div>
     <div class="header-actions">
       <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
@@ -173,7 +173,7 @@
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
           <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
-          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
           <a href="/rep/add-new-customer.html">🆕 New Quote</a>
           <a href="/rep/scheduler.html" class="admin-rep">📅 Schedule</a>
           <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
@@ -248,7 +248,7 @@
 
       <h2 class="section-title">Quick Links</h2>
       <div class="quick-links-grid">
-        <a href="/admin.html" class="quick-link-card">
+        <a href="/pipeline.html" class="quick-link-card">
           <div class="quick-link-card__icon">📋</div>
           <div class="quick-link-card__title">New Customer Pipeline</div>
           <div class="quick-link-card__desc">Review incoming quotes, confirm bookings, and manage customer status</div>
@@ -321,7 +321,7 @@
     // Auth check
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        window.location.href = '../admin.html';
+        window.location.href = '../pipeline.html';
         return;
       }
 
@@ -524,19 +524,8 @@
 
     // Menu toggle
     const menuBtn = document.getElementById('menuBtn');
-    const menuDropdown = document.getElementById('menuDropdown');
-    
     menuBtn.addEventListener('click', () => {
-      const isOpen = menuBtn.getAttribute('aria-expanded') === 'true';
-      menuBtn.setAttribute('aria-expanded', !isOpen);
-      menuDropdown.style.display = isOpen ? 'none' : 'block';
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.menu-box')) {
-        menuBtn.setAttribute('aria-expanded', 'false');
-        menuDropdown.style.display = 'none';
-      }
+      window.location.href = '/main.html';
     });
   </script>
 </body>

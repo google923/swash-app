@@ -8,10 +8,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import {
   getFirestore,
-  collection,
   addDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { tenantCollection } from "./lib/subscriber-paths.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCLmrWYAY4e7tQD9Cknxp7cKkzqJgndm0I",
@@ -82,7 +82,8 @@ export async function syncQueue() {
   for (const quote of queue) {
     try {
       const { emailPending, queuedAt, ...quoteData } = quote;
-      await addDoc(collection(db, "quotes"), {
+      const targetCollection = tenantCollection(db, quote.subscriberId, "quotes");
+      await addDoc(targetCollection, {
         ...quoteData,
         createdAt: quote.createdAt || serverTimestamp(),
         syncedAt: serverTimestamp(),

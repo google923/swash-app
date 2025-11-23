@@ -7,6 +7,8 @@
 // Cache for weather data (key: week ISO date)
 const weatherCache = new Map();
 const CACHE_TTL = 3600000; // 1 hour
+const FORECAST_LOOKAHEAD_LIMIT_DAYS = 16; // Open-Meteo free forecast limit
+const HISTORICAL_LOOKBACK_LIMIT_DAYS = 7; // Avoid heavy archive requests for far past weeks
 
 // User's location (will be set via geolocation)
 let userLat = 53.4808;  // Default: Manchester
@@ -66,6 +68,24 @@ export async function fetchWeatherForWeek(weekStartDate) {
     // Get user location
     const location = await getUserLocation();
 
+    const today = new Date();
+    const diffDays = Math.round((weekStartDate - today) / 86400000);
+
+    // Gracefully skip weeks outside the forecast window to avoid API 400s
+    if (diffDays > FORECAST_LOOKAHEAD_LIMIT_DAYS) {
+      const data = buildUnavailableWeather(`Forecast available ${FORECAST_LOOKAHEAD_LIMIT_DAYS} days before start`);
+      weatherCache.set(weekKey, { data, timestamp: Date.now() });
+      console.info(`[Weather] Skipping fetch for ${weekKey} – beyond forecast range`);
+      return data;
+    }
+
+    if (diffDays < -HISTORICAL_LOOKBACK_LIMIT_DAYS) {
+      const data = buildUnavailableWeather("Forecast not available for this past week");
+      weatherCache.set(weekKey, { data, timestamp: Date.now() });
+      console.info(`[Weather] Skipping fetch for ${weekKey} – outside historical window`);
+      return data;
+    }
+
     // Fetch from Open-Meteo Forecast API (works for future dates)
     const weekEnd = addDays(weekStartDate, 6);
     const startStr = toIsoDate(weekStartDate);
@@ -78,6 +98,12 @@ export async function fetchWeatherForWeek(weekStartDate) {
     const response = await fetch(url);
 
     if (!response.ok) {
+      if (response.status === 400) {
+        const data = buildUnavailableWeather("Forecast unavailable for this range");
+        weatherCache.set(weekKey, { data, timestamp: Date.now() });
+        console.warn(`[Weather] Forecast request rejected for ${weekKey} (400)`);
+        return data;
+      }
       throw new Error(`Weather API error: ${response.status}`);
     }
 
@@ -93,15 +119,19 @@ export async function fetchWeatherForWeek(weekStartDate) {
     return weatherData;
   } catch (error) {
     console.error("[Weather] Failed to fetch weather data:", error);
-    return {
-      avgTemp: "N/A",
-      rainDays: [],
-      precipitation: 0,
-      weatherSummary: "Unable to load weather",
-      hasRain: false,
-      icon: "⚠️",
-    };
+    return buildUnavailableWeather("Unable to load weather");
   }
+}
+
+function buildUnavailableWeather(message) {
+  return {
+    avgTemp: message,
+    rainDays: [],
+    precipitation: 0,
+    weatherSummary: message,
+    hasRain: false,
+    icon: "ℹ️",
+  };
 }
 
 /**

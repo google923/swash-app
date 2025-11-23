@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Rep Dashboard - Swash Subscriber</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .admin-only, .rep-only, .admin-rep { display:none !important; }
+    .subscriber-only { display:block !important; }
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; padding:20px; }
+    .stat-card { background:#fff; border:2px solid #e2e8f0; border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:6px; }
+    .stat-card h3 { margin:0; font-size:0.9rem; font-weight:600; color:#475569; }
+    .stat-card span { font-size:1.8rem; font-weight:700; color:#0f172a; }
+    .stat-card small { font-size:0.8rem; color:#94a3b8; }
+    .table-wrap { overflow:auto; border:1px solid #e2e8f0; border-radius:12px; background:white; }
+    table { width:100%; border-collapse:collapse; }
+    thead { background:#f8fafc; }
+    th, td { padding:12px; text-align:left; font-size:0.9rem; border-bottom:1px solid #f1f5f9; white-space:nowrap; }
+    tbody tr:hover { background:#f8fafc; }
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:4px 8px; border-radius:999px; font-size:0.75rem; font-weight:600; }
+    .badge-signup { background:#dcfce7; color:#166534; }
+    .badge-open { background:#fef9c3; color:#92400e; }
+    .badge-x { background:#fee2e2; color:#991b1b; }
+    .activity-list { display:flex; flex-direction:column; }
+    .activity-item { display:grid; grid-template-columns:150px 1fr 100px; gap:12px; padding:12px; border-bottom:1px solid #e2e8f0; }
+    .activity-item:last-child { border-bottom:none; }
+    .activity-meta { font-size:0.85rem; color:#64748b; }
+    @media (max-width:780px) {
+      .activity-item { grid-template-columns:1fr; }
+      .activity-item time { order:-1; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
+      <span id="companyNameDisplay" style="margin-left:16px;font-weight:600;color:#334155;"></span>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
+      <div class="menu-box">
+        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
+        <nav id="menuDropdown" class="dropdown">
+          <div class="dropdown-title">Navigation</div>
+          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
+          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
+          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
+          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
+          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
+          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts &amp; Logs</a>
+          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
+          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
+          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
+          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
+          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
+          <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
+          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
+          <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
+          <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
+          <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
+          <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
+          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
+          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
+          <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we prepare your rep dashboard.</p>
+    </div>
+  </section>
+
+  <main id="repDashboard" class="page" style="display:none;">
+    <section class="card">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h2>Rep Performance Overview</h2>
+          <p class="text-muted">Track logs, signups, and shift activity across your team.</p>
+        </div>
+      </header>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>Total shifts</h3>
+          <span id="statTotalShifts">0</span>
+          <small>Tracked in the last 90 days</small>
+        </div>
+        <div class="stat-card">
+          <h3>Total doors</h3>
+          <span id="statTotalDoors">0</span>
+          <small>Doors logged across all reps</small>
+        </div>
+        <div class="stat-card">
+          <h3>Signups</h3>
+          <span id="statTotalSignups">0</span>
+          <small>Confirmed sales recorded in logs</small>
+        </div>
+        <div class="stat-card">
+          <h3>Active reps</h3>
+          <span id="statActiveReps">0</span>
+          <small>With activity during the last 30 days</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h3>Latest shift summaries</h3>
+          <p class="text-muted">Recent shifts with doors, signups, and mileage.</p>
+        </div>
+      </header>
+      <div class="table-wrap">
+        <table aria-label="Recent rep shifts">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Rep</th>
+              <th scope="col">Doors</th>
+              <th scope="col">Signups</th>
+              <th scope="col">Miles</th>
+              <th scope="col">Pay</th>
+            </tr>
+          </thead>
+          <tbody id="recentShiftsBody">
+            <tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading shifts…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h3>Recent activity</h3>
+          <p class="text-muted">Door updates, outcomes, and notes from the latest logs.</p>
+        </div>
+      </header>
+      <div id="recentActivity" class="activity-list">
+        <div style="padding:20px;color:#94a3b8;text-align:center;">Loading recent activity…</div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./auth-check.js"></script>
+  <script type="module" src="./nav.js"></script>
+  <script type="module" src="./firebase-init.js"></script>
+  <script type="module" src="./subscriber-rep-dashboard.js"></script>
+</body>
+</html>

@@ -238,7 +238,7 @@
 
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
       <h1 style="margin: 0 0 0 12px; font-size: 1.2rem;">👷 Manage Cleaners</h1>
     </div>
     <div class="header-actions">
@@ -248,12 +248,20 @@
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
           <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
+          <a href="/pipeline.html" class="subscriber-only">📋 Quotes</a>
+          <a href="/admin/users.html" class="subscriber-only">👥 Customers</a>
+          <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
+          <a href="/admin/cleaners.html" class="subscriber-only">👷 Cleaners</a>
+          <a href="/admin/territories.html" class="subscriber-only">🗺️ Territories</a>
+          <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
           <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
           <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
           <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
           <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
           <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
           <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
+          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
         </nav>
       </div>
     </div>
@@ -348,17 +356,14 @@
       signOut
     } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
     import {
-      doc,
-      getDoc,
-      collection,
       getDocs,
       addDoc,
       updateDoc,
       deleteDoc,
-      serverTimestamp,
-      query,
-      where
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { tenantCollection, tenantDoc } from "./lib/subscriber-paths.js";
+    import { ensureSubscriberAccess } from "./lib/subscriber-access.js";
 
     let subscriberId = null;
     let editingCleanerId = null;
@@ -385,29 +390,20 @@
       }
 
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const viewingUid = urlParams.get('uid');
+        const access = await ensureSubscriberAccess(user);
+        subscriberId = access.subscriberId;
 
-        const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
-        if (!currentUserDoc.exists()) throw new Error('User not found');
-
-        const currentUserData = currentUserDoc.data();
-
-        if (viewingUid && currentUserData.role === 'admin') {
-          subscriberId = viewingUid;
-        } else {
-          subscriberId = user.uid;
-          if (currentUserData.role !== 'subscriber') {
-            throw new Error('Access denied');
-          }
-          if (!currentUserData.billingCompleted) {
-            window.location.href = './subscriber-billing.html';
-            return;
-          }
+        if (access.viewerRole === 'subscriber' && !access.viewerProfile.billingCompleted) {
+          window.location.href = './subscriber-billing.html';
+          return;
         }
 
-        authOverlay.style.display = 'none';
-        cleanersContent.style.display = 'block';
+        if (authOverlay) {
+          authOverlay.style.display = 'none';
+        }
+        if (cleanersContent) {
+          cleanersContent.style.display = 'block';
+        }
 
         await loadCleaners();
 
@@ -421,7 +417,7 @@
 
     async function loadCleaners() {
       try {
-        const cleanersRef = collection(db, `subscribers/${subscriberId}/cleaners`);
+        const cleanersRef = tenantCollection(db, subscriberId, "cleaners");
         const snapshot = await getDocs(cleanersRef);
 
         cleaners = snapshot.docs.map(doc => ({
@@ -513,7 +509,7 @@
     }
 
     // Modal controls
-    addCleanerBtn.addEventListener('click', () => {
+    addCleanerBtn?.addEventListener('click', () => {
       editingCleanerId = null;
       modalTitle.textContent = 'Add Cleaner';
       cleanerForm.reset();
@@ -527,10 +523,10 @@
       editingCleanerId = null;
     }
 
-    modalClose.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
+    modalClose?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
 
-    cleanerModal.addEventListener('click', (e) => {
+    cleanerModal?.addEventListener('click', (e) => {
       if (e.target === cleanerModal) closeModal();
     });
 
@@ -562,7 +558,7 @@
         const deleted = cleaners.find(c => c.id === cleanerId);
         const wasActive = deleted && deleted.status === 'active';
 
-        await deleteDoc(doc(db, `subscribers/${subscriberId}/cleaners`, cleanerId));
+        await deleteDoc(tenantDoc(db, subscriberId, "cleaners", cleanerId));
 
         // Record billing seat delta after successful delete
         if (wasActive) {
@@ -585,7 +581,7 @@
     };
 
     // Save cleaner (add or update)
-    cleanerForm.addEventListener('submit', async (e) => {
+    cleanerForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const cleanerData = {
@@ -604,7 +600,7 @@
           const oldActive = existing.status === 'active';
           const newActive = cleanerData.status === 'active';
 
-          await updateDoc(doc(db, `subscribers/${subscriberId}/cleaners`, editingCleanerId), cleanerData);
+          await updateDoc(tenantDoc(db, subscriberId, "cleaners", editingCleanerId), cleanerData);
 
           // Compute seat delta if active flag changed
           let deltaSeats = 0;
@@ -623,7 +619,7 @@
           const beforeActive = cleaners.filter(c => c.status === 'active').length;
           const newActive = cleanerData.status === 'active';
           cleanerData.createdAt = serverTimestamp();
-          await addDoc(collection(db, `subscribers/${subscriberId}/cleaners`), cleanerData);
+          await addDoc(tenantCollection(db, subscriberId, "cleaners"), cleanerData);
 
           // Compute seat delta
           if (newActive) {
@@ -648,20 +644,14 @@
     });
 
     // Logout
-    logoutBtn.addEventListener('click', async () => {
+    logoutBtn?.addEventListener('click', async () => {
       await signOut(auth);
       window.location.href = './subscriber-login.html';
     });
 
     // Menu
-    menuBtn.addEventListener('click', () => {
-      menuDropdown.classList.toggle('show');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.menu-box')) {
-        menuDropdown.classList.remove('show');
-      }
+    menuBtn?.addEventListener('click', () => {
+      window.location.href = '/main.html';
     });
   </script>
 

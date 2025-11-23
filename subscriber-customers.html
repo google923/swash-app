@@ -17,7 +17,7 @@
 
   <header class="header">
     <div class="header-left">
-      <img class="header-logo" src="./assets/swash-logo.png" alt="Swash logo" />
+      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
       <h1 style="margin: 0 0 0 12px; font-size: 1.2rem;">👥 Customers</h1>
     </div>
     <div class="header-actions">
@@ -27,7 +27,7 @@
         <nav id="menuDropdown" class="dropdown">
           <div class="dropdown-title">Navigation</div>
           <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
-          <a href="/admin.html" class="admin-only">📋 New Customer Pipeline</a>
+          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
           <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
           <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
           <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
@@ -37,12 +37,20 @@
           <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
           <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
           <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
+          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
+          <a href="/pipeline.html" class="subscriber-only">📋 Quotes</a>
+          <a href="/admin/users.html" class="subscriber-only">👥 Customers</a>
+          <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
+          <a href="/admin/cleaners.html" class="subscriber-only">👷 Cleaners</a>
+          <a href="/admin/territories.html" class="subscriber-only">🗺️ Territories</a>
+          <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
           <a href="/subscriber-quotes.html" class="subscriber-only">📋 Quotes</a>
           <a href="/subscriber-customers.html" class="subscriber-only">👥 Customers</a>
           <a href="/rep/scheduler.html" class="subscriber-only">📅 Schedule</a>
           <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaners</a>
           <a href="/subscriber-territories.html" class="subscriber-only">🗺️ Territories</a>
           <a href="/subscriber-users.html" class="subscriber-only">👤 Users</a>
+          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
         </nav>
       </div>
     </div>
@@ -135,12 +143,12 @@
       signOut
     } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
     import {
-      doc,
       getDoc,
-      collection,
       getDocs,
       updateDoc
     } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { tenantCollection, tenantDoc } from "./lib/subscriber-paths.js";
+    import { ensureSubscriberAccess } from "./lib/subscriber-access.js";
 
     let subscriberId = null;
     let allCustomers = [];
@@ -166,29 +174,20 @@
       }
 
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const viewingUid = urlParams.get('uid');
+        const access = await ensureSubscriberAccess(user);
+        subscriberId = access.subscriberId;
 
-        const currentUserDoc = await getDoc(doc(db, 'users', user.uid));
-        if (!currentUserDoc.exists()) throw new Error('User not found');
-
-        const currentUserData = currentUserDoc.data();
-
-        if (viewingUid && currentUserData.role === 'admin') {
-          subscriberId = viewingUid;
-        } else {
-          subscriberId = user.uid;
-          if (currentUserData.role !== 'subscriber') {
-            throw new Error('Access denied');
-          }
-          if (!currentUserData.billingCompleted) {
-            window.location.href = './subscriber-billing.html';
-            return;
-          }
+        if (access.viewerRole === 'subscriber' && !access.viewerProfile.billingCompleted) {
+          window.location.href = './subscriber-billing.html';
+          return;
         }
 
-        authOverlay.style.display = 'none';
-        customersContent.style.display = 'block';
+        if (authOverlay) {
+          authOverlay.style.display = 'none';
+        }
+        if (customersContent) {
+          customersContent.style.display = 'block';
+        }
 
         await loadCustomers();
 
@@ -202,7 +201,7 @@
 
     async function loadCustomers() {
       try {
-        const customersRef = collection(db, `subscribers/${subscriberId}/customers`);
+        const customersRef = tenantCollection(db, subscriberId, "customers");
         const snapshot = await getDocs(customersRef);
 
         allCustomers = snapshot.docs.map(doc => ({
@@ -283,7 +282,7 @@
 
     window.viewCustomer = async (customerId) => {
       try {
-        const snap = await getDoc(doc(db, `subscribers/${subscriberId}/customers`, customerId));
+        const snap = await getDoc(tenantDoc(db, subscriberId, "customers", customerId));
         if (!snap.exists()) {
           alert('Customer not found');
           return;
@@ -303,7 +302,7 @@
       e.preventDefault();
       if (!currentCustomerId) { closeCustomerModal(); return; }
       try {
-        await updateDoc(doc(db, `subscribers/${subscriberId}/customers`, currentCustomerId), {
+        await updateDoc(tenantDoc(db, subscriberId, "customers", currentCustomerId), {
           name: document.getElementById('custName').value.trim(),
           address: document.getElementById('custAddress').value.trim(),
           email: document.getElementById('custEmail').value.trim() || null,
@@ -319,19 +318,13 @@
       }
     });
 
-    logoutBtn.addEventListener('click', async () => {
+    logoutBtn?.addEventListener('click', async () => {
       await signOut(auth);
       window.location.href = './subscriber-login.html';
     });
 
-    menuBtn.addEventListener('click', () => {
-      menuDropdown.classList.toggle('show');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.menu-box')) {
-        menuDropdown.classList.remove('show');
-      }
+    menuBtn?.addEventListener('click', () => {
+      window.location.href = '/main.html';
     });
   </script>
 

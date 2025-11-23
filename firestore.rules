@@ -103,7 +103,7 @@ service cloud.firestore {
           (
             request.auth == null &&
             request.resource.data.keys().hasOnly([
-              'createdAt','source','status','firstDateISO','secondDateISO','thirdDateISO','weekKey','dayKey','territoryId','cleanerId','repName'
+              'createdAt','source','status','firstDateISO','secondDateISO','thirdDateISO','weekKey','dayKey','territoryId','cleanerId','repName','bookedDate','nextCleanDates','assignedCleaner','pricePerClean','pricePerCleanText'
             ])
           )
         );
@@ -390,6 +390,25 @@ service cloud.firestore {
       match /quotes/{quoteId} {
         allow read, write: if isOwner() || isAdmin() || isTeam();
       }
+
+      // --- SUBSCRIBER PRIVATE SETTINGS ---
+      match /private/{docId} {
+        allow read: if isOwner() || isAdmin() || isTeam();
+        allow write: if isOwner() || isAdmin();
+      }
+
+      // --- SUBSCRIBER SMS PURCHASES ---
+      match /smsPurchases/{purchaseId} {
+        allow read: if isOwner() || isAdmin() || isTeam();
+        allow create: if isOwner() || isAdmin();
+        allow update, delete: if isOwner() || isAdmin();
+      }
+
+      // --- SUBSCRIBER EMAIL LOGS ---
+      match /emailLogs/{logId} {
+        allow read: if isOwner() || isAdmin();
+        allow create: if isOwner() || isAdmin();
+      }
       
       // --- SUBSCRIBER CUSTOMERS ---
       match /customers/{customerId} {
@@ -406,6 +425,11 @@ service cloud.firestore {
         match /messages/{messageId} {
           allow read, write: if isOwner() || isAdmin() || isTeam();
         }
+      }
+
+      // --- SUBSCRIBER CLEANERS ---
+      match /cleaners/{cleanerId} {
+        allow read, write: if isOwner() || isAdmin() || isTeam();
       }
       
       // --- SUBSCRIBER TERRITORIES ---
