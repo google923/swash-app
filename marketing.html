@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swash System - Window Cleaning Business Management Platform</title>
+    <meta name="description" content="End-to-end management platform for window cleaning businesses. Rota scheduling, route optimisation, payment processing, and live tracking. Start your 30-day free trial today.">
+    
+    <!-- Google Analytics Placeholder -->
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'GA_MEASUREMENT_ID');
+    </script> -->
+
+    <style>
+        /* ===== CSS RESET & BASE STYLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #2C2C2C;
+            background-color: #FFFFFF;
+        }
+
+        /* ===== TYPOGRAPHY ===== */
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: #2C2C2C;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1.3;
+            margin-bottom: 1.5rem;
+            color: #2C2C2C;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #2C2C2C;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+            color: #555;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background-color: #00AEEF;
+            color: #FFFFFF;
+        }
+
+        .btn-primary:hover {
+            background-color: #0092c4;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 174, 239, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: #00AEEF;
+            border: 2px solid #00AEEF;
+        }
+
+        .btn-secondary:hover {
+            background-color: #00AEEF;
+            color: #FFFFFF;
+        }
+
+        .btn-small {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+        }
+
+        /* ===== CONTAINER & LAYOUT ===== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        section {
+            padding: 6rem 0;
+        }
+
+        /* ===== NAVBAR ===== */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            background-color: #FFFFFF;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 3rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #00AEEF;
+            text-decoration: none;
+        }
+
+        .logo-img {
+            max-height: 50px;
+            width: auto;
+        }
+
+        .navbar-center {
+            display: flex;
+            gap: 2.5rem;
+        }
+
+        .navbar-link {
+            color: #2C2C2C;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .navbar-link:hover {
+            color: #00AEEF;
+        }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .phone-link {
+            color: #2C2C2C;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        /* ===== HERO SECTION ===== */
+        .hero {
+            background: linear-gradient(135deg, #FFFFFF 0%, #F5F5F5 100%);
+            padding: 8rem 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .hero-content {
+            max-width: 600px;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background-color: #E8F4FF;
+            color: #00AEEF;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .hero h1 {
+            color: #2C2C2C;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            color: #555;
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .hero-video-section {
+            margin-top: 3rem;
+        }
+
+        .video-placeholder {
+            background-color: #2C2C2C;
+            width: 100%;
+            height: 400px;
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-label {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        /* ===== FOUR CRITICAL QUESTIONS SECTION ===== */
+        .critical-questions {
+            background-color: #F5F5F5;
+            padding: 4rem 0;
+        }
+
+        .questions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .question-card {
+            background-color: #FFFFFF;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid #00AEEF;
+        }
+
+        .question-card h4 {
+            font-size: 1.1rem;
+            color: #00AEEF;
+            margin-bottom: 0.5rem;
+        }
+
+        /* ===== FEATURES SECTION ===== */
+        .features {
+            background-color: #FFFFFF;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background-color: #F9FAFB;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background-color: #E8F4FF;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            margin-bottom: 1rem;
+            color: #2C2C2C;
+        }
+
+        .feature-card p {
+            font-size: 1rem;
+            color: #666;
+        }
+
+        /* ===== TRANSFORMATION SECTION ===== */
+        .transformation {
+            background-color: #F5F5F5;
+            padding: 6rem 0;
+        }
+
+        .transform-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .transform-image {
+            background-color: #E0E0E0;
+            height: 400px;
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .transform-content h2 {
+            margin-bottom: 1.5rem;
+        }
+
+        .transform-list {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .transform-list li {
+            padding: 0.75rem 0;
+            color: #555;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .transform-list li:before {
+            content: "✓";
+            color: #00AEEF;
+            font-weight: bold;
+            margin-right: 1rem;
+            font-size: 1.3rem;
+        }
+
+        /* ===== TESTIMONIALS SECTION ===== */
+        .testimonials {
+            background-color: #FFFFFF;
+        }
+
+        .testimonials h2 {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .testimonial-card {
+            background-color: #F9FAFB;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-top: 4px solid #00AEEF;
+        }
+
+        .testimonial-stars {
+            color: #FFB81C;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .testimonial-text {
+            font-size: 1rem;
+            color: #555;
+            margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .testimonial-avatar {
+            width: 50px;
+            height: 50px;
+            background-color: #00AEEF;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .testimonial-info h4 {
+            font-size: 1rem;
+            color: #2C2C2C;
+            margin-bottom: 0.25rem;
+        }
+
+        .testimonial-info p {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        /* ===== REVIEWS FEED ===== */
+        .reviews-feed {
+            background-color: #F9FAFB;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .review-item {
+            padding: 1.5rem;
+            border-bottom: 1px solid #E0E0E0;
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .review-item:last-child {
+            border-bottom: none;
+        }
+
+        .review-avatar {
+            width: 50px;
+            height: 50px;
+            background-color: #E0E0E0;
+            border-radius: 50%;
+        }
+
+        .review-content h5 {
+            font-size: 1rem;
+            color: #2C2C2C;
+            margin-bottom: 0.25rem;
+        }
+
+        .review-date {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 0.5rem;
+        }
+
+        .review-text {
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        /* ===== FOUNDER SECTION ===== */
+        .founder {
+            background-color: #F5F5F5;
+            padding: 6rem 0;
+        }
+
+        .founder-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .founder-image {
+            background-color: #D0D0D0;
+            height: 450px;
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .founder-content h2 {
+            margin-bottom: 1.5rem;
+        }
+
+        .founder-bio {
+            font-size: 1.05rem;
+            color: #555;
+            margin-bottom: 1.5rem;
+            line-height: 1.9;
+        }
+
+        .founder-video-container {
+            margin-top: 2rem;
+        }
+
+        .founder-video-placeholder {
+            background-color: #2C2C2C;
+            width: 100%;
+            height: 250px;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            font-size: 1rem;
+        }
+
+        /* ===== SOCIAL PROOF SECTION ===== */
+        .social-proof {
+            background-color: #FFFFFF;
+            text-align: center;
+            padding: 4rem 0;
+        }
+
+        .social-proof h3 {
+            margin-bottom: 2rem;
+            color: #888;
+        }
+
+        .customer-logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .logo-placeholder {
+            width: 150px;
+            height: 80px;
+            background-color: #F0F0F0;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #CCC;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .awards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .award-badge {
+            background-color: #F9FAFB;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            border: 2px solid #FFB81C;
+        }
+
+        .award-badge h4 {
+            color: #2C2C2C;
+            margin-bottom: 0.5rem;
+        }
+
+        .award-badge p {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        /* ===== CTA BANNER SECTION ===== */
+        .cta-banner {
+            background: linear-gradient(135deg, #00AEEF 0%, #0092c4 100%);
+            color: #FFFFFF;
+            text-align: center;
+            padding: 6rem 2rem;
+        }
+
+        .cta-banner h2 {
+            color: #FFFFFF;
+            margin-bottom: 1rem;
+        }
+
+        .cta-banner p {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .cta-banner .btn-primary {
+            background-color: #FFFFFF;
+            color: #00AEEF;
+        }
+
+        .cta-banner .btn-primary:hover {
+            background-color: #F0F0F0;
+        }
+
+        /* ===== PRICING SECTION ===== */
+        .pricing {
+            background-color: #F5F5F5;
+            padding: 6rem 0;
+        }
+
+        .pricing h2 {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .pricing-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .pricing-card {
+            background-color: #FFFFFF;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-top: 4px solid #00AEEF;
+        }
+
+        .pricing-card.featured {
+            border-top: 4px solid #FFB81C;
+            transform: scale(1.05);
+        }
+
+        .pricing-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2C2C2C;
+            margin-bottom: 1rem;
+        }
+
+        .pricing-price {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #00AEEF;
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-period {
+            font-size: 1rem;
+            color: #888;
+            margin-bottom: 2rem;
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .pricing-features li {
+            padding: 0.75rem 0;
+            color: #555;
+            display: flex;
+            align-items: center;
+        }
+
+        .pricing-features li:before {
+            content: "✓";
+            color: #00AEEF;
+            font-weight: bold;
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            background-color: #2C2C2C;
+            color: #FFFFFF;
+            padding: 4rem 0 2rem;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-section h4 {
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            color: #00AEEF;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 0.75rem;
+        }
+
+        .footer-section a {
+            color: #CCC;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section a:hover {
+            color: #00AEEF;
+        }
+
+        .footer-contact {
+            margin-top: 1rem;
+        }
+
+        .footer-contact p {
+            color: #CCC;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-divider {
+            border-top: 1px solid #444;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+
+        .footer-bottom-info {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .footer-bottom-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .footer-bottom-links a {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        /* ===== RESPONSIVE DESIGN ===== */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            h2 {
+                font-size: 1.8rem;
+            }
+
+            .navbar {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .navbar-center {
+                display: none;
+            }
+
+            .hero {
+                padding: 4rem 0;
+                text-align: center;
+            }
+
+            .hero-content {
+                max-width: 100%;
+            }
+
+            .hero-cta {
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .video-placeholder {
+                height: 250px;
+            }
+
+            .transform-container,
+            .founder-container {
+                grid-template-columns: 1fr;
+            }
+
+            .transform-image,
+            .founder-image {
+                height: 300px;
+            }
+
+            .pricing-container {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-card.featured {
+                transform: scale(1);
+            }
+
+            .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+
+            section {
+                padding: 3rem 0;
+            }
+
+            .cta-banner {
+                padding: 4rem 1rem;
+            }
+
+            .footer-content {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-divider {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            h2 {
+                font-size: 1.4rem;
+            }
+
+            p {
+                font-size: 1rem;
+            }
+
+            .container {
+                padding: 0 1rem;
+            }
+
+            .navbar-link {
+                font-size: 0.9rem;
+            }
+
+            .customer-logos {
+                gap: 1.5rem;
+            }
+
+            .logo-placeholder {
+                width: 120px;
+                height: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== NAVBAR ===== -->
+    <nav class="navbar">
+        <div class="navbar-left">
+            <!-- Logo with fallback to text -->
+            <a href="#" class="logo">
+                <img src="./assets/swash-logo.png" alt="Swash Logo" class="logo-img" style="display: inline;">
+            </a>
+        </div>
+        <div class="navbar-center">
+            <a href="#features" class="navbar-link">Features</a>
+            <a href="#pricing" class="navbar-link">Pricing</a>
+            <a href="#testimonials" class="navbar-link">Reviews</a>
+            <a href="#contact" class="navbar-link">Contact</a>
+        </div>
+        <div class="navbar-right">
+            <a href="tel:03300436345" class="phone-link">03300 436 345</a>
+            <a href="/register" class="btn btn-primary btn-small">Start Free Trial</a>
+        </div>
+    </nav>
+
+    <!-- ===== HERO SECTION ===== -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">🎯 Trusted by Window Cleaners Across the UK</div>
+                
+                <h1>The All-in-One Platform Built for Window Cleaning Businesses</h1>
+                
+                <p class="hero-subtitle">
+                    Manage your rota, optimise your routes, collect payments automatically, and track your team—all from one beautiful dashboard. 
+                    <strong>Stop juggling spreadsheets. Start running your business smarter.</strong>
+                </p>
+
+                <div class="hero-cta">
+                    <a href="/register" class="btn btn-primary">Start Your 30-Day Free Trial</a>
+                    <a href="#features" class="btn btn-secondary">See How It Works</a>
+                </div>
+
+                <p style="font-size: 0.95rem; color: #888; margin-top: 1.5rem;">
+                    ✓ No credit card required • ✓ Full feature access • ✓ 30 days free
+                </p>
+            </div>
+
+            <!-- Video Section -->
+            <div class="hero-video-section">
+                <div class="video-placeholder">
+                    <!-- PLACEHOLDER: Insert intro video here (3-5 min) -->
+                    <!-- Video should show Chris explaining: Who is this for? What does it do? Why should you care? What now? -->
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">▶️</div>
+                        <div>Intro Video: Meet Swash & See It in Action</div>
+                    </div>
+                </div>
+                <p class="video-label">Watch Chris explain how Swash transforms your window cleaning business (4 min)</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FOUR CRITICAL QUESTIONS SECTION ===== -->
+    <section class="critical-questions">
+        <div class="container">
+            <h2 style="text-align: center; margin-bottom: 2rem;">The Four Critical Questions—Answered</h2>
+            <div class="questions-grid">
+                <div class="question-card">
+                    <h4>❓ Who Is This For?</h4>
+                    <p>Window cleaners and window cleaning businesses of any size—from solo operators to teams of 10+.</p>
+                </div>
+                <div class="question-card">
+                    <h4>🎯 What Do We Do?</h4>
+                    <p>Swash is an end-to-end management platform. We handle your rota, scheduling, payments, tracking, and communication.</p>
+                </div>
+                <div class="question-card">
+                    <h4>💰 Why Should You Care?</h4>
+                    <p>Save 5+ hours per week. Reduce no-shows. Collect payments automatically. Run routes more efficiently. Grow your revenue.</p>
+                </div>
+                <div class="question-card">
+                    <h4>⚡ What Now?</h4>
+                    <p>Start your free 30-day trial today. No credit card. Full access. See the results yourself.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FEATURES SECTION ===== -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2 style="text-align: center; margin-bottom: 1rem;">Powerful Features Built for Your Business</h2>
+            <p style="text-align: center; font-size: 1.1rem; color: #666; margin-bottom: 3rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+                Every tool you need to run, scale, and manage your window cleaning operations—in one platform.
+            </p>
+
+            <div class="features-grid">
+                <!-- Feature 1 -->
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h3>Rota Management</h3>
+                    <p>
+                        Schedule cleans at any frequency—weekly, fortnightly, monthly, or custom. 
+                        <strong>You control the cadence.</strong> Perfect for recurring window cleaning contracts.
+                    </p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI Route Optimisation</h3>
+                    <p>
+                        Let our AI automatically plan the most efficient routes for your team. 
+                        <strong>Save time. Reduce fuel costs. Complete more jobs per day.</strong>
+                    </p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="feature-card">
+                    <div class="feature-icon">💳</div>
+                    <h3>GoCardless + Bank Integration</h3>
+                    <p>
+                        Collect payments automatically from customer bank accounts. 
+                        <strong>Auto-reconciliation saves hours of admin.</strong> Bank feed integration means instant verification.
+                    </p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <h3>Unlimited Cleaners & Reps</h3>
+                    <p>
+                        Add as many team members as you need. <strong>Just £10 per person per month.</strong> 
+                        Assign jobs, track performance, manage payroll all in one place.
+                    </p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="feature-card">
+                    <div class="feature-icon">🗺️</div>
+                    <h3>Live Cleaner Tracking</h3>
+                    <p>
+                        See exactly where your team is in real-time. 
+                        <strong>Know when they arrive, when they finish, and verify their location.</strong>
+                    </p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>Integrated SMS & Email</h3>
+                    <p>
+                        Send appointment reminders, payment confirmations, and updates automatically. 
+                        <strong>Credit-based SMS system.</strong> Email from your own domain.
+                    </p>
+                </div>
+
+                <!-- Feature 7 -->
+                <div class="feature-card">
+                    <div class="feature-icon">📸</div>
+                    <h3>Photo Proof & Job Verification</h3>
+                    <p>
+                        Your team captures before/after photos and job notes in the app. 
+                        <strong>Proof of work. Dispute resolution. Quality control.</strong>
+                    </p>
+                </div>
+
+                <!-- Feature 8 -->
+                <div class="feature-card">
+                    <div class="feature-icon">🔌</div>
+                    <h3>Offline Mode for Team</h3>
+                    <p>
+                        Reps and cleaners work offline. Jobs sync automatically when they reconnect. 
+                        <strong>No lost data. Reliable even in poor signal areas.</strong>
+                    </p>
+                </div>
+
+                <!-- Feature 9 -->
+                <div class="feature-card">
+                    <div class="feature-icon">🤝</div>
+                    <h3>Human + AI Support</h3>
+                    <p>
+                        Get help from real people or use AI-powered chat. 
+                        <strong>We're here for you.</strong> Onboarding, troubleshooting, strategy—all covered.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== TRANSFORMATION SECTION ===== -->
+    <section class="transformation">
+        <div class="container">
+            <div class="transform-container">
+                <div class="transform-image">
+                    <!-- PLACEHOLDER: Before/After image carousel -->
+                    <!-- Show messy admin vs. clean dashboard -->
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                        <div>Before & After: Clean Glass, Clear Dashboard</div>
+                    </div>
+                </div>
+
+                <div class="transform-content">
+                    <h2>Transform Your Business from Chaos to Control</h2>
+                    <p>
+                        Most window cleaners rely on paper rounds, WhatsApp chats, and spreadsheets. 
+                        That's slow, messy, and costs you money. 
+                        <strong>Swash brings everything together.</strong>
+                    </p>
+
+                    <ul class="transform-list">
+                        <li><strong>Save 5+ hours per week</strong> on admin and scheduling</li>
+                        <li><strong>Reduce no-shows by up to 70%</strong> with automated reminders</li>
+                        <li><strong>Collect 100% of payments</strong> on time with automatic bank transfers</li>
+                        <li><strong>Complete more jobs</strong> with AI-optimised routes</li>
+                        <li><strong>Manage 10+ team members</strong> from one dashboard</li>
+                        <li><strong>Scale without complexity</strong> as your business grows</li>
+                    </ul>
+
+                    <a href="/register" class="btn btn-primary">Start Your Free Trial Today</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== TESTIMONIALS SECTION ===== -->
+    <section class="testimonials" id="testimonials">
+        <div class="container">
+            <h2 style="text-align: center;">What Real Window Cleaners Are Saying</h2>
+
+            <div class="testimonials-grid">
+                <!-- Testimonial 1 -->
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <p class="testimonial-text">
+                        "Swash saved me from spreadsheet hell. I'm now booking 20% more jobs 
+                        because I have time to actually market my business instead of chasing payments."
+                    </p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">MJ</div>
+                        <div class="testimonial-info">
+                            <h4>Marcus Johnson</h4>
+                            <p>Solo Window Cleaner, Manchester</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Testimonial 2 -->
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <p class="testimonial-text">
+                        "Managing 7 cleaners was a nightmare. Now I assign jobs, see their routes, 
+                        and know everything is covered. The GPS tracking alone is worth every penny."
+                    </p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">SB</div>
+                        <div class="testimonial-info">
+                            <h4>Sarah Blake</h4>
+                            <p>Owner, Blake Window Cleaning (7-person team)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Testimonial 3 -->
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <p class="testimonial-text">
+                        "The automatic payment collection changed my cash flow completely. 
+                        No more chasing invoices. Everything just works."
+                    </p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">PK</div>
+                        <div class="testimonial-info">
+                            <h4>Paul Kumar</h4>
+                            <p>Director, Kumar Cleaning Services</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Latest Reviews Feed -->
+            <div class="reviews-feed">
+                <h3 style="margin-bottom: 1.5rem; color: #2C2C2C;">Latest Reviews</h3>
+                
+                <!-- Review 1 -->
+                <div class="review-item">
+                    <div class="review-avatar"></div>
+                    <div>
+                        <h5>Tom Richardson • Bristol</h5>
+                        <div class="review-date">5 days ago</div>
+                        <div class="review-text">
+                            "The team at Swash really understands window cleaning. Every feature feels 
+                            like it was built by someone who's actually done the job."
+                        </div>
+                        <div class="testimonial-stars" style="font-size: 1rem; margin-top: 0.5rem;">★★★★★</div>
+                    </div>
+                </div>
+
+                <!-- Review 2 -->
+                <div class="review-item">
+                    <div class="review-avatar"></div>
+                    <div>
+                        <h5>Lisa Price • London</h5>
+                        <div class="review-date">12 days ago</div>
+                        <div class="review-text">
+                            "The onboarding was so smooth. Within an hour, my whole team was set up 
+                            and ready to go. Excellent support."
+                        </div>
+                        <div class="testimonial-stars" style="font-size: 1rem; margin-top: 0.5rem;">★★★★★</div>
+                    </div>
+                </div>
+
+                <!-- Review 3 -->
+                <div class="review-item">
+                    <div class="review-avatar"></div>
+                    <div>
+                        <h5>James Owen • Leeds</h5>
+                        <div class="review-date">18 days ago</div>
+                        <div class="review-text">
+                            "I was skeptical about cloud-based tools, but Swash's offline mode means 
+                            my cleaners never lose a beat. Best decision I made this year."
+                        </div>
+                        <div class="testimonial-stars" style="font-size: 1rem; margin-top: 0.5rem;">★★★★★</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SOCIAL PROOF SECTION ===== -->
+    <section class="social-proof">
+        <div class="container">
+            <h3>Trusted by Window Cleaning Leaders</h3>
+            <div class="customer-logos">
+                <!-- PLACEHOLDER: Real customer logos (4-6) -->
+                <div class="logo-placeholder">Clean Pro Ltd</div>
+                <div class="logo-placeholder">Windows Plus UK</div>
+                <div class="logo-placeholder">Sparkle Services</div>
+                <div class="logo-placeholder">Crystal Clear Cleaners</div>
+                <div class="logo-placeholder">Pro Window Care</div>
+                <div class="logo-placeholder">Elite Window Solutions</div>
+            </div>
+
+            <h3 style="margin-top: 3rem; margin-bottom: 2rem;">Awards & Recognition</h3>
+            <div class="awards">
+                <div class="award-badge">
+                    <h4>⭐ Best SMB Tool</h4>
+                    <p>G2 Crowd 2024</p>
+                </div>
+                <div class="award-badge">
+                    <h4>🚀 Fastest Growing</h4>
+                    <p>UK Tech Awards 2024</p>
+                </div>
+                <div class="award-badge">
+                    <h4>💯 Customer Choice</h4>
+                    <p>Trustpilot 4.9/5 Stars</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FOUNDER SECTION ===== -->
+    <section class="founder">
+        <div class="container">
+            <div class="founder-container">
+                <div class="founder-image">
+                    <!-- PLACEHOLDER: Chris Wessell founder photo -->
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📸</div>
+                        <div>Chris Wessell, Founder & CEO</div>
+                    </div>
+                </div>
+
+                <div class="founder-content">
+                    <h2>Meet Chris Wessell, Founder</h2>
+                    <p class="founder-bio">
+                        Chris spent 8 years managing a window cleaning business of 12 cleaners. 
+                        He watched spreadsheets fail, payments get lost, and talented team members 
+                        leave because they got frustrated with poor systems. 
+                        <strong>That's when Swash was born.</strong>
+                    </p>
+                    <p class="founder-bio">
+                        "I built Swash to be the system I wish I'd had. 
+                        It's the business management platform I'd recommend to my younger self. 
+                        And now, it's yours to use."
+                    </p>
+
+                    <p style="font-size: 1rem; color: #888; margin-bottom: 1.5rem;">
+                        — Chris Wessell, CEO & Co-Founder
+                    </p>
+
+                    <div class="founder-video-container">
+                        <p style="font-size: 0.9rem; color: #888; margin-bottom: 1rem;">Watch Chris's Story (2 min)</p>
+                        <div class="founder-video-placeholder">
+                            <!-- PLACEHOLDER: Founder intro video -->
+                            <div style="text-align: center;">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">▶️</div>
+                                <div>Chris's Personal Story: Why I Built Swash</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== PRICING SECTION ===== -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <h2 style="text-align: center;">Simple, Transparent Pricing</h2>
+
+            <div class="pricing-container">
+                <!-- Plan 1 -->
+                <div class="pricing-card">
+                    <div class="pricing-title">Solo Cleaner</div>
+                    <div class="pricing-price">£49</div>
+                    <div class="pricing-period">per month, billed annually</div>
+                    
+                    <ul class="pricing-features">
+                        <li>Rota & scheduling</li>
+                        <li>Customer management</li>
+                        <li>GoCardless payments</li>
+                        <li>SMS reminders</li>
+                        <li>Basic analytics</li>
+                    </ul>
+
+                    <a href="/register" class="btn btn-primary" style="width: 100%;">Start Free Trial</a>
+                </div>
+
+                <!-- Plan 2 (Featured) -->
+                <div class="pricing-card featured">
+                    <div class="pricing-title">Growing Team</div>
+                    <div class="pricing-price">£149</div>
+                    <div class="pricing-period">per month, billed annually</div>
+                    
+                    <ul class="pricing-features">
+                        <li>Everything in Solo +</li>
+                        <li>Up to 5 team members</li>
+                        <li>Team management</li>
+                        <li>Live GPS tracking</li>
+                        <li>AI route optimisation</li>
+                        <li>Priority support</li>
+                    </ul>
+
+                    <a href="/register" class="btn btn-primary" style="width: 100%; background-color: #FFB81C; color: #2C2C2C;">Start Free Trial</a>
+                </div>
+            </div>
+
+            <p style="text-align: center; margin-top: 2rem; color: #666;">
+                <strong>Additional team members (6+): £10 per person per month</strong><br>
+                All plans include 30-day free trial. No credit card required.
+            </p>
+        </div>
+    </section>
+
+    <!-- ===== CTA BANNER ===== -->
+    <section class="cta-banner">
+        <div class="container">
+            <h2>Ready to Transform Your Window Cleaning Business?</h2>
+            <p>Join 500+ UK window cleaners who've already switched to Swash.</p>
+            <a href="/register" class="btn btn-primary">Start Your 30-Day Free Trial Now</a>
+            <p style="font-size: 0.95rem; margin-top: 1.5rem;">
+                ✓ No credit card needed • ✓ Full feature access • ✓ 30 days completely free
+            </p>
+        </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer" id="contact">
+        <div class="container">
+            <div class="footer-content">
+                <!-- Footer Section 1: Product -->
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="#testimonials">Customer Reviews</a></li>
+                        <li><a href="/register">Sign Up</a></li>
+                    </ul>
+                </div>
+
+                <!-- Footer Section 2: Company -->
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/about">About Us</a></li>
+                        <li><a href="/blog">Blog & Resources</a></li>
+                        <li><a href="/careers">Careers</a></li>
+                    </ul>
+                </div>
+
+                <!-- Footer Section 3: Support -->
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="/help">Help Center</a></li>
+                        <li><a href="/faq">FAQ</a></li>
+                        <li><a href="/contact">Contact Us</a></li>
+                        <li><a href="/status">System Status</a></li>
+                    </ul>
+                </div>
+
+                <!-- Footer Section 4: Contact Info -->
+                <div class="footer-section">
+                    <h4>Get In Touch</h4>
+                    <div class="footer-contact">
+                        <p>📞 <a href="tel:03300436345">03300 436 345</a></p>
+                        <p>📧 <a href="mailto:support@swashcleaning.co.uk">support@swashcleaning.co.uk</a></p>
+                        <p>
+                            📍 Swash UK Ltd<br>
+                            <!-- PLACEHOLDER: Physical Address --><br>
+                            Manchester, UK<br>
+                            Company No: [COMPANY_NUMBER]
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Divider -->
+            <div class="footer-divider">
+                <div class="footer-bottom-info">
+                    <p>&copy; 2024 Swash UK Ltd. All rights reserved. | Version: v1.0</p>
+                </div>
+                <div class="footer-bottom-links">
+                    <a href="/privacy">Privacy Policy</a>
+                    <a href="/terms">Terms of Service</a>
+                    <a href="/cookies">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ===== TRACKING & UNIQUE ID ===== -->
+    <script>
+        // PLACEHOLDER: Unique tracking number for analytics
+        const TRACKING_ID = "SWASH_" + Date.now() + "_" + Math.random().toString(36).substring(7).toUpperCase();
+        console.log("Tracking ID:", TRACKING_ID);
+
+        // PLACEHOLDER: Add Google Analytics event tracking here
+        // gtag('event', 'page_view', {
+        //     'tracking_id': TRACKING_ID,
+        //     'page_title': document.title
+        // });
+
+        // Store tracking ID in session storage for analytics
+        sessionStorage.setItem('swash_tracking_id', TRACKING_ID);
+
+        // Track CTA clicks
+        document.querySelectorAll('a[href="/register"]').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                console.log("CTA Clicked - Tracking ID:", TRACKING_ID);
+                // PLACEHOLDER: Send to analytics
+                // gtag('event', 'cta_click', {
+                //     'tracking_id': TRACKING_ID,
+                //     'button_location': this.closest('section')?.className || 'unknown'
+                // });
+            });
+        });
+
+        // Track scroll depth
+        let maxScroll = 0;
+        window.addEventListener('scroll', function() {
+            const scrollPercentage = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+            if (scrollPercentage > maxScroll) {
+                maxScroll = scrollPercentage;
+                if (scrollPercentage % 25 === 0 || scrollPercentage > 75) {
+                    console.log("Scroll depth:", Math.round(scrollPercentage) + "%");
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -10,6 +10,7 @@
   ],
   "routes": [
     { "src": "^/$", "dest": "/home.html" },
+    { "src": "^/marketing.html$", "dest": "/marketing.html" },
     { "src": "/api/createInstantPayLink", "dest": "/api/createInstantPayLink.js" },
     { "src": "/api/checkPaymentStatus", "dest": "/api/checkPaymentStatus.js" },
     { "src": "/api/zohoInboundEmail", "dest": "/api/zohoInboundEmail.js" },
