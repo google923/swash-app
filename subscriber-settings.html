@@ -261,51 +261,121 @@
 
           <!-- Branding Tab -->
           <div id="tab-branding" class="quote-tab" style="display:none;">
-            <div style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(250px,1fr));">
-              <div class="settings-field">
-                <label for="quoteFormLogoUrl">Logo URL</label>
-                <input type="url" id="quoteFormLogoUrl" placeholder="https://..." />
-                <span class="info-text">Full URL to your logo</span>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; min-height:600px;">
+              
+              <!-- Live Preview on Left -->
+              <div style="border:2px solid #e2e8f0; border-radius:8px; padding:20px; background:#f8fafc; position:relative; overflow:auto;">
+                <div style="position:sticky; top:0; background:#f8fafc; padding-bottom:12px; border-bottom:1px solid #e2e8f0; margin-bottom:12px; z-index:10;">
+                  <h3 style="margin:0; font-size:0.95rem; font-weight:600; color:#0f172a;">Live Preview</h3>
+                  <p style="margin:4px 0 0 0; font-size:0.85rem; color:#64748b;">Click any element to customize</p>
+                </div>
+                
+                <div id="brandingPreview" style="background:var(--preview-bg, white); border-radius:8px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                  <div style="text-align:center; margin-bottom:24px;">
+                    <img id="previewLogo" src="./assets/logo.png" alt="Logo" style="max-width:100px; height:auto; margin-bottom:16px; cursor:pointer; border-radius:4px;" title="Click to change logo" />
+                    <h1 id="previewTitle" style="margin:0 0 8px 0; font-size:1.8rem; font-weight:700; color:#0f172a; cursor:pointer;" title="Click to change title">Get Your Quote</h1>
+                    <p id="previewSubtitle" style="margin:0; font-size:1rem; color:#64748b; cursor:pointer;" title="Click to change subtitle">Fast & Easy</p>
+                  </div>
+
+                  <div style="background:white; border-radius:6px; padding:16px; margin-bottom:16px; border:1px solid #e2e8f0;">
+                    <div style="margin-bottom:12px;">
+                      <label style="display:block; font-size:0.85rem; font-weight:600; color:#0f172a; margin-bottom:6px; cursor:pointer;" title="Click to customize" onclick="openCustomizeModal(event, 'houseSize')">House Size</label>
+                      <select style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:4px; font-size:0.9rem; cursor:pointer;">
+                        <option>3 bed</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="display:block; font-size:0.85rem; font-weight:600; color:#0f172a; margin-bottom:6px; cursor:pointer;" title="Click to customize" onclick="openCustomizeModal(event, 'houseType')">House Type</label>
+                      <select style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:4px; font-size:0.9rem; cursor:pointer;">
+                        <option>Semi-Detached</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style="background:#f0f9ff; border:2px solid var(--preview-accent, #0ea5e9); border-radius:6px; padding:16px; text-align:center;">
+                    <p style="margin:0 0 8px 0; font-size:0.85rem; text-transform:uppercase; font-weight:600; color:#475569; letter-spacing:0.5px;">Price per clean</p>
+                    <p id="previewPrice" style="margin:0; font-size:2.5rem; font-weight:700; color:var(--preview-primary, #0078d7);">£24.00</p>
+                    <p style="margin:4px 0 0 0; font-size:0.85rem; color:#64748b;">every 4 weeks</p>
+                  </div>
+
+                  <div style="margin-top:16px;">
+                    <button id="previewSubmitBtn" type="button" style="width:100%; padding:12px; background:var(--preview-primary, #0078d7); color:var(--preview-btn-text, white); border:none; border-radius:6px; font-weight:600; font-size:0.95rem; cursor:pointer;" title="Click to change button">Get Quote</button>
+                  </div>
+                </div>
               </div>
-              <div class="settings-field">
-                <label for="quoteFormHeroImageUrl">Hero Image URL</label>
-                <input type="url" id="quoteFormHeroImageUrl" placeholder="https://..." />
-                <span class="info-text">Optional hero image</span>
+
+              <!-- Customization Panel on Right -->
+              <div id="customizationPanel" style="border:2px solid #e2e8f0; border-radius:8px; padding:20px; background:white; overflow-y:auto; display:none; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:2px solid #e2e8f0; padding-bottom:12px;">
+                  <h3 id="customizePanelTitle" style="margin:0; font-weight:600; color:#0f172a;">Customize</h3>
+                  <button type="button" id="closeCustomizeBtn" onclick="closeCustomizeModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#64748b;">✕</button>
+                </div>
+
+                <!-- Logo Upload -->
+                <div id="logoCustomizeContent" style="display:none;">
+                  <div class="settings-field" style="margin-bottom:12px;">
+                    <label>Logo Image</label>
+                    <input type="file" id="logoUpload" accept="image/*" style="padding:8px; border:1px solid #cbd5e1; border-radius:4px; width:100%; font-size:0.9rem;" />
+                    <span class="info-text">Upload your logo (PNG, JPG, SVG)</span>
+                  </div>
+                  <button type="button" onclick="updateLogoPreview()" style="width:100%; padding:8px; background:#0078d7; color:white; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Update Logo</button>
+                </div>
+
+                <!-- Title & Subtitle -->
+                <div id="textCustomizeContent" style="display:none;">
+                  <div class="settings-field" style="margin-bottom:12px;">
+                    <label for="customizeTitle">Form Title</label>
+                    <input type="text" id="customizeTitle" placeholder="Get Your Quote" style="padding:8px; border:1px solid #cbd5e1; border-radius:4px; width:100%; font-size:0.9rem;" onchange="updatePreview()" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="customizeSubtitle">Subtitle</label>
+                    <input type="text" id="customizeSubtitle" placeholder="Fast & Easy" style="padding:8px; border:1px solid #cbd5e1; border-radius:4px; width:100%; font-size:0.9rem;" onchange="updatePreview()" />
+                  </div>
+                </div>
+
+                <!-- Colors -->
+                <div id="colorCustomizeContent" style="display:none;">
+                  <div class="settings-field" style="margin-bottom:12px;">
+                    <label for="customizePrimaryColor">Primary Color (Buttons)</label>
+                    <input type="color" id="customizePrimaryColor" value="#0078d7" style="width:100%; height:40px; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;" onchange="updatePreview()" />
+                  </div>
+                  <div class="settings-field" style="margin-bottom:12px;">
+                    <label for="customizeAccentColor">Accent Color (Highlights)</label>
+                    <input type="color" id="customizeAccentColor" value="#0ea5e9" style="width:100%; height:40px; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;" onchange="updatePreview()" />
+                  </div>
+                  <div class="settings-field" style="margin-bottom:12px;">
+                    <label for="customizeBgColor">Background Color</label>
+                    <input type="color" id="customizeBgColor" value="#ffffff" style="width:100%; height:40px; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;" onchange="updatePreview()" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="customizeButtonTextColor">Button Text Color</label>
+                    <input type="color" id="customizeButtonTextColor" value="#ffffff" style="width:100%; height:40px; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer;" onchange="updatePreview()" />
+                  </div>
+                </div>
+
+                <!-- Button -->
+                <div id="buttonCustomizeContent" style="display:none;">
+                  <div class="settings-field" style="margin-bottom:12px;">
+                    <label for="customizeButtonLabel">Button Text</label>
+                    <input type="text" id="customizeButtonLabel" placeholder="Get Quote" style="padding:8px; border:1px solid #cbd5e1; border-radius:4px; width:100%; font-size:0.9rem;" onchange="updatePreview()" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="customizeCornerStyle">Button Style</label>
+                    <select id="customizeCornerStyle" style="padding:8px; border:1px solid #cbd5e1; border-radius:4px; width:100%; font-size:0.9rem;" onchange="updatePreview()">
+                      <option value="rounded">Rounded Corners</option>
+                      <option value="pill">Pill-shaped</option>
+                      <option value="square">Square</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              <div class="settings-field">
-                <label for="quoteFormPrimaryColor">Primary Color</label>
-                <input type="color" id="quoteFormPrimaryColor" value="#0078d7" />
-                <span class="info-text">Buttons & highlights</span>
-              </div>
-              <div class="settings-field">
-                <label for="quoteFormAccentColor">Accent Color</label>
-                <input type="color" id="quoteFormAccentColor" value="#0ea5e9" />
-                <span class="info-text">Secondary highlights</span>
-              </div>
-              <div class="settings-field">
-                <label for="quoteFormBackgroundColor">Background Color</label>
-                <input type="color" id="quoteFormBackgroundColor" value="#ffffff" />
-                <span class="info-text">Form background</span>
-              </div>
-              <div class="settings-field">
-                <label for="quoteFormButtonTextColor">Button Text Color</label>
-                <input type="color" id="quoteFormButtonTextColor" value="#ffffff" />
-                <span class="info-text">Text on buttons</span>
-              </div>
-              <div class="settings-field">
-                <label for="quoteFormButtonLabel">Button Label</label>
-                <input type="text" id="quoteFormButtonLabel" value="Start Quote" />
-                <span class="info-text">CTA button text</span>
-              </div>
-              <div class="settings-field">
-                <label for="quoteFormCornerStyle">Button Style</label>
-                <select id="quoteFormCornerStyle">
-                  <option value="rounded">Rounded</option>
-                  <option value="pill">Pill-shaped</option>
-                  <option value="square">Square</option>
-                </select>
-                <span class="info-text">Button border radius</span>
-              </div>
+
+            </div>
+
+            <!-- Save Button -->
+            <div style="margin-top:24px; padding-top:16px; border-top:1px solid #e2e8f0; display:flex; gap:12px;">
+              <button type="button" id="saveBrandingBtn" class="btn btn-primary" style="flex:1;">Save Branding</button>
+              <button type="button" onclick="resetBrandingPreview()" class="btn btn-secondary">Reset to Defaults</button>
             </div>
           </div>
 

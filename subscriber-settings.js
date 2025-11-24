@@ -133,6 +133,7 @@ document.getElementById('backgroundImageUpload')?.addEventListener('change', (e)
 // Save buttons
 document.getElementById('saveQuoteFormBtn')?.addEventListener('click', saveQuoteFormSettings);
 document.getElementById('saveFieldConfigBtn')?.addEventListener('click', saveFieldConfiguration);
+document.getElementById('saveBrandingBtn')?.addEventListener('click', saveBrandingSettings);
 
 // Quote Form Preview Tab Switching
 document.querySelectorAll('.preview-tab-btn').forEach(btn => {
@@ -2178,6 +2179,154 @@ async function cancelSubscription() {
   }
 }
 
+// ============ BRANDING CUSTOMIZATION FUNCTIONS ============
+
+// Open customize modal for an element
+function openCustomizeModal(event, type) {
+  const panel = document.getElementById('customizationPanel');
+  const title = document.getElementById('customizePanelTitle');
+  
+  // Clear all content divs
+  document.getElementById('logoCustomizeContent').style.display = 'none';
+  document.getElementById('textCustomizeContent').style.display = 'none';
+  document.getElementById('colorCustomizeContent').style.display = 'none';
+  document.getElementById('buttonCustomizeContent').style.display = 'none';
+
+  // Show relevant content based on type
+  if (type === 'logo') {
+    title.textContent = 'Customize Logo';
+    document.getElementById('logoCustomizeContent').style.display = 'block';
+  } else if (type === 'text' || type === 'title' || type === 'subtitle') {
+    title.textContent = 'Customize Text';
+    document.getElementById('customizeTitle').value = document.getElementById('previewTitle').textContent;
+    document.getElementById('customizeSubtitle').value = document.getElementById('previewSubtitle').textContent;
+    document.getElementById('textCustomizeContent').style.display = 'block';
+  } else if (type === 'colors') {
+    title.textContent = 'Customize Colors';
+    document.getElementById('customizePrimaryColor').value = getComputedStyle(document.documentElement).getPropertyValue('--preview-primary').trim() || '#0078d7';
+    document.getElementById('customizeAccentColor').value = getComputedStyle(document.documentElement).getPropertyValue('--preview-accent').trim() || '#0ea5e9';
+    document.getElementById('customizeBgColor').value = getComputedStyle(document.documentElement).getPropertyValue('--preview-bg').trim() || '#ffffff';
+    document.getElementById('customizeButtonTextColor').value = getComputedStyle(document.documentElement).getPropertyValue('--preview-btn-text').trim() || '#ffffff';
+    document.getElementById('colorCustomizeContent').style.display = 'block';
+  } else if (type === 'button') {
+    title.textContent = 'Customize Button';
+    document.getElementById('customizeButtonLabel').value = document.getElementById('previewSubmitBtn').textContent;
+    document.getElementById('customizeCornerStyle').value = document.documentElement.style.getPropertyValue('--preview-btn-radius') || 'rounded';
+    document.getElementById('buttonCustomizeContent').style.display = 'block';
+  } else if (type === 'houseSize' || type === 'houseType') {
+    title.textContent = 'Note: Field configuration is in the Form Fields tab';
+    panel.innerHTML += '<p style="color:#64748b; font-size:0.9rem; margin-top:12px;">Go to the <strong>Form Fields</strong> tab to show/hide and configure property fields.</p>';
+  }
+
+  panel.style.display = 'flex';
+}
+
+function closeCustomizeModal() {
+  document.getElementById('customizationPanel').style.display = 'none';
+}
+
+function updatePreview() {
+  const primaryColor = document.getElementById('customizePrimaryColor')?.value || '#0078d7';
+  const accentColor = document.getElementById('customizeAccentColor')?.value || '#0ea5e9';
+  const bgColor = document.getElementById('customizeBgColor')?.value || '#ffffff';
+  const btnTextColor = document.getElementById('customizeButtonTextColor')?.value || '#ffffff';
+  const cornerStyle = document.getElementById('customizeCornerStyle')?.value || 'rounded';
+  const title = document.getElementById('customizeTitle')?.value || 'Get Your Quote';
+  const subtitle = document.getElementById('customizeSubtitle')?.value || 'Fast & Easy';
+  const btnLabel = document.getElementById('customizeButtonLabel')?.value || 'Get Quote';
+
+  // Update CSS variables
+  document.documentElement.style.setProperty('--preview-primary', primaryColor);
+  document.documentElement.style.setProperty('--preview-accent', accentColor);
+  document.documentElement.style.setProperty('--preview-bg', bgColor);
+  document.documentElement.style.setProperty('--preview-btn-text', btnTextColor);
+
+  const cornerMap = { 'rounded': '6px', 'pill': '24px', 'square': '0px' };
+  document.documentElement.style.setProperty('--preview-btn-radius', cornerMap[cornerStyle] || '6px');
+
+  // Update preview elements
+  document.getElementById('previewTitle').textContent = title;
+  document.getElementById('previewSubtitle').textContent = subtitle;
+  document.getElementById('previewSubmitBtn').textContent = btnLabel;
+  document.getElementById('previewSubmitBtn').style.borderRadius = cornerMap[cornerStyle] || '6px';
+}
+
+function updateLogoPreview() {
+  const fileInput = document.getElementById('logoUpload');
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    document.getElementById('previewLogo').src = dataUrl;
+    // Store in session for saving
+    window.logoDataUrl = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetBrandingPreview() {
+  document.documentElement.style.setProperty('--preview-primary', '#0078d7');
+  document.documentElement.style.setProperty('--preview-accent', '#0ea5e9');
+  document.documentElement.style.setProperty('--preview-bg', '#ffffff');
+  document.documentElement.style.setProperty('--preview-btn-text', '#ffffff');
+  document.documentElement.style.setProperty('--preview-btn-radius', '6px');
+
+  document.getElementById('previewTitle').textContent = 'Get Your Quote';
+  document.getElementById('previewSubtitle').textContent = 'Fast & Easy';
+  document.getElementById('previewSubmitBtn').textContent = 'Get Quote';
+  document.getElementById('previewSubmitBtn').style.borderRadius = '6px';
+  document.getElementById('previewLogo').src = './assets/logo.png';
+  
+  closeCustomizeModal();
+}
+
+async function saveBrandingSettings() {
+  try {
+    if (!state.subscriberId) return;
+
+    const primaryColor = document.documentElement.style.getPropertyValue('--preview-primary').trim() || '#0078d7';
+    const accentColor = document.documentElement.style.getPropertyValue('--preview-accent').trim() || '#0ea5e9';
+    const bgColor = document.documentElement.style.getPropertyValue('--preview-bg').trim() || '#ffffff';
+    const btnTextColor = document.documentElement.style.getPropertyValue('--preview-btn-text').trim() || '#ffffff';
+    const cornerStyle = ['rounded', 'pill', 'square'].find(s => {
+      const map = { 'rounded': '6px', 'pill': '24px', 'square': '0px' };
+      return document.documentElement.style.getPropertyValue('--preview-btn-radius').includes(map[s]);
+    }) || 'rounded';
+
+    const brandingConfig = {
+      primaryColor,
+      accentColor,
+      backgroundColor: bgColor,
+      buttonTextColor: btnTextColor,
+      cornerStyle,
+      formText: {
+        title: document.getElementById('previewTitle').textContent,
+        subtitle: document.getElementById('previewSubtitle').textContent,
+        description: ''
+      },
+      updatedAt: serverTimestamp()
+    };
+
+    // Handle logo upload if present
+    if (window.logoDataUrl) {
+      brandingConfig.logoDataUrl = window.logoDataUrl;
+      // Note: In production, you'd upload this to Cloud Storage
+    }
+
+    const configRef = tenantDoc(db, state.subscriberId, 'settings', 'quoteFormConfig');
+    await setDoc(configRef, { branding: brandingConfig }, { merge: true });
+
+    showToast('✅ Branding saved successfully', 'success');
+    closeCustomizeModal();
+  } catch (error) {
+    console.error('Save branding error:', error);
+    showToast('❌ Failed to save branding', 'error');
+  }
+}
+
 init();
 
 // (doc function is now properly imported from firebase-firestore)
+
