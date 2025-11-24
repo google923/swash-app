@@ -104,6 +104,14 @@
           <h2 style="margin-bottom:16px; color:#0f172a;">Quote Form Branding & Settings</h2>
           <p class="text-muted" style="margin-bottom:24px;">Customize how your quote form appears to customers. <a href="./subscriber-add-customer-settings.html" style="color:#0078d7; text-decoration:underline;">View full pricing configuration</a></p>
           
+          <!-- LIVE PREVIEW TAB -->
+          <div style="display:flex; gap:12px; margin-bottom:20px; border-bottom:2px solid #e2e8f0; padding-bottom:12px;">
+            <button class="preview-tab-btn active" data-tab="settings" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#0078d7; border-bottom:3px solid #0078d7; margin-bottom:-14px;">Settings</button>
+            <button class="preview-tab-btn" data-tab="preview" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px;">Live Preview</button>
+          </div>
+
+          <!-- Settings Panel -->
+          <div id="settingsPanel" class="preview-panel" style="display:block;">
           <div style="display:grid; gap:20px;">
             <!-- Basic Settings -->
             <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
@@ -272,6 +280,79 @@
             <button class="btn-reset" id="resetQuoteFormBtn">Reset to Defaults</button>
             <button class="btn-save" id="saveQuoteFormBtn">Save All Settings</button>
           </div>
+          </div>
+          <!-- End Settings Panel -->
+
+          <!-- Live Preview Panel -->
+          <div id="previewPanel" class="preview-panel" style="display:none; max-height:calc(100vh - 200px); overflow-y:auto;">
+            <div style="border:2px solid #0078d7; border-radius:12px; padding:24px; background:#f9fafb; max-width:600px; margin:0 auto;">
+              <!-- Preview Form -->
+              <div style="text-align:center; margin-bottom:24px;">
+                <div id="previewLogo" style="height:60px; margin-bottom:12px; display:flex; align-items:center; justify-content:center;">
+                  <img src="" alt="Logo" style="max-height:60px; max-width:200px; display:none;" id="previewLogoImg" />
+                </div>
+                <h1 id="previewTitle" style="margin:0 0 8px 0; font-size:1.8rem; color:#0f172a; font-weight:700;">Get Your Quote</h1>
+                <p id="previewSubtitle" style="margin:0 0 8px 0; font-size:1.1rem; color:#0078d7; font-weight:600;">Fast &amp; Free Quote</p>
+                <p id="previewDescription" style="margin:0; font-size:0.95rem; color:#64748b;">Get an instant personalized quote</p>
+              </div>
+
+              <!-- Preview Form Fields -->
+              <form style="display:grid; gap:16px;">
+                <div style="display:grid; gap:12px;">
+                  <div>
+                    <label style="display:block; font-weight:600; color:#0f172a; margin-bottom:6px;">Customer Name</label>
+                    <input type="text" placeholder="John Doe" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;" />
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div>
+                      <label style="display:block; font-weight:600; color:#0f172a; margin-bottom:6px;">Email</label>
+                      <input type="email" placeholder="john@example.com" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;" />
+                    </div>
+                    <div>
+                      <label style="display:block; font-weight:600; color:#0f172a; margin-bottom:6px;">Mobile</label>
+                      <input type="tel" placeholder="07xxx xxxxxx" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;" />
+                    </div>
+                  </div>
+                  <div>
+                    <label style="display:block; font-weight:600; color:#0f172a; margin-bottom:6px;">Address</label>
+                    <input type="text" placeholder="123 Main Street" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;" />
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div>
+                      <label style="display:block; font-weight:600; color:#0f172a; margin-bottom:6px;">Service Tier</label>
+                      <select style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;" id="previewServiceTier">
+                        <option value="silver">Silver</option>
+                        <option value="gold" selected>Gold</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="display:block; font-weight:600; color:#0f172a; margin-bottom:6px;">House Size</label>
+                      <select style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;">
+                        <option>2 bed</option>
+                        <option selected>3 bed</option>
+                        <option>4 bed</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Buttons Row -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+                  <button type="button" id="previewSuggestBtn" style="padding:12px; border:2px solid #0078d7; background:transparent; color:#0078d7; font-weight:600; border-radius:6px; cursor:pointer; transition:all 0.3s;">💡 Get Suggestions</button>
+                  <button type="button" id="previewCalculateBtn" style="padding:12px; border:none; background:#0078d7; color:white; font-weight:600; border-radius:6px; cursor:pointer; transition:all 0.3s;">Calculate Quote</button>
+                </div>
+
+                <!-- Results -->
+                <div id="previewResults" style="display:none; margin-top:16px; padding:16px; background:#f0fdf4; border:1px solid #86efac; border-radius:6px;">
+                  <p style="margin:0; font-size:0.9rem; color:#166534;">
+                    <strong>Upfront Price:</strong> £<span id="previewUpfrontPrice">0.00</span><br />
+                    <strong>Price per clean:</strong> £<span id="previewPerCleanPrice">0.00</span> every 28 days
+                  </p>
+                </div>
+              </form>
+            </div>
+          </div>
+          <!-- End Preview Panel -->
         </div>
       </div>
 

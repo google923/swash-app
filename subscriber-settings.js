@@ -132,6 +132,43 @@ document.getElementById('backgroundImageUpload')?.addEventListener('change', (e)
 
 // Save buttons
 document.getElementById('saveQuoteFormBtn')?.addEventListener('click', saveQuoteFormSettings);
+
+// Quote Form Preview Tab Switching
+document.querySelectorAll('.preview-tab-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const tab = e.target.dataset.tab;
+    document.querySelectorAll('.preview-tab-btn').forEach(b => {
+      b.classList.toggle('active', b === e.target);
+      b.style.color = b === e.target ? '#0078d7' : '#64748b';
+      b.style.borderBottom = b === e.target ? '3px solid #0078d7' : '3px solid transparent';
+    });
+    document.getElementById('settingsPanel').style.display = tab === 'settings' ? 'block' : 'none';
+    document.getElementById('previewPanel').style.display = tab === 'preview' ? 'block' : 'none';
+    if (tab === 'preview') updateQuoteFormPreview();
+  });
+});
+
+// Update live preview as settings change
+['quoteFormTitle', 'quoteFormSubtitle', 'quoteFormDescription', 'quoteFormLogoUrl', 'quoteFormPrimaryColor', 'quoteFormButtonLabel', 'tierSilverLabel', 'tierGoldLabel'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('input', updateQuoteFormPreview);
+    el.addEventListener('change', updateQuoteFormPreview);
+  }
+});
+
+// AI Suggestions Button
+document.getElementById('previewSuggestBtn')?.addEventListener('click', async (e) => {
+  e.preventDefault();
+  await generateQuoteSuggestions();
+});
+
+// Calculate Quote Button
+document.getElementById('previewCalculateBtn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  previewCalculateQuote();
+});
+
 document.getElementById('saveEmailBtn')?.addEventListener('click', saveEmailSettings);
 document.getElementById('saveSmsBtn')?.addEventListener('click', saveSmsSettings);
 document.getElementById('saveCleanersBtn')?.addEventListener('click', saveCleanersSettings);
@@ -258,6 +295,110 @@ setTimeout(() => {
     });
   }
 }, 100);
+
+// Live Preview Functions
+function updateQuoteFormPreview() {
+  const title = document.getElementById('quoteFormTitle')?.value || 'Get Your Quote';
+  const subtitle = document.getElementById('quoteFormSubtitle')?.value || 'Fast & Free Quote';
+  const description = document.getElementById('quoteFormDescription')?.value || 'Get an instant personalized quote';
+  const logoUrl = document.getElementById('quoteFormLogoUrl')?.value;
+  const primaryColor = document.getElementById('quoteFormPrimaryColor')?.value || '#0078d7';
+  const buttonLabel = document.getElementById('quoteFormButtonLabel')?.value || 'Start Quote';
+  const silverLabel = document.getElementById('tierSilverLabel')?.value || 'Silver';
+  const goldLabel = document.getElementById('tierGoldLabel')?.value || 'Gold';
+
+  // Update preview elements
+  document.getElementById('previewTitle').textContent = title;
+  document.getElementById('previewSubtitle').textContent = subtitle;
+  document.getElementById('previewDescription').textContent = description;
+
+  // Update logo
+  const logoImg = document.getElementById('previewLogoImg');
+  const logoDiv = document.getElementById('previewLogo');
+  if (logoUrl) {
+    logoImg.src = logoUrl;
+    logoImg.style.display = 'block';
+  } else {
+    logoImg.style.display = 'none';
+  }
+
+  // Update button colors and labels
+  const suggestBtn = document.getElementById('previewSuggestBtn');
+  const calcBtn = document.getElementById('previewCalculateBtn');
+  if (suggestBtn) {
+    suggestBtn.style.color = primaryColor;
+    suggestBtn.style.borderColor = primaryColor;
+  }
+  if (calcBtn) {
+    calcBtn.style.background = primaryColor;
+    calcBtn.textContent = buttonLabel;
+  }
+
+  // Update service tier selector
+  const tierSelect = document.getElementById('previewServiceTier');
+  if (tierSelect && tierSelect.options) {
+    if (tierSelect.options[0]) tierSelect.options[0].textContent = silverLabel;
+    if (tierSelect.options[1]) tierSelect.options[1].textContent = goldLabel;
+  }
+}
+
+async function generateQuoteSuggestions() {
+  try {
+    const suggestBtn = document.getElementById('previewSuggestBtn');
+    const originalText = suggestBtn.textContent;
+    suggestBtn.textContent = '⏳ Getting suggestions...';
+    suggestBtn.disabled = true;
+
+    const response = await fetch('/api/aiHelper', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: `Generate a realistic sample customer quote form entry for a window cleaning service. Provide realistic but fake data for: customer name, email, mobile number, and address. Format as JSON with keys: name, email, phone, address.`,
+        userId: state.subscriberId
+      })
+    });
+
+    if (!response.ok) throw new Error('Failed to get suggestions');
+    
+    const data = await response.json();
+    const suggestion = typeof data === 'string' ? JSON.parse(data) : data;
+
+    // Auto-fill form fields
+    const form = document.querySelector('#previewPanel form');
+    if (form) {
+      form.querySelector('input[placeholder="John Doe"]').value = suggestion.name || '';
+      form.querySelector('input[placeholder="john@example.com"]').value = suggestion.email || '';
+      form.querySelector('input[placeholder="07xxx xxxxxx"]').value = suggestion.phone || '';
+      form.querySelector('input[placeholder="123 Main Street"]').value = suggestion.address || '';
+    }
+
+    suggestBtn.textContent = '✅ Filled!';
+    setTimeout(() => {
+      suggestBtn.textContent = originalText;
+      suggestBtn.disabled = false;
+    }, 2000);
+  } catch (error) {
+    console.error('Suggestion error:', error);
+    const suggestBtn = document.getElementById('previewSuggestBtn');
+    suggestBtn.textContent = '❌ Error';
+    setTimeout(() => {
+      suggestBtn.textContent = '💡 Get Suggestions';
+      suggestBtn.disabled = false;
+    }, 2000);
+  }
+}
+
+function previewCalculateQuote() {
+  // Sample calculation for demo
+  const tier = document.getElementById('previewServiceTier')?.value || 'gold';
+  const basePrice = tier === 'gold' ? 32 : 24; // Example prices
+  const upfrontPrice = basePrice * 3; // 3 cleans upfront
+  const perCleanPrice = basePrice;
+
+  document.getElementById('previewResults').style.display = 'block';
+  document.getElementById('previewUpfrontPrice').textContent = upfrontPrice.toFixed(2);
+  document.getElementById('previewPerCleanPrice').textContent = perCleanPrice.toFixed(2);
+}
 
 // Save settings functions
 async function saveQuoteFormSettings() {
@@ -972,6 +1113,8 @@ async function loadSettings() {
       document.getElementById('priceConservatoryAdd').value = data.priceConservatoryAdd || '6';
       document.getElementById('priceRoofLanternEach').value = data.priceRoofLanternEach || '10';
       document.getElementById('priceSkylightEach').value = data.priceSkylightEach || '1.50';
+      // Update preview with loaded settings
+      updateQuoteFormPreview();
     }
 
     // Load email settings
