@@ -302,24 +302,27 @@
     });
 
     onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        document.getElementById('authOverlay').style.display = 'none';
-        document.getElementById('dashboardContent').style.display = 'block';
-        
-        loadLayout();
-        renderDashboard();
-        renderAvailableCards();
-
-        // Load stats
-        try {
-          const q = query(collection(db, 'quotes'), where('userId', '==', user.uid));
-          const snapshot = await getDocs(q);
-          document.getElementById('statQuotes').textContent = snapshot.size;
-        } catch (e) {
-          console.error('Error loading stats:', e);
-        }
-      } else {
+      if (!user) {
+        // Not authenticated - redirect to login
         window.location.href = '/subscriber-login.html';
+        return;
+      }
+      
+      // User is authenticated - show dashboard
+      document.getElementById('authOverlay').style.display = 'none';
+      document.getElementById('dashboardContent').style.display = 'block';
+      
+      loadLayout();
+      renderDashboard();
+      renderAvailableCards();
+
+      // Load stats
+      try {
+        const q = query(collection(db, 'quotes'), where('userId', '==', user.uid));
+        const snapshot = await getDocs(q);
+        document.getElementById('statQuotes').textContent = snapshot.size;
+      } catch (e) {
+        console.error('Error loading stats:', e);
       }
     });
   </script>

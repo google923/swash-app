@@ -202,21 +202,14 @@
       return '/subscriber-dashboard.html';
     }
 
-    // Check if already logged in
+    // Check if already logged in - only redirect if on login page and authenticated
+    let authCheckComplete = false;
     onAuthStateChanged(auth, async (user) => {
+      authCheckComplete = true;
       if (user) {
-        // Check role
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          if (userData.role === 'subscriber') {
-            if (!userData.billingCompleted) {
-              window.location.href = './subscriber-billing.html';
-              return;
-            }
-            window.location.href = resolvePostLoginDestination();
-          }
-        }
+        // Don't redirect from login form - let form submission handle it
+        // Just update UI to show they're already logged in
+        console.log('User already logged in:', user.email);
       }
     });
 
