@@ -278,6 +278,7 @@ function closeCleanerModal() {
   cleanerModal.classList.remove('show');
   cleanerForm.reset();
   state.editingCleanerId = null;
+  state.editingRepId = undefined;
 }
 
 // Logout - wait for header to inject before attaching listener
@@ -762,7 +763,7 @@ async function saveCleanerToFirestore() {
 
     const cleanersRef = tenantCollection(db, state.subscriberId, 'cleaners');
     
-    if (state.editingCleanerId) {
+    if (state.editingCleanerId !== undefined && state.editingCleanerId !== null) {
       // Update existing
       await updateDoc(doc(cleanersRef, state.editingCleanerId), {
         name,
@@ -773,8 +774,8 @@ async function saveCleanerToFirestore() {
       });
       showToast('✅ Cleaner updated', 'success');
     } else {
-      // Create new
-      await setDoc(doc(cleanersRef), {
+      // Create new with addDoc
+      await addDoc(cleanersRef, {
         name,
         email,
         phone,
@@ -910,7 +911,9 @@ function openAddRepModal() {
 
 function closeRepModal() {
   cleanerModal.classList.remove('show');
+  cleanerForm.reset();
   state.editingRepId = undefined;
+  state.editingCleanerId = undefined;
 }
 
 async function saveRepToFirestore() {
@@ -929,7 +932,7 @@ async function saveRepToFirestore() {
 
     const repsRef = tenantCollection(db, state.subscriberId, 'reps');
     
-    if (state.editingRepId !== undefined) {
+    if (state.editingRepId !== undefined && state.editingRepId !== null) {
       // Update existing
       await updateDoc(doc(repsRef, state.editingRepId), {
         name,
@@ -940,8 +943,8 @@ async function saveRepToFirestore() {
       });
       showToast('✅ Rep updated', 'success');
     } else {
-      // Create new
-      await setDoc(doc(repsRef), {
+      // Create new with addDoc
+      await addDoc(repsRef, {
         name,
         email,
         phone,
