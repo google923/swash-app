@@ -435,6 +435,11 @@ service cloud.firestore {
         allow read, write: if isOwner() || isAdmin() || isTeam();
       }
       
+      // --- SUBSCRIBER REPS ---
+      match /reps/{repId} {
+        allow read, write: if isOwner() || isAdmin() || isTeam();
+      }
+      
       // --- SUBSCRIBER TERRITORIES ---
       match /territories/{territoryId} {
         allow read, write: if isOwner() || isAdmin() || isTeam();

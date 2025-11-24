@@ -136,15 +136,24 @@ document.getElementById('saveQuoteFormBtn')?.addEventListener('click', saveQuote
 // Quote Form Preview Tab Switching
 document.querySelectorAll('.preview-tab-btn').forEach(btn => {
   btn.addEventListener('click', (e) => {
-    const tab = e.target.dataset.tab;
+    const tabName = e.target.dataset.tab;
+    
+    // Update button styles
     document.querySelectorAll('.preview-tab-btn').forEach(b => {
       b.classList.toggle('active', b === e.target);
       b.style.color = b === e.target ? '#0078d7' : '#64748b';
       b.style.borderBottom = b === e.target ? '3px solid #0078d7' : '3px solid transparent';
     });
-    document.getElementById('settingsPanel').style.display = tab === 'settings' ? 'block' : 'none';
-    document.getElementById('previewPanel').style.display = tab === 'preview' ? 'block' : 'none';
-    if (tab === 'preview') updateQuoteFormPreview();
+    
+    // Hide all tabs
+    document.querySelectorAll('.quote-tab').forEach(t => t.style.display = 'none');
+    
+    // Show selected tab
+    const selectedTab = document.getElementById(`tab-${tabName}`);
+    if (selectedTab) {
+      selectedTab.style.display = 'block';
+      if (tabName === 'preview') updateQuoteFormPreview();
+    }
   });
 });
 
@@ -171,6 +180,9 @@ document.getElementById('previewCalculateBtn')?.addEventListener('click', (e) =>
 
 document.getElementById('saveEmailBtn')?.addEventListener('click', saveEmailSettings);
 document.getElementById('saveSmsBtn')?.addEventListener('click', saveSmsSettings);
+document.getElementById('saveSmsConfigBtn')?.addEventListener('click', saveSmsConfigSettings);
+document.getElementById('saveSmsTemplatesBtn')?.addEventListener('click', saveSmsTemplates);
+document.getElementById('saveSmsSchedulingBtn')?.addEventListener('click', saveSmsScheduling);
 document.getElementById('saveCleanersBtn')?.addEventListener('click', saveCleanersSettings);
 document.getElementById('saveRepsBtn')?.addEventListener('click', saveRepsSettings);
 document.getElementById('saveSupportBtn')?.addEventListener('click', saveSupportSettings);
@@ -407,20 +419,30 @@ async function saveQuoteFormSettings() {
     if (!state.subscriberId) return;
     
     const settings = {
-      quoteFormTitle: document.getElementById('quoteFormTitle').value || '',
-      quoteFormSubtitle: document.getElementById('quoteFormSubtitle').value || '',
+      // Form Text
+      quoteFormTitle: document.getElementById('quoteFormTitle').value || 'Get Your Quote',
+      quoteFormSubtitle: document.getElementById('quoteFormSubtitle').value || 'Fast & Free Quote',
       quoteFormDescription: document.getElementById('quoteFormDescription').value || '',
+      
+      // Branding
       quoteFormLogoUrl: document.getElementById('quoteFormLogoUrl').value || '',
+      quoteFormHeroImageUrl: document.getElementById('quoteFormHeroImageUrl')?.value || '',
       quoteFormPrimaryColor: document.getElementById('quoteFormPrimaryColor').value || '#0078d7',
       quoteFormAccentColor: document.getElementById('quoteFormAccentColor').value || '#0ea5e9',
       quoteFormBackgroundColor: document.getElementById('quoteFormBackgroundColor').value || '#ffffff',
+      quoteFormButtonTextColor: document.getElementById('quoteFormButtonTextColor').value || '#ffffff',
       quoteFormButtonLabel: document.getElementById('quoteFormButtonLabel').value || 'Start Quote',
       quoteFormCornerStyle: document.getElementById('quoteFormCornerStyle').value || 'rounded',
+      
+      // Service Tiers
       tierSilverLabel: document.getElementById('tierSilverLabel').value || 'Silver',
-      tierSilverDescription: document.getElementById('tierSilverDescription').value || '',
+      tierSilverDescription: document.getElementById('tierSilverDescription').value || 'Windows only, every 4 weeks.',
       tierGoldLabel: document.getElementById('tierGoldLabel').value || 'Gold',
-      tierGoldDescription: document.getElementById('tierGoldDescription').value || '',
+      tierGoldDescription: document.getElementById('tierGoldDescription').value || 'Frames, sills and reminders included.',
       tierGoldMultiplier: parseFloat(document.getElementById('tierGoldMultiplier').value) || 1.35,
+      tierOfferLabel: document.getElementById('tierOfferLabel')?.value || 'Gold upgrade included',
+      
+      // Base Pricing
       pricingMinimum: parseFloat(document.getElementById('pricingMinimum').value) || 16,
       pricingVatIncluded: document.getElementById('pricingVatIncluded').value === 'true',
       price2bed: parseFloat(document.getElementById('price2bed').value) || 21,
@@ -428,16 +450,39 @@ async function saveQuoteFormSettings() {
       price4bed: parseFloat(document.getElementById('price4bed').value) || 28,
       price5bed: parseFloat(document.getElementById('price5bed').value) || 32,
       price6bed: parseFloat(document.getElementById('price6bed').value) || 36,
+      
+      // Add-ons
       priceExtensionAdd: parseFloat(document.getElementById('priceExtensionAdd').value) || 4,
       priceConservatoryAdd: parseFloat(document.getElementById('priceConservatoryAdd').value) || 6,
       priceRoofLanternEach: parseFloat(document.getElementById('priceRoofLanternEach').value) || 10,
-      priceSkylightEach: parseFloat(document.getElementById('priceSkylightEach').value) || 1.50,
+      priceSkylightEach: parseFloat(document.getElementById('priceSkylightEach').value) || 1.5,
+      
+      // Modifiers
+      alternatingFactor: parseFloat(document.getElementById('alternatingFactor')?.value) || 0.5,
+      frontOnlyFactor: parseFloat(document.getElementById('frontOnlyFactor')?.value) || 0.6,
+      
+      // House Type Multipliers
+      houseTypeMultipliers: {
+        'Bungalow': parseFloat(document.getElementById('mult_bungalow')?.value) || 0.94,
+        'Maisonette': parseFloat(document.getElementById('mult_maisonette')?.value) || 0.96,
+        'Terrace': parseFloat(document.getElementById('mult_terrace')?.value) || 1.0,
+        'Semi-Detached': parseFloat(document.getElementById('mult_semidetached')?.value) || 1.0,
+        'Detached': parseFloat(document.getElementById('mult_detached')?.value) || 1.08,
+        'Mobile Home': parseFloat(document.getElementById('mult_mobilehome')?.value) || 0.9,
+      },
+      
+      // Feature Toggles
+      enableAlternating: document.getElementById('toggle_alternating')?.checked || false,
+      enableFrontOnly: document.getElementById('toggle_frontonly')?.checked || false,
+      showOfferButton: document.getElementById('toggle_offerbtn')?.checked || false,
+      showNotesField: document.getElementById('toggle_notesfield')?.checked || false,
+      
       updatedAt: serverTimestamp()
     };
 
     const settingsRef = tenantDoc(db, state.subscriberId, 'private', 'quoteFormSettings');
     await setDoc(settingsRef, settings, { merge: true });
-    showToast('✅ Quote form settings saved', 'success');
+    showToast('✅ All quote form settings saved', 'success');
   } catch (error) {
     console.error('Save quote form settings error:', error);
     showToast('❌ Failed to save settings', 'error');
@@ -517,14 +562,12 @@ async function sendTestEmail(e) {
   }
 }
 
-async function saveSmsSettings() {
+async function saveSmsConfigSettings() {
   try {
     if (!state.subscriberId) return;
     
     const provider = document.getElementById('smsProvider')?.value || 'twilio';
     const apiKey = document.getElementById('smsApiKey')?.value || '';
-    
-    // Base64 encode API key for basic security
     const encodedApiKey = apiKey ? btoa(apiKey) : '';
 
     const settings = {
@@ -535,8 +578,75 @@ async function saveSmsSettings() {
 
     const settingsRef = tenantDoc(db, state.subscriberId, 'private', 'smsSettings');
     await setDoc(settingsRef, settings, { merge: true });
-    showToast('✅ SMS settings saved', 'success');
-    // Clear password field after save
+    showToast('✅ Provider settings saved', 'success');
+    document.getElementById('smsApiKey').value = '';
+  } catch (error) {
+    console.error('Save SMS config error:', error);
+    showToast('❌ Failed to save SMS config', 'error');
+  }
+}
+
+async function saveSmsTemplates() {
+  try {
+    if (!state.subscriberId) return;
+    
+    const settings = {
+      smsBookingTemplate: document.getElementById('smsBookingTemplate')?.value || '',
+      smsReminderTemplate: document.getElementById('smsReminderTemplate')?.value || '',
+      smsFollowUpTemplate: document.getElementById('smsFollowUpTemplate')?.value || '',
+      updatedAt: serverTimestamp()
+    };
+
+    const settingsRef = tenantDoc(db, state.subscriberId, 'private', 'smsSettings');
+    await setDoc(settingsRef, settings, { merge: true });
+    showToast('✅ SMS templates saved', 'success');
+  } catch (error) {
+    console.error('Save SMS templates error:', error);
+    showToast('❌ Failed to save SMS templates', 'error');
+  }
+}
+
+async function saveSmsScheduling() {
+  try {
+    if (!state.subscriberId) return;
+    
+    const settings = {
+      minSendMinutes: parseInt(document.getElementById('minSendMinutes')?.value || '5'),
+      reminderHoursBefore: parseInt(document.getElementById('reminderHoursBefore')?.value || '24'),
+      smsOptInRequired: document.getElementById('smsOptInRequired')?.checked || false,
+      smsDeliveryNotifs: document.getElementById('smsDeliveryNotifs')?.checked || false,
+      updatedAt: serverTimestamp()
+    };
+
+    const settingsRef = tenantDoc(db, state.subscriberId, 'private', 'smsSettings');
+    await setDoc(settingsRef, settings, { merge: true });
+    showToast('✅ SMS scheduling saved', 'success');
+  } catch (error) {
+    console.error('Save SMS scheduling error:', error);
+    showToast('❌ Failed to save SMS scheduling', 'error');
+  }
+}
+
+async function saveSmsSettings() {
+  try {
+    if (!state.subscriberId) return;
+    
+    const settings = {
+      smsProvider: document.getElementById('smsProvider')?.value || 'twilio',
+      smsApiKey: document.getElementById('smsApiKey')?.value ? btoa(document.getElementById('smsApiKey').value) : '',
+      smsBookingTemplate: document.getElementById('smsBookingTemplate')?.value || '',
+      smsReminderTemplate: document.getElementById('smsReminderTemplate')?.value || '',
+      smsFollowUpTemplate: document.getElementById('smsFollowUpTemplate')?.value || '',
+      minSendMinutes: parseInt(document.getElementById('minSendMinutes')?.value || '5'),
+      reminderHoursBefore: parseInt(document.getElementById('reminderHoursBefore')?.value || '24'),
+      smsOptInRequired: document.getElementById('smsOptInRequired')?.checked || false,
+      smsDeliveryNotifs: document.getElementById('smsDeliveryNotifs')?.checked || false,
+      updatedAt: serverTimestamp()
+    };
+
+    const settingsRef = tenantDoc(db, state.subscriberId, 'private', 'smsSettings');
+    await setDoc(settingsRef, settings, { merge: true });
+    showToast('✅ All SMS settings saved', 'success');
     document.getElementById('smsApiKey').value = '';
   } catch (error) {
     console.error('Save SMS settings error:', error);
@@ -818,8 +928,14 @@ async function loadCleaners() {
     renderCleaners();
     console.log('🔍 loadCleaners: Done');
   } catch (error) {
-    console.error('❌ Load cleaners error:', error);
-    console.error('❌ Error stack:', error.stack);
+    if (error.code === 'permission-denied') {
+      console.warn('⚠️ Cleaners permission denied - gracefully falling back to empty list');
+      state.cleaners = [];
+      renderCleaners();
+    } else {
+      console.error('❌ Load cleaners error:', error);
+      console.error('❌ Error stack:', error.stack);
+    }
   }
 }
 
@@ -974,24 +1090,36 @@ async function loadReps() {
 
     const repsRef = tenantCollection(db, state.subscriberId, 'reps');
     console.log('🔍 loadReps: Reference created:', repsRef);
-    const repsSnap = await getDocs(repsRef);
     
-    console.log('🔍 loadReps: Got snapshot with', repsSnap.size, 'docs');
-    state.reps = [];
-    repsSnap.forEach(docSnap => {
-      console.log('🔍 loadReps: Adding doc:', docSnap.id, docSnap.data());
-      state.reps.push({ id: docSnap.id, ...docSnap.data() });
-    });
+    try {
+      const repsSnap = await getDocs(repsRef);
+      console.log('🔍 loadReps: Got snapshot with', repsSnap.size, 'docs');
+      state.reps = [];
+      repsSnap.forEach(docSnap => {
+        console.log('🔍 loadReps: Adding doc:', docSnap.id, docSnap.data());
+        state.reps.push({ id: docSnap.id, ...docSnap.data() });
+      });
 
-    console.log('🔍 loadReps: Loaded', state.reps.length, 'reps, array=', state.reps);
-    console.log('🔍 loadReps: Calling renderReps');
-    renderReps();
-    console.log('🔍 loadReps: Calling updateRepsCost');
-    updateRepsCost();
-    console.log('🔍 loadReps: Done');
+      console.log('🔍 loadReps: Loaded', state.reps.length, 'reps, array=', state.reps);
+      console.log('🔍 loadReps: Calling renderReps');
+      renderReps();
+      console.log('🔍 loadReps: Calling updateRepsCost');
+      updateRepsCost();
+      console.log('🔍 loadReps: Done');
+    } catch (firestoreError) {
+      if (firestoreError.code === 'permission-denied') {
+        console.warn('⚠️ Permission denied reading reps - this is OK if no reps exist yet');
+        state.reps = [];
+        renderReps();
+      } else {
+        throw firestoreError;
+      }
+    }
   } catch (error) {
     console.error('❌ Load reps error:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error code:', error.code);
+    state.reps = [];
+    renderReps();
   }
 }
 
@@ -1091,20 +1219,20 @@ async function loadSettings() {
     const qfSnap = await getDoc(qfRef);
     if (qfSnap.exists()) {
       const data = qfSnap.data();
+      // Form text fields
       document.getElementById('quoteFormTitle').value = data.quoteFormTitle || '';
       document.getElementById('quoteFormSubtitle').value = data.quoteFormSubtitle || '';
       document.getElementById('quoteFormDescription').value = data.quoteFormDescription || '';
+      // Branding fields
       document.getElementById('quoteFormLogoUrl').value = data.quoteFormLogoUrl || '';
+      document.getElementById('quoteFormHeroImageUrl').value = data.quoteFormHeroImageUrl || '';
       document.getElementById('quoteFormPrimaryColor').value = data.quoteFormPrimaryColor || '#0078d7';
       document.getElementById('quoteFormAccentColor').value = data.quoteFormAccentColor || '#0ea5e9';
       document.getElementById('quoteFormBackgroundColor').value = data.quoteFormBackgroundColor || '#ffffff';
+      document.getElementById('quoteFormButtonTextColor').value = data.quoteFormButtonTextColor || '#ffffff';
       document.getElementById('quoteFormButtonLabel').value = data.quoteFormButtonLabel || 'Start Quote';
       document.getElementById('quoteFormCornerStyle').value = data.quoteFormCornerStyle || 'rounded';
-      document.getElementById('tierSilverLabel').value = data.tierSilverLabel || 'Silver';
-      document.getElementById('tierSilverDescription').value = data.tierSilverDescription || 'Windows only, every 4 weeks.';
-      document.getElementById('tierGoldLabel').value = data.tierGoldLabel || 'Gold';
-      document.getElementById('tierGoldDescription').value = data.tierGoldDescription || 'Frames, sills and reminders included.';
-      document.getElementById('tierGoldMultiplier').value = data.tierGoldMultiplier || '1.35';
+      // Base pricing
       document.getElementById('pricingMinimum').value = data.pricingMinimum || '16';
       document.getElementById('pricingVatIncluded').value = data.pricingVatIncluded ? 'true' : 'false';
       document.getElementById('price2bed').value = data.price2bed || '21';
@@ -1112,10 +1240,35 @@ async function loadSettings() {
       document.getElementById('price4bed').value = data.price4bed || '28';
       document.getElementById('price5bed').value = data.price5bed || '32';
       document.getElementById('price6bed').value = data.price6bed || '36';
+      // Extras & add-ons
       document.getElementById('priceExtensionAdd').value = data.priceExtensionAdd || '4';
       document.getElementById('priceConservatoryAdd').value = data.priceConservatoryAdd || '6';
       document.getElementById('priceRoofLanternEach').value = data.priceRoofLanternEach || '10';
       document.getElementById('priceSkylightEach').value = data.priceSkylightEach || '1.50';
+      // House type multipliers
+      if (data.houseTypeMultipliers) {
+        document.getElementById('mult_bungalow').value = data.houseTypeMultipliers.Bungalow || '0.94';
+        document.getElementById('mult_maisonette').value = data.houseTypeMultipliers.Maisonette || '0.96';
+        document.getElementById('mult_terrace').value = data.houseTypeMultipliers.Terrace || '1.0';
+        document.getElementById('mult_semidetached').value = data.houseTypeMultipliers.SemiDetached || '1.0';
+        document.getElementById('mult_detached').value = data.houseTypeMultipliers.Detached || '1.08';
+        document.getElementById('mult_mobilehome').value = data.houseTypeMultipliers.MobileHome || '0.9';
+      }
+      // Property modifiers
+      document.getElementById('alternatingFactor').value = data.alternatingFactor || '0.5';
+      document.getElementById('frontOnlyFactor').value = data.frontOnlyFactor || '0.6';
+      document.getElementById('toggle_alternating').checked = data.enableAlternating || false;
+      document.getElementById('toggle_frontonly').checked = data.enableFrontOnly || false;
+      // Service tiers
+      document.getElementById('tierSilverLabel').value = data.tierSilverLabel || 'Silver';
+      document.getElementById('tierSilverDescription').value = data.tierSilverDescription || 'Windows only, every 4 weeks.';
+      document.getElementById('tierGoldLabel').value = data.tierGoldLabel || 'Gold';
+      document.getElementById('tierGoldDescription').value = data.tierGoldDescription || 'Frames, sills and reminders included.';
+      document.getElementById('tierGoldMultiplier').value = data.tierGoldMultiplier || '1.35';
+      document.getElementById('tierOfferLabel').value = data.tierOfferLabel || 'Offer';
+      // Feature toggles
+      document.getElementById('toggle_offerbtn').checked = data.showOfferButton || false;
+      document.getElementById('toggle_notesfield').checked = data.showNotesField || false;
       // Update preview with loaded settings
       updateQuoteFormPreview();
     }
@@ -1140,8 +1293,8 @@ async function loadSettings() {
     const smsSnap = await getDoc(smsRef);
     if (smsSnap.exists()) {
       const data = smsSnap.data();
+      // Provider config
       document.getElementById('smsProvider').value = data.smsProvider || 'twilio';
-      document.getElementById('senderName').value = data.smsSender || '';
       if (data.smsApiKey) {
         try {
           document.getElementById('smsApiKey').value = atob(data.smsApiKey);
@@ -1150,7 +1303,28 @@ async function loadSettings() {
           document.getElementById('smsApiKey').value = '';
         }
       }
+      
+      // Sender name
+      document.getElementById('senderName').value = data.smsSender || '';
+      
+      // Templates
+      document.getElementById('smsBookingTemplate').value = data.smsBookingTemplate || 'Hi {customerName}, your quote {refCode} is confirmed. First clean: {date}. Reply STOP to opt out.';
+      document.getElementById('smsReminderTemplate').value = data.smsReminderTemplate || 'Hi {customerName}, reminder: your clean is tomorrow. Our cleaner {cleanerName} will arrive between {timeWindow}.';
+      document.getElementById('smsFollowUpTemplate').value = data.smsFollowUpTemplate || 'Thanks for booking with us! Rate your experience: {surveyLink}';
+      
+      // Scheduling
+      document.getElementById('minSendMinutes').value = data.minSendMinutes || 5;
+      document.getElementById('reminderHoursBefore').value = data.reminderHoursBefore || 24;
+      document.getElementById('smsOptInRequired').checked = data.smsOptInRequired || false;
+      document.getElementById('smsDeliveryNotifs').checked = data.smsDeliveryNotifs || false;
+      
+      // Balance and stats
       document.getElementById('creditsBalance').textContent = data.credits || 0;
+      document.getElementById('monthlyUsage').textContent = data.monthlyUsage || 0;
+      document.getElementById('yearlyUsage').textContent = data.yearlyUsage || 0;
+      if (data.successRate) {
+        document.getElementById('successRate').textContent = Math.round(data.successRate * 100) + '%';
+      }
     }
 
     // Load cleaner settings
@@ -1236,17 +1410,21 @@ async function loadRepDashboardData() {
   try {
     if (!state.subscriberId) return;
 
-    // Load shifts data (placeholder - would query actual shifts collection)
-    document.getElementById('statTotalShifts').textContent = '0';
-    document.getElementById('statTotalDoors').textContent = '0';
-    document.getElementById('statTotalSignups').textContent = '0';
-    document.getElementById('statActiveReps').textContent = '0';
-    
-    // Placeholder for recent shifts table
-    document.getElementById('recentShiftsBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">No shifts recorded yet</td></tr>';
-    
-    // Placeholder for recent activity
-    document.getElementById('recentActivity').innerHTML = '<div style="padding:20px;color:#94a3b8;text-align:center;">No recent activity</div>';
+    // Check if elements exist before trying to set them
+    const statTotalShifts = document.getElementById('statTotalShifts');
+    const statTotalDoors = document.getElementById('statTotalDoors');
+    const statTotalSignups = document.getElementById('statTotalSignups');
+    const statActiveReps = document.getElementById('statActiveReps');
+    const recentShiftsBody = document.getElementById('recentShiftsBody');
+    const recentActivity = document.getElementById('recentActivity');
+
+    // Only update if elements exist (they may not be in this view)
+    if (statTotalShifts) statTotalShifts.textContent = '0';
+    if (statTotalDoors) statTotalDoors.textContent = '0';
+    if (statTotalSignups) statTotalSignups.textContent = '0';
+    if (statActiveReps) statActiveReps.textContent = '0';
+    if (recentShiftsBody) recentShiftsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">No shifts recorded yet</td></tr>';
+    if (recentActivity) recentActivity.innerHTML = '<div style="padding:20px;color:#94a3b8;text-align:center;">No recent activity</div>';
   } catch (error) {
     console.error('Load rep dashboard data error:', error);
   }

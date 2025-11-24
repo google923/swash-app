@@ -98,120 +98,100 @@
         <button class="settings-tab" data-tab="theme">Theme Settings</button>
       </div>
 
-      <!-- Quote Form Settings -->
+      <!-- Quote Form Settings - COMPLETE PRICING CONFIGURATION -->
       <div class="settings-panel active" data-panel="quote-form">
         <div class="settings-section">
-          <h2 style="margin-bottom:16px; color:#0f172a;">Quote Form Branding & Settings</h2>
-          <p class="text-muted" style="margin-bottom:24px;">Customize how your quote form appears to customers. <a href="./subscriber-add-customer-settings.html" style="color:#0078d7; text-decoration:underline;">View full pricing configuration</a></p>
+          <h2 style="margin-bottom:8px; color:#0f172a;">Quote Form Configuration</h2>
+          <p class="text-muted" style="margin-bottom:20px;">Complete pricing, branding, and quote form customization. All changes go live immediately.</p>
           
-          <!-- LIVE PREVIEW TAB -->
-          <div style="display:flex; gap:12px; margin-bottom:20px; border-bottom:2px solid #e2e8f0; padding-bottom:12px;">
-            <button class="preview-tab-btn active" data-tab="settings" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#0078d7; border-bottom:3px solid #0078d7; margin-bottom:-14px;">Settings</button>
-            <button class="preview-tab-btn" data-tab="preview" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px;">Live Preview</button>
+          <div style="display:flex; gap:12px; margin-bottom:20px; border-bottom:2px solid #e2e8f0; padding-bottom:12px; overflow-x:auto;">
+            <button class="preview-tab-btn active" data-tab="form-text" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#0078d7; border-bottom:3px solid #0078d7; margin-bottom:-14px; white-space:nowrap;">Form Text</button>
+            <button class="preview-tab-btn" data-tab="branding" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px; white-space:nowrap;">Branding</button>
+            <button class="preview-tab-btn" data-tab="pricing-base" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px; white-space:nowrap;">Base Pricing</button>
+            <button class="preview-tab-btn" data-tab="pricing-extras" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px; white-space:nowrap;">Extras & Modifiers</button>
+            <button class="preview-tab-btn" data-tab="tiers" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px; white-space:nowrap;">Service Tiers</button>
+            <button class="preview-tab-btn" data-tab="preview" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px; white-space:nowrap;">Live Preview</button>
           </div>
 
-          <!-- Settings Panel -->
-          <div id="settingsPanel" class="preview-panel" style="display:block;">
-          <div style="display:grid; gap:20px;">
-            <!-- Basic Settings -->
-            <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
-              <h3 style="margin:0 0 16px 0; color:#0f172a;">Form Text</h3>
-              <div class="settings-grid">
-                <div class="settings-field">
-                  <label for="quoteFormTitle">Form Title</label>
-                  <input type="text" id="quoteFormTitle" placeholder="e.g. Get Your Quote" />
-                  <span class="info-text">Main heading shown on the quote form</span>
-                </div>
-                <div class="settings-field">
-                  <label for="quoteFormSubtitle">Form Subtitle</label>
-                  <input type="text" id="quoteFormSubtitle" placeholder="e.g. Fast &amp; Free Quote" />
-                  <span class="info-text">Secondary text below the title</span>
-                </div>
-                <div class="settings-field" style="grid-column:1/-1;">
-                  <label for="quoteFormDescription">Form Description</label>
-                  <textarea id="quoteFormDescription" rows="3" placeholder="Description shown above the form..."></textarea>
-                  <span class="info-text">Additional details or instructions for customers</span>
-                </div>
+          <!-- Form Text Tab -->
+          <div id="tab-form-text" class="quote-tab" style="display:block;">
+            <div style="display:grid; gap:20px;">
+              <div class="settings-field" style="grid-column:1/-1;">
+                <label for="quoteFormTitle">Form Title</label>
+                <input type="text" id="quoteFormTitle" placeholder="e.g. Get Your Quote" />
+                <span class="info-text">Main heading on the quote form</span>
+              </div>
+              <div class="settings-field" style="grid-column:1/-1;">
+                <label for="quoteFormSubtitle">Form Subtitle</label>
+                <input type="text" id="quoteFormSubtitle" placeholder="e.g. Fast & Free Quote" />
+                <span class="info-text">Secondary text below title</span>
+              </div>
+              <div class="settings-field" style="grid-column:1/-1;">
+                <label for="quoteFormDescription">Form Description</label>
+                <textarea id="quoteFormDescription" rows="3" placeholder="Describe the quote process..."></textarea>
+                <span class="info-text">Instructions or details for customers</span>
               </div>
             </div>
+          </div>
 
-            <!-- Branding Settings -->
-            <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
-              <h3 style="margin:0 0 16px 0; color:#0f172a;">Form Branding</h3>
-              <div class="settings-grid">
-                <div class="settings-field">
-                  <label for="quoteFormLogoUrl">Logo URL</label>
-                  <input type="url" id="quoteFormLogoUrl" placeholder="https://..." />
-                  <span class="info-text">Full URL to your company logo image</span>
-                </div>
-                <div class="settings-field">
-                  <label for="quoteFormPrimaryColor">Primary Color</label>
-                  <input type="color" id="quoteFormPrimaryColor" value="#0078d7" />
-                  <span class="info-text">Buttons, links, and highlights</span>
-                </div>
-                <div class="settings-field">
-                  <label for="quoteFormAccentColor">Accent Color</label>
-                  <input type="color" id="quoteFormAccentColor" value="#0ea5e9" />
-                  <span class="info-text">Secondary highlights</span>
-                </div>
-                <div class="settings-field">
-                  <label for="quoteFormBackgroundColor">Background Color</label>
-                  <input type="color" id="quoteFormBackgroundColor" value="#ffffff" />
-                  <span class="info-text">Form background</span>
-                </div>
-                <div class="settings-field">
-                  <label for="quoteFormButtonLabel">Button Label</label>
-                  <input type="text" id="quoteFormButtonLabel" value="Start Quote" placeholder="Start Quote" />
-                  <span class="info-text">Text on the submit button</span>
-                </div>
-                <div class="settings-field">
-                  <label for="quoteFormCornerStyle">Button Style</label>
-                  <select id="quoteFormCornerStyle">
-                    <option value="rounded">Rounded</option>
-                    <option value="pill">Pill-shaped</option>
-                    <option value="square">Square</option>
-                  </select>
-                  <span class="info-text">Button border radius</span>
-                </div>
+          <!-- Branding Tab -->
+          <div id="tab-branding" class="quote-tab" style="display:none;">
+            <div style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(250px,1fr));">
+              <div class="settings-field">
+                <label for="quoteFormLogoUrl">Logo URL</label>
+                <input type="url" id="quoteFormLogoUrl" placeholder="https://..." />
+                <span class="info-text">Full URL to your logo</span>
+              </div>
+              <div class="settings-field">
+                <label for="quoteFormHeroImageUrl">Hero Image URL</label>
+                <input type="url" id="quoteFormHeroImageUrl" placeholder="https://..." />
+                <span class="info-text">Optional hero image</span>
+              </div>
+              <div class="settings-field">
+                <label for="quoteFormPrimaryColor">Primary Color</label>
+                <input type="color" id="quoteFormPrimaryColor" value="#0078d7" />
+                <span class="info-text">Buttons & highlights</span>
+              </div>
+              <div class="settings-field">
+                <label for="quoteFormAccentColor">Accent Color</label>
+                <input type="color" id="quoteFormAccentColor" value="#0ea5e9" />
+                <span class="info-text">Secondary highlights</span>
+              </div>
+              <div class="settings-field">
+                <label for="quoteFormBackgroundColor">Background Color</label>
+                <input type="color" id="quoteFormBackgroundColor" value="#ffffff" />
+                <span class="info-text">Form background</span>
+              </div>
+              <div class="settings-field">
+                <label for="quoteFormButtonTextColor">Button Text Color</label>
+                <input type="color" id="quoteFormButtonTextColor" value="#ffffff" />
+                <span class="info-text">Text on buttons</span>
+              </div>
+              <div class="settings-field">
+                <label for="quoteFormButtonLabel">Button Label</label>
+                <input type="text" id="quoteFormButtonLabel" value="Start Quote" />
+                <span class="info-text">CTA button text</span>
+              </div>
+              <div class="settings-field">
+                <label for="quoteFormCornerStyle">Button Style</label>
+                <select id="quoteFormCornerStyle">
+                  <option value="rounded">Rounded</option>
+                  <option value="pill">Pill-shaped</option>
+                  <option value="square">Square</option>
+                </select>
+                <span class="info-text">Button border radius</span>
               </div>
             </div>
+          </div>
 
-            <!-- Service Tiers -->
-            <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
-              <h3 style="margin:0 0 16px 0; color:#0f172a;">Service Tiers</h3>
-              <div class="settings-grid">
-                <div class="settings-field">
-                  <label for="tierSilverLabel">Standard Tier Name</label>
-                  <input type="text" id="tierSilverLabel" value="Silver" placeholder="Silver" />
-                </div>
-                <div class="settings-field">
-                  <label for="tierSilverDescription">Standard Tier Description</label>
-                  <textarea id="tierSilverDescription" rows="2" placeholder="Windows only, every 4 weeks."></textarea>
-                </div>
-                <div class="settings-field">
-                  <label for="tierGoldLabel">Premium Tier Name</label>
-                  <input type="text" id="tierGoldLabel" value="Gold" placeholder="Gold" />
-                </div>
-                <div class="settings-field">
-                  <label for="tierGoldDescription">Premium Tier Description</label>
-                  <textarea id="tierGoldDescription" rows="2" placeholder="Frames, sills and reminders included."></textarea>
-                </div>
-                <div class="settings-field">
-                  <label for="tierGoldMultiplier">Premium Tier Price Multiplier</label>
-                  <input type="number" id="tierGoldMultiplier" step="0.01" min="1" value="1.35" />
-                  <span class="info-text">Multiplies the standard price (e.g., 1.35 = 35% more)</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Pricing Settings -->
-            <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
-              <h3 style="margin:0 0 16px 0; color:#0f172a;">Pricing Configuration</h3>
-              <div class="settings-grid">
+          <!-- Base Pricing Tab -->
+          <div id="tab-pricing-base" class="quote-tab" style="display:none;">
+            <div style="display:grid; gap:16px;">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                 <div class="settings-field">
                   <label for="pricingMinimum">Minimum Clean Price (£)</label>
                   <input type="number" id="pricingMinimum" step="0.01" min="0" value="16" />
-                  <span class="info-text">Lowest price for any clean</span>
+                  <span class="info-text">Floor price for any clean</span>
                 </div>
                 <div class="settings-field">
                   <label for="pricingVatIncluded">VAT Status</label>
@@ -219,12 +199,13 @@
                     <option value="true" selected>Prices are VAT inclusive</option>
                     <option value="false">Prices are before VAT</option>
                   </select>
+                  <span class="info-text">How prices appear to customers</span>
                 </div>
               </div>
-              
-              <div style="margin-top:16px;">
+
+              <div style="border-top:1px solid #e2e8f0; padding-top:16px;">
                 <h4 style="margin:0 0 12px 0; color:#0f172a; font-weight:600;">Base Prices by Property Size</h4>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px;">
                   <div class="settings-field">
                     <label for="price2bed">2 Bed (£)</label>
                     <input type="number" id="price2bed" step="0.01" min="0" value="21" />
@@ -247,56 +228,154 @@
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div style="margin-top:16px;">
-                <h4 style="margin:0 0 12px 0; color:#0f172a; font-weight:600;">Extra Charges</h4>
+          <!-- Pricing Extras Tab -->
+          <div id="tab-pricing-extras" class="quote-tab" style="display:none;">
+            <div style="display:grid; gap:16px;">
+              <div>
+                <h4 style="margin:0 0 12px 0; color:#0f172a; font-weight:600;">Add-on Charges</h4>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px;">
                   <div class="settings-field">
                     <label for="priceExtensionAdd">Extension Add-on (£)</label>
                     <input type="number" id="priceExtensionAdd" step="0.01" min="0" value="4" />
+                    <span class="info-text">Extension or wrap-around</span>
                   </div>
                   <div class="settings-field">
                     <label for="priceConservatoryAdd">Conservatory Add-on (£)</label>
                     <input type="number" id="priceConservatoryAdd" step="0.01" min="0" value="6" />
+                    <span class="info-text">Glass rooms</span>
                   </div>
                   <div class="settings-field">
                     <label for="priceRoofLanternEach">Roof Lantern Each (£)</label>
                     <input type="number" id="priceRoofLanternEach" step="0.01" min="0" value="10" />
+                    <span class="info-text">Per lantern</span>
                   </div>
                   <div class="settings-field">
                     <label for="priceSkylightEach">Skylight Each (£)</label>
                     <input type="number" id="priceSkylightEach" step="0.01" min="0" value="1.50" />
+                    <span class="info-text">Per skylight</span>
                   </div>
                 </div>
               </div>
 
-              <p style="margin-top:16px; padding:12px; background:#f0fdf4; border:1px solid #86efac; border-radius:6px; color:#166534; font-size:0.9rem;">
-                <strong>💡 Tip:</strong> For detailed pricing configuration including house type multipliers and advanced settings, visit the <a href="./subscriber-add-customer-settings.html" style="color:#166534; text-decoration:underline; font-weight:600;">Quote Engine Configuration page</a>.
-              </p>
+              <div style="border-top:1px solid #e2e8f0; padding-top:16px;">
+                <h4 style="margin:0 0 12px 0; color:#0f172a; font-weight:600;">Property Modifiers</h4>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px;">
+                  <div class="settings-field">
+                    <label for="alternatingFactor">Alternating Factor</label>
+                    <input type="number" id="alternatingFactor" step="0.01" min="0" max="1" value="0.5" />
+                    <span class="info-text">Interior/exterior alternating</span>
+                  </div>
+                  <div class="settings-field">
+                    <label for="frontOnlyFactor">Front-Only Factor</label>
+                    <input type="number" id="frontOnlyFactor" step="0.01" min="0" max="1" value="0.6" />
+                    <span class="info-text">Front only discount</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="border-top:1px solid #e2e8f0; padding-top:16px;">
+                <h4 style="margin:0 0 12px 0; color:#0f172a; font-weight:600;">House Type Multipliers</h4>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px;">
+                  <div class="settings-field">
+                    <label for="mult_bungalow">Bungalow</label>
+                    <input type="number" id="mult_bungalow" step="0.01" min="0" value="0.94" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="mult_maisonette">Maisonette</label>
+                    <input type="number" id="mult_maisonette" step="0.01" min="0" value="0.96" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="mult_terrace">Terrace</label>
+                    <input type="number" id="mult_terrace" step="0.01" min="0" value="1.00" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="mult_semidetached">Semi-Detached</label>
+                    <input type="number" id="mult_semidetached" step="0.01" min="0" value="1.00" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="mult_detached">Detached</label>
+                    <input type="number" id="mult_detached" step="0.01" min="0" value="1.08" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="mult_mobilehome">Mobile Home</label>
+                    <input type="number" id="mult_mobilehome" step="0.01" min="0" value="0.90" />
+                  </div>
+                </div>
+              </div>
+
+              <div style="border-top:1px solid #e2e8f0; padding-top:16px;">
+                <h4 style="margin:0 0 12px 0; color:#0f172a; font-weight:600;">Feature Toggles</h4>
+                <div style="display:grid; gap:12px;">
+                  <label style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="toggle_alternating" checked />
+                    <span>Allow alternating clean option</span>
+                  </label>
+                  <label style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="toggle_frontonly" checked />
+                    <span>Allow front-only pricing</span>
+                  </label>
+                  <label style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="toggle_offerbtn" checked />
+                    <span>Show tier upgrade offer button</span>
+                  </label>
+                  <label style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="toggle_notesfield" checked />
+                    <span>Show notes field by default</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="settings-actions" style="margin-top:24px;">
-            <button class="btn-reset" id="resetQuoteFormBtn">Reset to Defaults</button>
-            <button class="btn-save" id="saveQuoteFormBtn">Save All Settings</button>
+          <!-- Service Tiers Tab -->
+          <div id="tab-tiers" class="quote-tab" style="display:none;">
+            <div style="display:grid; gap:16px;">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="settings-field">
+                  <label for="tierSilverLabel">Standard Tier Name</label>
+                  <input type="text" id="tierSilverLabel" value="Silver" />
+                </div>
+                <div class="settings-field">
+                  <label for="tierGoldLabel">Premium Tier Name</label>
+                  <input type="text" id="tierGoldLabel" value="Gold" />
+                </div>
+              </div>
+              <div class="settings-field" style="grid-column:1/-1;">
+                <label for="tierSilverDescription">Standard Tier Description</label>
+                <textarea id="tierSilverDescription" rows="2" placeholder="Windows only, every 4 weeks."></textarea>
+              </div>
+              <div class="settings-field" style="grid-column:1/-1;">
+                <label for="tierGoldDescription">Premium Tier Description</label>
+                <textarea id="tierGoldDescription" rows="2" placeholder="Frames, sills and reminders included."></textarea>
+              </div>
+              <div class="settings-field">
+                <label for="tierGoldMultiplier">Premium Price Multiplier</label>
+                <input type="number" id="tierGoldMultiplier" step="0.01" min="1" value="1.35" />
+                <span class="info-text">Multiplier on standard prices (e.g., 1.35 = 35% more)</span>
+              </div>
+              <div class="settings-field" style="grid-column:1/-1;">
+                <label for="tierOfferLabel">Offer Label</label>
+                <input type="text" id="tierOfferLabel" value="Gold upgrade included" placeholder="Shown on upgrade button" />
+                <span class="info-text">Displayed on the offer button</span>
+              </div>
+            </div>
           </div>
-          </div>
-          <!-- End Settings Panel -->
 
-          <!-- Live Preview Panel -->
-          <div id="previewPanel" class="preview-panel" style="display:none; max-height:calc(100vh - 200px); overflow-y:auto;">
+          <!-- Live Preview Tab -->
+          <div id="tab-preview" class="quote-tab" style="display:none; max-height:calc(100vh - 250px); overflow-y:auto;">
             <div style="border:2px solid #0078d7; border-radius:12px; padding:24px; background:#f9fafb; max-width:600px; margin:0 auto;">
-              <!-- Preview Form -->
               <div style="text-align:center; margin-bottom:24px;">
                 <div id="previewLogo" style="height:60px; margin-bottom:12px; display:flex; align-items:center; justify-content:center;">
                   <img src="" alt="Logo" style="max-height:60px; max-width:200px; display:none;" id="previewLogoImg" />
                 </div>
                 <h1 id="previewTitle" style="margin:0 0 8px 0; font-size:1.8rem; color:#0f172a; font-weight:700;">Get Your Quote</h1>
-                <p id="previewSubtitle" style="margin:0 0 8px 0; font-size:1.1rem; color:#0078d7; font-weight:600;">Fast &amp; Free Quote</p>
+                <p id="previewSubtitle" style="margin:0 0 8px 0; font-size:1.1rem; color:#0078d7; font-weight:600;">Fast & Free Quote</p>
                 <p id="previewDescription" style="margin:0; font-size:0.95rem; color:#64748b;">Get an instant personalized quote</p>
               </div>
 
-              <!-- Preview Form Fields -->
               <form style="display:grid; gap:16px;">
                 <div style="display:grid; gap:12px;">
                   <div>
@@ -336,13 +415,11 @@
                   </div>
                 </div>
 
-                <!-- Buttons Row -->
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
                   <button type="button" id="previewSuggestBtn" style="padding:12px; border:2px solid #0078d7; background:transparent; color:#0078d7; font-weight:600; border-radius:6px; cursor:pointer; transition:all 0.3s;">💡 Get Suggestions</button>
                   <button type="button" id="previewCalculateBtn" style="padding:12px; border:none; background:#0078d7; color:white; font-weight:600; border-radius:6px; cursor:pointer; transition:all 0.3s;">Calculate Quote</button>
                 </div>
 
-                <!-- Results -->
                 <div id="previewResults" style="display:none; margin-top:16px; padding:16px; background:#f0fdf4; border:1px solid #86efac; border-radius:6px;">
                   <p style="margin:0; font-size:0.9rem; color:#166534;">
                     <strong>Upfront Price:</strong> £<span id="previewUpfrontPrice">0.00</span><br />
@@ -352,7 +429,12 @@
               </form>
             </div>
           </div>
-          <!-- End Preview Panel -->
+
+          <!-- Save Buttons -->
+          <div class="settings-actions" style="margin-top:24px; position:sticky; bottom:0; background:white; padding:16px 0; border-top:1px solid #e2e8f0;">
+            <button class="btn-reset" id="resetQuoteFormBtn">Reset to Defaults</button>
+            <button class="btn-save" id="saveQuoteFormBtn">Save All Settings</button>
+          </div>
         </div>
       </div>
 
@@ -449,6 +531,7 @@
 
       <!-- SMS Centre -->
       <div class="settings-panel" data-panel="sms">
+        <!-- SMS Balance Section -->
         <div class="settings-section">
           <h2 style="margin-bottom:16px; color:#0f172a;">Your SMS Balance</h2>
           <p class="text-muted" style="margin-bottom:16px;">Manage your sender name, remaining credits, and top-ups.</p>
@@ -461,10 +544,10 @@
             <div style="border:1px solid #e2e8f0; border-radius:10px; padding:18px; background:#fff; display:flex; flex-direction:column; gap:12px;">
               <h3 style="margin:0; font-size:1.1rem; color:#1e293b;">Sender ID</h3>
               <p style="margin:0; color:#475569; font-size:0.95rem;">Set the name that appears on outgoing SMS messages (max 11 letters or numbers).</p>
-              <form id="senderForm" style="display:flex; flex-direction:column; gap:12px;">
+              <form id="senderForm" autocomplete="off" spellcheck="false" style="display:flex; flex-direction:column; gap:12px;">
                 <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#0f172a;">
                   <span>Sender name</span>
-                  <input id="senderName" type="text" maxlength="11" placeholder="SWASHCLEAN" style="padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-weight:500;letter-spacing:1px;text-transform:uppercase;" />
+                  <input id="senderName" maxlength="11" placeholder="SWASHCLEAN" style="padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-weight:500;letter-spacing:1px;text-transform:uppercase;" />
                 </label>
                 <button type="submit" class="btn-save" id="saveSenderBtn">Save sender name</button>
                 <p id="senderStatus" style="margin:0;font-size:0.85rem;color:#64748b;"></p>
@@ -473,6 +556,32 @@
           </div>
         </div>
 
+        <!-- SMS Provider Configuration -->
+        <div class="settings-section" style="margin-top:24px;">
+          <h2 style="margin-bottom:16px; color:#0f172a;">SMS Provider Configuration</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Configure your SMS provider and API credentials.</p>
+          <div style="display:grid; gap:20px;">
+            <div class="settings-field">
+              <label for="smsProvider">SMS Provider</label>
+              <select id="smsProvider" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;">
+                <option value="twilio">Twilio</option>
+                <option value="nexmo">Nexmo</option>
+                <option value="aws">AWS SNS</option>
+              </select>
+              <span class="info-text">Choose your SMS provider</span>
+            </div>
+            <div class="settings-field">
+              <label for="smsApiKey">API Key / Auth Token</label>
+              <input type="password" id="smsApiKey" placeholder="Enter your API key" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;" />
+              <span class="info-text">Your SMS provider API credentials (securely stored)</span>
+            </div>
+          </div>
+          <div class="settings-actions" style="margin-top:20px;">
+            <button class="btn-save" id="saveSmsConfigBtn">Save Provider Settings</button>
+          </div>
+        </div>
+
+        <!-- Buy SMS Credits Section -->
         <div class="settings-section" style="margin-top:24px;">
           <h2 style="margin-bottom:16px; color:#0f172a;">Buy SMS Credits</h2>
           <p class="text-muted" style="margin-bottom:16px;">Secure payment via GoCardless Instant Bank Pay. Credits are applied automatically after payment confirmation.</p>
@@ -480,10 +589,95 @@
           <div id="packagesContainer" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:12px;"></div>
         </div>
 
+        <!-- SMS Templates Section -->
+        <div class="settings-section" style="margin-top:24px;">
+          <h2 style="margin-bottom:16px; color:#0f172a;">SMS Message Templates</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Customize SMS messages sent to customers.</p>
+          <div style="display:grid; gap:20px;">
+            <div class="settings-field" style="grid-column:1/-1;">
+              <label for="smsBookingTemplate">Booking Confirmation Template</label>
+              <textarea id="smsBookingTemplate" rows="3" placeholder="Hi {customerName}, your quote {refCode} is confirmed. First clean: {date}. Reply STOP to opt out." style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;"></textarea>
+              <span class="info-text">Available variables: {customerName}, {refCode}, {date}, {price}, {cleanerName}</span>
+            </div>
+            <div class="settings-field" style="grid-column:1/-1;">
+              <label for="smsReminderTemplate">Reminder Template</label>
+              <textarea id="smsReminderTemplate" rows="3" placeholder="Hi {customerName}, reminder: your clean is tomorrow. Our cleaner {cleanerName} will arrive between {timeWindow}." style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;"></textarea>
+              <span class="info-text">Sent 24 hours before scheduled clean</span>
+            </div>
+            <div class="settings-field" style="grid-column:1/-1;">
+              <label for="smsFollowUpTemplate">Follow-up Template</label>
+              <textarea id="smsFollowUpTemplate" rows="3" placeholder="Thanks for booking with us! Rate your experience: {surveyLink}" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;"></textarea>
+              <span class="info-text">Sent after clean completion</span>
+            </div>
+          </div>
+          <div class="settings-actions" style="margin-top:20px;">
+            <button class="btn-save" id="saveSmsTemplatesBtn">Save Templates</button>
+          </div>
+        </div>
+
+        <!-- SMS Scheduling & Delivery Settings -->
+        <div class="settings-section" style="margin-top:24px;">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Scheduling & Delivery</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Control when and how SMS messages are sent.</p>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:20px;">
+            <div class="settings-field">
+              <label for="minSendMinutes">Minimum Time Between Messages (minutes)</label>
+              <input type="number" id="minSendMinutes" min="0" max="1440" placeholder="5" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;" />
+              <span class="info-text">Avoid message spam to same customer</span>
+            </div>
+            <div class="settings-field">
+              <label for="reminderHoursBefore">Send Reminder Hours Before Clean</label>
+              <input type="number" id="reminderHoursBefore" min="1" max="72" placeholder="24" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;" />
+              <span class="info-text">Default: 24 hours before scheduled clean</span>
+            </div>
+            <div class="settings-field">
+              <label style="display:flex; align-items:center; gap:8px; font-weight:600; color:#0f172a; cursor:pointer;">
+                <input type="checkbox" id="smsOptInRequired" style="width:18px; height:18px; cursor:pointer;" />
+                <span>Require opt-in for SMS marketing</span>
+              </label>
+              <span class="info-text">Only send promotional SMS if customer opted in</span>
+            </div>
+            <div class="settings-field">
+              <label style="display:flex; align-items:center; gap:8px; font-weight:600; color:#0f172a; cursor:pointer;">
+                <input type="checkbox" id="smsDeliveryNotifs" style="width:18px; height:18px; cursor:pointer;" />
+                <span>Enable delivery notifications</span>
+              </label>
+              <span class="info-text">Get notified of SMS delivery status</span>
+            </div>
+          </div>
+          <div class="settings-actions" style="margin-top:20px;">
+            <button class="btn-save" id="saveSmsSchedulingBtn">Save Scheduling Settings</button>
+          </div>
+        </div>
+
+        <!-- Purchase History Section -->
         <div class="settings-section" style="margin-top:24px;">
           <h2 style="margin-bottom:16px; color:#0f172a;">Purchase History</h2>
           <p class="text-muted" style="margin-bottom:16px;">Track recent top-ups and their status.</p>
           <div id="historyContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+
+        <!-- SMS Usage Statistics -->
+        <div class="settings-section" style="margin-top:24px;">
+          <h2 style="margin-bottom:16px; color:#0f172a;">SMS Usage Statistics</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Track your SMS usage and analytics.</p>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px;">
+            <div style="border:1px solid #e2e8f0; border-radius:10px; padding:18px; background:#fff; display:flex; flex-direction:column; gap:8px;">
+              <span style="font-size:0.9rem; color:#64748b;">This Month</span>
+              <span id="monthlyUsage" style="font-size:1.8rem; font-weight:700; color:#0078d7;">0</span>
+              <span style="font-size:0.85rem; color:#64748b;">SMS sent</span>
+            </div>
+            <div style="border:1px solid #e2e8f0; border-radius:10px; padding:18px; background:#fff; display:flex; flex-direction:column; gap:8px;">
+              <span style="font-size:0.9rem; color:#64748b;">Total This Year</span>
+              <span id="yearlyUsage" style="font-size:1.8rem; font-weight:700; color:#0078d7;">0</span>
+              <span style="font-size:0.85rem; color:#64748b;">SMS sent</span>
+            </div>
+            <div style="border:1px solid #e2e8f0; border-radius:10px; padding:18px; background:#fff; display:flex; flex-direction:column; gap:8px;">
+              <span style="font-size:0.9rem; color:#64748b;">Success Rate</span>
+              <span id="successRate" style="font-size:1.8rem; font-weight:700; color:#0078d7;">—</span>
+              <span style="font-size:0.85rem; color:#64748b;">delivery rate</span>
+            </div>
+          </div>
         </div>
       </div>
 
