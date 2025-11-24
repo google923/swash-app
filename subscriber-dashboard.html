@@ -30,6 +30,10 @@
           <h2>Welcome to Your Dashboard</h2>
           <p class="text-muted">Manage your window cleaning business with ease</p>
         </div>
+        <div style="display: flex; gap: 10px;">
+          <button id="customizeBtn" style="padding: 8px 16px; background: #0078d7; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Customize</button>
+          <button id="resetBtn" style="padding: 8px 16px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; display: none;">Reset Layout</button>
+        </div>
       </header>
 
       <div class="dashboard-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;padding:20px;">
@@ -55,18 +59,284 @@
       </div>
     </section>
 
-    <!-- Main Pages Section -->
-    <!-- REMOVED: All sections except welcome/stats -->
+    <!-- Draggable Dashboard Grid -->
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h3>Quick Actions</h3>
+          <p class="text-muted" id="customizeHint">Click "Customize" to add, remove, or drag cards</p>
+        </div>
+      </header>
+      
+      <div id="dashboardGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;padding:20px;">
+        <!-- Cards will be inserted here dynamically -->
+      </div>
+
+      <!-- Available Cards Menu (hidden by default) -->
+      <div id="availableCardsMenu" style="display:none;padding:20px;background:#f5f5f5;border-top:1px solid #e5e7eb;margin-top:20px;">
+        <h4 style="margin-bottom:15px;">Available Cards to Add:</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;" id="availableCardsList">
+          <!-- List will be populated dynamically -->
+        </div>
+      </div>
+    </section>
 
   </main>
 
-  <script type="module" src="./subscriber-dashboard.js"></script>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
+    import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBNhKvLlD-0fXDg0M6L0qNLYvYZnkKsJFw",
+      authDomain: "swash-app-436a1.firebaseapp.com",
+      projectId: "swash-app-436a1",
+      storageBucket: "swash-app-436a1.appspot.com",
+      messagingSenderId: "156526788869",
+      appId: "1:156526788869:web:6f5e2a123c4567890"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Dashboard cards configuration
+    const allCards = [
+      { id: 'customer-pipeline', name: '📋 Customer Pipeline', description: 'View prospects and bookings', href: '/subscriber-customers.html', default: true },
+      { id: 'add-customer', name: '🆕 Add New Customer', description: 'Create quotes quickly', href: '/subscriber-add-new-customer.html', default: true },
+      { id: 'schedule', name: '📅 Weekly Schedule', description: 'See this week\'s jobs', href: '/subscriber-schedule.html', default: true },
+      { id: 'tracking', name: '📍 Live Tracking', description: 'Real-time team GPS', href: '/subscriber-tracking.html', default: true },
+      { id: 'performance', name: '🎯 Performance', description: 'Track metrics & trends', href: '/subscriber-performance.html', default: false },
+      { id: 'cleaners', name: '👷 Cleaner Management', description: 'Manage team members', href: '/subscriber-cleaners.html', default: false },
+      { id: 'schedule-full', name: '📆 4-Week Planner', description: 'Advanced scheduling', href: '/subscriber-schedule-full.html', default: false },
+      { id: 'sms', name: '📲 SMS Centre', description: 'Send reminders & messages', href: '/subscriber-sms-setup.html', default: false },
+      { id: 'billing', name: '💳 Billing', description: 'Manage subscription', href: '/subscriber-billing.html', default: false },
+      { id: 'settings', name: '⚙️ Quote Settings', description: 'Configure pricing', href: '/subscriber-add-customer-settings.html', default: false }
+    ];
+
+    let currentLayout = [];
+    let isCustomizing = false;
+    let draggedElement = null;
+
+    function loadLayout() {
+      const saved = localStorage.getItem('dashboardLayout');
+      if (saved) {
+        currentLayout = JSON.parse(saved);
+      } else {
+        currentLayout = allCards.filter(c => c.default).map(c => c.id);
+      }
+    }
+
+    function saveLayout() {
+      localStorage.setItem('dashboardLayout', JSON.stringify(currentLayout));
+    }
+
+    function renderDashboard() {
+      const grid = document.getElementById('dashboardGrid');
+      grid.innerHTML = '';
+
+      currentLayout.forEach(cardId => {
+        const cardConfig = allCards.find(c => c.id === cardId);
+        if (!cardConfig) return;
+
+        const card = document.createElement('a');
+        card.href = cardConfig.href;
+        card.className = 'dashboard-card';
+        card.draggable = isCustomizing;
+        card.style.cssText = `
+          display: block;
+          padding: 24px;
+          background: white;
+          border: 2px solid #e5e7eb;
+          border-radius: 8px;
+          text-decoration: none;
+          transition: all 0.2s;
+          cursor: ${isCustomizing ? 'grab' : 'pointer'};
+          color: inherit;
+          position: relative;
+          cursor: pointer;
+        `;
+        
+        if (isCustomizing) {
+          card.style.cursor = 'grab';
+          card.setAttribute('data-card-id', cardId);
+          
+          const removeBtn = document.createElement('button');
+          removeBtn.style.cssText = `
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          `;
+          removeBtn.textContent = '✕';
+          removeBtn.onclick = (e) => {
+            e.preventDefault();
+            currentLayout = currentLayout.filter(id => id !== cardId);
+            saveLayout();
+            renderDashboard();
+          };
+          card.appendChild(removeBtn);
+        }
+
+        const content = document.createElement('div');
+        content.innerHTML = `
+          <div style="font-size:32px;margin-bottom:12px;">${cardConfig.name.split(' ')[0]}</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">${cardConfig.name.substring(2)}</div>
+          <div style="font-size:14px;color:#64748b;">${cardConfig.description}</div>
+        `;
+        card.appendChild(content);
+
+        // Drag events
+        if (isCustomizing) {
+          card.addEventListener('dragstart', (e) => {
+            draggedElement = card;
+            e.dataTransfer.effectAllowed = 'move';
+          });
+
+          card.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (draggedElement && draggedElement !== card) {
+              const allCards = Array.from(grid.querySelectorAll('.dashboard-card'));
+              const draggedIndex = allCards.indexOf(draggedElement);
+              const targetIndex = allCards.indexOf(card);
+              
+              if (draggedIndex < targetIndex) {
+                card.parentNode.insertBefore(draggedElement, card.nextSibling);
+              } else {
+                card.parentNode.insertBefore(draggedElement, card);
+              }
+            }
+          });
+        }
+
+        card.addEventListener('dragend', () => {
+          const newLayout = Array.from(grid.querySelectorAll('[data-card-id]')).map(el => el.getAttribute('data-card-id'));
+          currentLayout = newLayout;
+          saveLayout();
+        });
+
+        card.addEventListener('hover', function() {
+          if (!isCustomizing) {
+            this.style.borderColor = '#0078d7';
+            this.style.boxShadow = '0 4px 12px rgba(0,120,215,0.15)';
+            this.style.transform = 'translateY(-2px)';
+          }
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    function renderAvailableCards() {
+      const list = document.getElementById('availableCardsList');
+      list.innerHTML = '';
+
+      allCards.forEach(card => {
+        if (!currentLayout.includes(card.id)) {
+          const btn = document.createElement('button');
+          btn.style.cssText = `
+            padding: 12px;
+            background: #0078d7;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+          `;
+          btn.textContent = `+ ${card.name}`;
+          btn.onmouseover = () => btn.style.background = '#005a9e';
+          btn.onmouseout = () => btn.style.background = '#0078d7';
+          btn.onclick = () => {
+            currentLayout.push(card.id);
+            saveLayout();
+            renderDashboard();
+            renderAvailableCards();
+          };
+          list.appendChild(btn);
+        }
+      });
+    }
+
+    function toggleCustomize() {
+      isCustomizing = !isCustomizing;
+      const customizeBtn = document.getElementById('customizeBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const menu = document.getElementById('availableCardsMenu');
+
+      if (isCustomizing) {
+        customizeBtn.textContent = 'Done';
+        customizeBtn.style.background = '#22c55e';
+        resetBtn.style.display = 'inline-block';
+        menu.style.display = 'block';
+      } else {
+        customizeBtn.textContent = 'Customize';
+        customizeBtn.style.background = '#0078d7';
+        resetBtn.style.display = 'none';
+        menu.style.display = 'none';
+      }
+
+      renderDashboard();
+      renderAvailableCards();
+    }
+
+    document.getElementById('customizeBtn').addEventListener('click', toggleCustomize);
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      currentLayout = allCards.filter(c => c.default).map(c => c.id);
+      saveLayout();
+      renderDashboard();
+      renderAvailableCards();
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('dashboardContent').style.display = 'block';
+        
+        loadLayout();
+        renderDashboard();
+        renderAvailableCards();
+
+        // Load stats
+        try {
+          const q = query(collection(db, 'quotes'), where('userId', '==', user.uid));
+          const snapshot = await getDocs(q);
+          document.getElementById('statQuotes').textContent = snapshot.size;
+        } catch (e) {
+          console.error('Error loading stats:', e);
+        }
+      } else {
+        window.location.href = '/subscriber-login.html';
+      }
+    });
+  </script>
   
   <style>
-    .quick-action-card:hover {
+    .dashboard-card:hover {
       border-color: #0078d7;
       box-shadow: 0 4px 12px rgba(0,120,215,0.15);
       transform: translateY(-2px);
+    }
+    
+    .dashboard-card[draggable="true"] {
+      cursor: grab;
+    }
+    
+    .dashboard-card[draggable="true"]:active {
+      cursor: grabbing;
     }
     
     .dashboard-stats {
