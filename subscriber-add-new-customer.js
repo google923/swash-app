@@ -589,6 +589,67 @@ function updatePaginationInfo() {
   document.getElementById('nextPageBtn').disabled = end >= total;
 }
 
+// Load and apply field configuration from settings
+async function applyFieldConfiguration() {
+  try {
+    if (!state.subscriberId) return;
+
+    // Try to load quoteFormConfig
+    const configDocRef = doc(db, 'subscribers', state.subscriberId, 'settings', 'quoteFormConfig');
+    const configSnap = await getDoc(configDocRef);
+    
+    if (!configSnap.exists()) {
+      console.log('No field configuration found, showing all fields');
+      return;
+    }
+
+    const config = configSnap.data();
+    const enabledFields = config.enabledFields || {};
+    const requiredFields = config.requiredFields || {};
+
+    console.log('🎨 Applying field configuration:', enabledFields);
+
+    // Define field mappings: fieldId -> DOM element ID
+    const fieldMappings = {
+      houseSize: 'houseSize',
+      houseType: 'houseType',
+      conservatory: 'conservatory',
+      extension: 'extension',
+      alternating: 'alternating',
+      frontOnly: 'frontOnly',
+      roofLanterns: 'roofLanterns',
+      skylights: 'skylights',
+      notes: 'notes'
+    };
+
+    // Show/hide fields based on configuration
+    Object.entries(fieldMappings).forEach(([configKey, elementId]) => {
+      const element = document.getElementById(elementId);
+      if (element) {
+        const isEnabled = enabledFields[configKey] !== false; // Default to enabled
+        const isRequired = requiredFields[configKey] === true;
+        
+        // Show/hide the field wrapper
+        const parentSection = element.closest('.modal__grid') || element.closest('div');
+        if (parentSection) {
+          parentSection.style.display = isEnabled ? 'block' : 'none';
+        }
+
+        // Set required attribute
+        if (element.tagName === 'INPUT' || element.tagName === 'SELECT') {
+          element.required = isRequired;
+        }
+
+        console.log(`Field ${elementId}: enabled=${isEnabled}, required=${isRequired}`);
+      }
+    });
+
+  } catch (error) {
+    console.warn('Could not load field configuration:', error);
+    // Silently fail - show all fields if config doesn't exist
+  }
+}
+
 // Event Listeners
 function attachEventListeners() {
   // Re-query DOM elements to ensure they exist (fixes timing issues)
@@ -1195,6 +1256,7 @@ async function init() {
       const cleanerNames = state.cleaners.map(cleaner => cleaner.name || cleaner.displayName || cleaner.id);
       initializeAIHelper(state.subscriberId, companyName, cleanerNames);
 
+      await applyFieldConfiguration();
       attachEventListeners();
       initEmailJS();
 
@@ -1212,6 +1274,7 @@ async function init() {
               loadTerritories(),
               loadQuotes()
             ]);
+            await applyFieldConfiguration();
             attachEventListeners();
             initEmailJS();
             if (authOverlay) authOverlay.style.display = 'none';
