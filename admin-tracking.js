@@ -5,7 +5,7 @@
    - repShifts: { repId_date, totals, miles, pay, ... }
    - territories: used for overlays
 */
-import { auth, db } from "./firebase-init.js";
+import { auth, db } from "./public/firebase-init.js";
 import { collection, doc, getDocs, getDoc, onSnapshot, query, where, orderBy, deleteDoc, collectionGroup, limit, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 

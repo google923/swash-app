@@ -1,5 +1,6 @@
-import { auth, db } from './firebase-init.js';
+import { auth, db } from './public/firebase-init.js';
 import { ensureSubscriberAccess } from './lib/subscriber-access.js';
+import { initSubscriberHeader, setCompanyName, setActiveTab } from './public/header-template.js';
 import {
   onAuthStateChanged,
   signOut
@@ -29,12 +30,12 @@ const state = {
 // DOM elements
 const authOverlay = document.getElementById('authOverlay');
 const dashboardContent = document.getElementById('dashboardContent');
-const logoutBtn = document.getElementById('logoutBtn');
-const menuBtn = document.getElementById('menuBtn');
-const companyNameDisplay = document.getElementById('companyNameDisplay');
 
 // Initialize
 async function init() {
+  // Initialize header first and wait for it
+  await initSubscriberHeader();
+  
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
       console.log('[Subscriber Dashboard] No user detected, redirecting to subscriber login');
@@ -63,13 +64,10 @@ async function init() {
       if (authOverlay) authOverlay.style.display = 'none';
       if (dashboardContent) dashboardContent.style.display = 'block';
 
-      if (state.userData.companyName) {
-        companyNameDisplay.textContent = state.userData.companyName;
-      } else if (state.userData.name) {
-        companyNameDisplay.textContent = state.userData.name;
-      } else {
-        companyNameDisplay.textContent = '';
-      }
+      // Update header with company name and set active tab
+      const companyName = state.userData.companyName || state.userData.name || 'My Business';
+      setCompanyName(companyName);
+      setActiveTab('dashboard');
 
       await loadDashboardData();
     } catch (error) {
@@ -79,26 +77,6 @@ async function init() {
       window.location.href = '/index.html';
     }
   });
-
-  // Logout button
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-      try {
-        await signOut(auth);
-        window.location.href = '/index.html';
-      } catch (error) {
-        console.error('Logout error:', error);
-        alert('Failed to sign out');
-      }
-    });
-  }
-
-  // Menu button links to main quick actions hub
-  if (menuBtn) {
-    menuBtn.addEventListener('click', () => {
-      window.location.href = '/main.html';
-    });
-  }
 }
 
 // Load dashboard statistics and recent activity

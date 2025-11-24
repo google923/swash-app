@@ -1,6 +1,7 @@
-import { auth, db } from "./firebase-init.js";
+import { auth, db } from "./public/firebase-init.js";
 import { ensureSubscriberAccess } from "./lib/subscriber-access.js";
 import { tenantCollection } from "./lib/subscriber-paths.js";
+import { initSubscriberHeader, setCompanyName, setActiveTab } from "./public/header-template.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
@@ -173,8 +174,13 @@ function buildAnalytics() {
 }
 
 async function initialise() {
-  if (els.logoutBtn) {
-    els.logoutBtn.addEventListener("click", async () => {
+  // Initialize header first and wait for it
+  await initSubscriberHeader();
+  
+  // Attach logout handler after header is injected
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
       try {
         await signOut(auth);
         window.location.href = "/index.html";
@@ -200,10 +206,11 @@ async function initialise() {
         return;
       }
 
-      if (els.companyName) {
-        const profile = access.subscriberProfile;
-        els.companyName.textContent = profile.companyName || profile.name || "";
-      }
+      // Update header with company name and set active tab
+      const profile = access.subscriberProfile;
+      const companyName = profile.companyName || profile.name || "My Business";
+      setCompanyName(companyName);
+      setActiveTab('performance');
 
       if (els.overlay) els.overlay.style.display = "none";
       if (els.page) els.page.style.display = "block";

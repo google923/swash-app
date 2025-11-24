@@ -1,4 +1,5 @@
-import { app, auth, db } from "./firebase-init.js";
+import { app, auth, db } from "./public/firebase-init.js";
+import { initSubscriberHeader, setCompanyName, setActiveTab } from "./public/header-template.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getDoc, getDocs, limit, orderBy, query } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
@@ -361,21 +362,28 @@ async function bootstrap(user) {
 }
 
 function start() {
-  initUiHandlers();
+  // Initialize header first and wait for it
+  initSubscriberHeader().then(() => {
+    initUiHandlers();
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      window.location.href = "./subscriber-login.html";
-      return;
-    }
-    try {
-      await bootstrap(user);
-    } catch (error) {
-      console.error("Email settings bootstrap failed", error);
-      alert(error?.message || "Unable to load email settings");
-      await signOut(auth);
-      window.location.href = "./subscriber-login.html";
-    }
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "./subscriber-login.html";
+        return;
+      }
+      try {
+        await bootstrap(user);
+        // Update header after bootstrap
+        const companyName = state.userProfile?.companyName || state.userProfile?.name || 'My Business';
+        setCompanyName(companyName);
+        setActiveTab('settings');
+      } catch (error) {
+        console.error("Email settings bootstrap failed", error);
+        alert(error?.message || "Unable to load email settings");
+        await signOut(auth);
+        window.location.href = "./subscriber-login.html";
+      }
+    });
   });
 }
 

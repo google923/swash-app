@@ -1,4 +1,5 @@
-import { auth, db } from "./firebase-init.js";
+import { auth, db } from "./public/firebase-init.js";
+import { initSubscriberHeader, setCompanyName, setActiveTab } from "./public/header-template.js";
 import {
   onAuthStateChanged,
   signOut,
@@ -73,7 +74,6 @@ const elements = {
   closeShiftSummary: document.getElementById("closeShiftSummary"),
 };
 
-initUi();
 startAuth();
 window._subscriberTrackingState = state;
 
@@ -99,14 +99,20 @@ function initUi() {
     renderShiftHistory();
   });
 
-  elements.logoutBtn.addEventListener("click", async () => {
-    try {
-      await signOut(auth);
-      window.location.href = "./subscriber-login.html";
-    } catch (err) {
-      console.warn("Sign out failed", err);
+  // Logout button - wait for header to be injected
+  setTimeout(() => {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", async () => {
+        try {
+          await signOut(auth);
+          window.location.href = "./subscriber-login.html";
+        } catch (err) {
+          console.warn("Sign out failed", err);
+        }
+      });
     }
-  });
+  }, 100);
 
   if (elements.menuBtn) {
     elements.menuBtn.addEventListener("click", () => {
@@ -138,22 +144,29 @@ function initUi() {
 }
 
 function startAuth() {
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      window.location.href = "./subscriber-login.html";
-      return;
-    }
+  // Initialize header first and wait for it
+  initSubscriberHeader().then(() => {
+    // Now that header is injected, initialize UI
+    initUi();
+    
+    // Then set up auth flow
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "./subscriber-login.html";
+        return;
+      }
 
-    try {
-      await bootstrapSubscriber(user);
-    } catch (err) {
-      console.error("Subscriber tracking init failed", err);
-      alert(err.message || "Unable to load tracking dashboard");
       try {
-        await signOut(auth);
-      } catch (_) {}
-      window.location.href = "./subscriber-login.html";
-    }
+        await bootstrapSubscriber(user);
+      } catch (err) {
+        console.error("Subscriber tracking init failed", err);
+        alert(err.message || "Unable to load tracking dashboard");
+        try {
+          await signOut(auth);
+        } catch (_) {}
+        window.location.href = "./subscriber-login.html";
+      }
+    });
   });
 }
 
@@ -169,11 +182,10 @@ async function bootstrapSubscriber(user) {
     return;
   }
 
-  const displayName = access.subscriberProfile?.companyName || access.subscriberProfile?.name;
-  if (displayName && elements.companyNameDisplay) {
-    elements.companyNameDisplay.textContent = displayName;
-    elements.companyNameDisplay.style.display = "inline-flex";
-  }
+  // Update header with company name and set active tab
+  const displayName = access.subscriberProfile?.companyName || access.subscriberProfile?.name || 'My Business';
+  setCompanyName(displayName);
+  setActiveTab('tracking');
 
   hideOverlay();
   initMap();

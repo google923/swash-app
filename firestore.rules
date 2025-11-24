@@ -392,9 +392,12 @@ service cloud.firestore {
       }
 
       // --- SUBSCRIBER PRIVATE SETTINGS ---
+      // Owner can always read/write their own private settings (theme, etc.)
+      // Team members and admins can read, but only owner/admin can write
       match /private/{docId} {
-        allow read: if isOwner() || isAdmin() || isTeam();
-        allow write: if isOwner() || isAdmin();
+        allow read, write: if isOwner();
+        allow read: if isAdmin() || isTeam();
+        allow write: if isAdmin();
       }
 
       // --- SUBSCRIBER SMS PURCHASES ---

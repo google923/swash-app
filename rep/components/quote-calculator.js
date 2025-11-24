@@ -1,4 +1,4 @@
-import { auth, db } from "../../firebase-init.js";
+import { auth, db } from "../../public/firebase-init.js";
 import { logOutboundEmailToFirestore } from "../../lib/firestore-utils.js";
 import {
   addDoc,

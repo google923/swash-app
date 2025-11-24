@@ -6,10 +6,11 @@
    - repLocations: { repId, timestamp, gpsLat, gpsLng }
 */
 
-import { auth, db } from "../firebase-init.js";
+import { auth, db } from "../public/firebase-init.js";
 import { collection, doc, getDoc, setDoc, addDoc, getDocs, query, where, updateDoc, orderBy, collectionGroup, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { tenantCollection, tenantDoc } from "../lib/subscriber-paths.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { initSubscriberHeader, setCompanyName } from "../public/header-template.js";
 import { createQuoteCalculator } from "./components/quote-calculator.js";
 
 // ---------- IndexedDB via localForage ----------
@@ -1097,9 +1098,18 @@ async function loadAllPinsFromDailyDocs(boundary, days) {
 function toggleAllPins(checked) {
   // Always show all pins (full history) once loaded
   state.allPinsVisible = true;
-  if (!state.map) return;
-  if (!state._sixMonthLoaded) {
-    loadAllPins();
+  if (!state.map) {
+    initMap();
+  }
+  if (!state._sixMonthLoaded && !state._sixMonthLoading) {
+    state._sixMonthLoading = true;
+    loadAllPins().then(() => {
+      state._sixMonthLoading = false;
+      state._sixMonthLoaded = true;
+    }).catch(err => {
+      console.error('toggleAllPins error:', err);
+      state._sixMonthLoading = false;
+    });
   }
 }
 
@@ -1868,10 +1878,11 @@ async function preloadTerritoryForViewing() {
 
     state.territoryData = assigned || null;
     const overlay = renderTerritoryOverlays(loadedTerritories, assigned || null);
-    if (overlay) {
+    // Always load pins when preloading territory view
+    try {
       await loadAllPins();
-    } else {
-      toggleAllPins(true);
+    } catch (err) {
+      console.warn('Failed to load pins during territory preload:', err);
     }
   } catch (_) {
     // As a fallback, still ensure pins try to load so map isn't empty
@@ -1880,8 +1891,18 @@ async function preloadTerritoryForViewing() {
 }
 
 // Run after auth is ready; also try immediately in case auth is already available
-onAuthStateChanged(auth, () => { preloadTerritoryForViewing(); });
+onAuthStateChanged(auth, () => { 
+  preloadTerritoryForViewing(); 
+});
 preloadTerritoryForViewing();
+
+// Auto-load pins when page loads (if map is visible and no shift in progress)
+setTimeout(() => {
+  if (state.map && !state.shift) {
+    console.log('[Rep Log] Auto-loading historical pins on page load');
+    loadAllPins().catch(err => console.warn('Auto-load pins failed:', err));
+  }
+}, 1000);
 
 // Hook up All Pins toggle
 const toggleAllPinsEl = document.getElementById('toggleAllPins');

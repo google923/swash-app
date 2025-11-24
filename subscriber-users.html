@@ -35,19 +35,7 @@
   </style>
 </head>
 <body>
-  <header class="menu-box" style="border-bottom:1px solid #e5e7eb;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;">
-    <a href="./subscriber-dashboard.html" class="logo" style="text-decoration:none;color:#0f172a;font-weight:700;">Swash</a>
-    <nav>
-      <a href="./subscriber-dashboard.html" class="btn btn-secondary">Dashboard</a>
-      <a href="./subscriber-customers.html" class="btn btn-secondary">Customers</a>
-      <a href="./subscriber-quotes.html" class="btn btn-secondary">Quotes</a>
-      <a href="./rep/scheduler.html" class="btn btn-secondary">Schedule</a>
-      <a href="./subscriber-cleaners.html" class="btn btn-secondary">Cleaners</a>
-      <a href="./subscriber-territories.html" class="btn btn-secondary">Territories</a>
-      <a href="./subscriber-sms-setup.html" class="btn btn-secondary">SMS Centre</a>
-      <button id="logoutBtn" class="btn btn-secondary">Logout</button>
-    </nav>
-  </header>
+
 
   <section id="authOverlay" class="auth-overlay" aria-live="polite">
     <div class="auth-card">
@@ -95,7 +83,7 @@
   </div>
 
   <script type="module">
-    import { auth, db } from './firebase-init.js';
+    import { auth, db } from './public/firebase-init.js';
     import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
     import {
       collection,
@@ -107,6 +95,7 @@
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
     import { ensureSubscriberAccess } from "./lib/subscriber-access.js";
+    import { initSubscriberHeader, setCompanyName } from './public/header-template.js';
 
     let subscriberId = null;
     let linkedReps = [];
@@ -136,6 +125,9 @@
           window.location.href = './subscriber-billing.html';
           return;
         }
+
+        initSubscriberHeader();
+        setCompanyName(access.viewerProfile.businessName || 'Subscriber');
 
         if (authOverlay) {
           authOverlay.style.display = 'none';
@@ -249,3 +241,4 @@
   </script>
 </body>
 </html>
+

@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Add Customer - Swash</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+  <style>
+    .subscriber-header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .quote-calculator-toggle { background:#0078d7; color:#fff; padding:12px 24px; border-radius:8px; border:none; font-weight:600; cursor:pointer; transition:background .2s ease; }
+    .quote-calculator-toggle:hover { background:#005a9e; }
+    .quote-calculator-toggle.active { background:#dc2626; }
+    .customers-table-section { margin-top:24px; }
+    .bulk-actions-bar { display:none; position:sticky; top:60px; z-index:100; background:#eff6ff; border:2px solid #3b82f6; border-radius:12px; padding:16px; margin-bottom:16px; align-items:center; gap:12px; }
+    .bulk-actions-bar.active { display:flex; }
+    .filters-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:16px; }
+    .filter-group { display:flex; flex-direction:column; gap:4px; }
+    .filter-group label { font-size:.85rem; font-weight:600; color:#475569; }
+    .status-badge { display:inline-block; padding:4px 8px; border-radius:12px; font-size:.75rem; font-weight:600; }
+    .status-quoted { background:#fef3c7; color:#92400e; }
+    .status-booked { background:#dcfce7; color:#166534; }
+    .status-pending { background:#fef3c7; color:#92400e; }
+    .status-cancelled { background:#fee2e2; color:#991b1b; }
+    .payment-status { font-size:.75rem; font-weight:600; }
+    .modal { position:fixed; inset:0; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; z-index:1000; }
+    .modal[hidden] { display:none; }
+    .modal__dialog { background:#fff; width:560px; max-width:95%; border-radius:14px; padding:24px; box-shadow:0 10px 35px -5px rgba(0,0,0,.25); }
+    .modal__dialog h3 { margin:0 0 12px; font-size:1.15rem; }
+    .modal__grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+    .modal__field { display:flex; flex-direction:column; gap:6px; }
+    .modal__field input, .modal__field select, .modal__field textarea { padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:.85rem; }
+    .modal__actions { margin-top:18px; display:flex; justify-content:flex-end; gap:12px; }
+    #result .result-price { font-size:1.4rem; font-weight:600; color:#0f172a; }
+    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .detail-item { display:flex; flex-direction:column; }
+    .detail-label { text-align:left; font-size:0.75rem; font-weight:600; color:#475569; text-transform:uppercase; margin-bottom:6px; }
+    .detail-item input, .detail-item select, .detail-item textarea { padding:8px 12px; border:1px solid #cbd5e1; border-radius:4px; font-size:0.9rem; }
+    .header-tabs { display:flex; gap:8px; background:transparent; padding:0 20px; border-bottom:none; }
+    .header-tabs button { background:#0078d7; border:none; color:#fff; padding:10px 18px; font-weight:600; font-size:0.9rem; cursor:pointer; position:relative; transition:all 0.2s; border-radius:0 0 8px 8px; opacity:0.8; }
+    .header-tabs button:hover { opacity:0.95; }
+    .header-tabs button.active { opacity:1; box-shadow:0 0 12px rgba(255,255,255,0.6); }
+    #actionsDropdown { z-index:10000 !important; }
+    #actionsDropdown button:hover { background:#f0f4f8; }
+  </style>
+</head>
+<body>
+
+
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we verify your account.</p>
+    </div>
+  </section>
+
+  <main id="mainContent" class="page" style="display:none;">
+    <section class="customers-table-section card">
+      <header class="card-header" style="justify-content:space-between;">
+        <div class="card-header-main">
+          <h2>Customer Quotes &amp; Bookings</h2>
+          <p class="text-muted">View and manage all customer quotes and bookings</p>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; margin-left:auto;">
+          <button type="button" id="toggleQuoteForm" class="btn btn-primary" style="background:#0078d7; border:none; font-weight:600; padding:8px 14px; white-space:nowrap; border-radius:6px; color:#fff; font-size:0.9rem;">+ Add Customer</button>
+        </div>
+      </header>
+
+      <div id="bulkActionsBar" class="bulk-actions-bar">
+        <span class="bulk-count"><span id="selectedCount">0</span> selected</span>
+        <button type="button" id="bulkBookBtn" class="btn btn-primary">📅 Book Selected</button>
+        <button type="button" id="bulkMessageBtn" class="btn btn-secondary">✉️ Message Selected</button>
+        <button type="button" id="clearSelectionBtn" class="btn btn-secondary">Clear Selection</button>
+        <button type="button" id="bulkExportBtn" class="btn btn-primary" style="margin-left:auto;">📊 Export CSV</button>
+      </div>
+
+      <div class="filters-row">
+        <div class="filter-group" style="grid-column:span 2;">
+          <label for="searchInput">Search</label>
+          <input type="search" id="searchInput" placeholder="Name, email, address..." />
+        </div>
+        <div class="filter-group">
+          <label for="filterFieldSelect">Filter by</label>
+          <select id="filterFieldSelect">
+            <option value="">Select a filter</option>
+            <option value="status">Status</option>
+            <option value="payment">Payment Status</option>
+            <option value="rep">Source</option>
+            <option value="territory">Area / Territory</option>
+          </select>
+        </div>
+        <div class="filter-group" id="filterValueGroup">
+          <label for="filterValueSelect">Filter options</label>
+          <select id="filterValueSelect" disabled>
+            <option value="">Select an option</option>
+          </select>
+        </div>
+        <div class="filter-group" style="align-self:end;">
+          <button type="button" id="applyFiltersBtn" class="btn btn-primary" style="width:100%;">Apply Filters</button>
+        </div>
+        <div class="filter-group" style="align-self:end;">
+          <button type="button" id="clearFiltersBtn" class="btn btn-secondary" style="width:100%;">Clear Filters</button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table id="customersTable" class="quotes-table" role="table" aria-label="Customers">
+          <thead>
+            <tr>
+              <th scope="col" style="width:40px;"><input id="selectAllCheckbox" type="checkbox" aria-label="Select all" /></th>
+              <th scope="col">Customer</th>
+              <th scope="col">Email</th>
+              <th scope="col">Status</th>
+              <th scope="col">Price/Clean</th>
+              <th scope="col">Payment</th>
+              <th scope="col">Date Added</th>
+            </tr>
+          </thead>
+          <tbody id="customersTableBody">
+            <tr><td colspan="8" style="text-align:center; padding:40px;">Loading customers...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer" aria-live="polite">
+        <span id="paginationInfo" class="pagination-info">Showing 0 results</span>
+        <div class="pagination-controls">
+          <button id="prevPageBtn" class="btn btn-secondary" type="button">Previous</button>
+          <button id="nextPageBtn" class="btn btn-secondary" type="button">Next</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Selected Customers Modal (Top Right) -->
+  <div id="selectedCustomersModal" style="position:fixed; top:80px; right:20px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.2); width:280px; max-height:60vh; overflow-y:auto; z-index:9999; display:none; padding:12px; font-size:0.85rem;">
+    <div style="font-weight:700; color:#0f172a; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #e2e8f0;">Selected Customers</div>
+    <div id="selectedCustomersListContainer" style="max-height:calc(60vh - 40px); overflow-y:auto;"></div>
+  </div>
+
+  <main id="mainContent" class="page" style="display:none;">
+
+  <!-- Quote Modal -->
+    <div id="quoteModal" class="modal" hidden>
+      <div class="modal__dialog">
+        <h3>Create New Quote</h3>
+        <form id="quoteForm" autocomplete="off">
+          <input type="hidden" id="repCode" value="Website Quote" />
+          <div class="modal__grid">
+            <label class="modal__field" for="customerName">
+              <span>Customer Name</span>
+              <input id="customerName" required />
+            </label>
+            <label class="modal__field" for="email">
+              <span>Email</span>
+              <input id="email" type="email" required />
+            </label>
+            <label class="modal__field" for="mobile">
+              <span>Mobile</span>
+              <input id="mobile" required />
+            </label>
+            <label class="modal__field" for="address">
+              <span>Address</span>
+              <input id="address" required />
+            </label>
+            <label class="modal__field" for="serviceTier">
+              <span>Tier</span>
+              <select id="serviceTier">
+                <option value="gold" selected>Gold</option>
+                <option value="silver">Silver</option>
+              </select>
+            </label>
+            <label class="modal__field" for="houseSize">
+              <span>House Size</span>
+              <select id="houseSize">
+                <option>2 bed</option>
+                <option selected>3 bed</option>
+                <option>4 bed</option>
+                <option>5 bed</option>
+                <option>6 bed</option>
+              </select>
+            </label>
+            <label class="modal__field" for="houseType">
+              <span>House Type</span>
+              <select id="houseType">
+                <option value="Bungalow">Bungalow</option>
+                <option value="Maisonette">Maisonette</option>
+                <option value="Terrace">Terrace</option>
+                <option value="Semi-Detached" selected>Semi-Detached</option>
+                <option value="Detached">Detached</option>
+                <option value="Mobile Home">Mobile Home</option>
+              </select>
+            </label>
+            <label class="modal__field" for="territorySelectQuote">
+              <span>Territory</span>
+              <select id="territorySelectQuote"></select>
+            </label>
+            <label class="modal__field" for="bookingDate">
+              <span>First Clean Date (optional)</span>
+              <input id="bookingDate" type="date" />
+            </label>
+            <label class="modal__field" for="roofLanterns">
+              <span>Roof Lanterns <small id="roofLanternsValue" style="font-weight:600; color:#0f172a;">0</small></span>
+              <input id="roofLanterns" type="number" min="0" value="0" />
+            </label>
+            <label class="modal__field" for="skylights">
+              <span>Skylights <small id="skylightsValue" style="font-weight:600; color:#0f172a;">0</small></span>
+              <input id="skylights" type="number" min="0" value="0" />
+            </label>
+            <div class="modal__field" style="align-self:end;">
+              <label class="checkbox" for="conservatory" style="display:flex; gap:6px; align-items:center;">
+                <input type="checkbox" id="conservatory" /> Conservatory
+              </label>
+              <label class="checkbox" for="extension" style="display:flex; gap:6px; align-items:center;">
+                <input type="checkbox" id="extension" /> Extension
+              </label>
+              <label class="checkbox" for="alternating" style="display:flex; gap:6px; align-items:center;">
+                <input type="checkbox" id="alternating" /> Alternating
+              </label>
+              <label class="checkbox" for="frontOnly" style="display:flex; gap:6px; align-items:center;">
+                <input type="checkbox" id="frontOnly" /> Front Only
+              </label>
+              <label class="checkbox" for="quoteOnlyCheckbox" style="display:flex; gap:6px; align-items:center; margin-top:4px;">
+                <input type="checkbox" id="quoteOnlyCheckbox" /> Quote Only (no booking)
+              </label>
+            </div>
+            <label class="modal__field" style="grid-column:1/-1" for="notes">
+              <span>Notes</span>
+              <textarea id="notes" rows="3" placeholder="Access notes, gate codes, etc..."></textarea>
+            </label>
+            <div id="result" style="grid-column:1/-1"></div>
+          </div>
+          <div class="modal__actions">
+            <button type="button" id="cancelQuoteBtn" class="btn btn-secondary">Cancel</button>
+            <button type="button" id="saveQuoteBtn" class="btn btn-primary">Save Quote</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  <!-- Bulk Booking Modal -->
+  <div id="bulkBookingModal" class="modal" hidden>
+    <div class="modal__dialog">
+      <h3>Book Selected Customers</h3>
+      <p>Select the first clean date for <strong id="bulkBookingCount">0</strong> customer(s):</p>
+      <label class="modal__field">
+        <span>First Clean Date</span>
+        <input id="bulkBookingDate" type="date" />
+      </label>
+      <label class="modal__field">
+        <span>Assign Cleaner</span>
+        <select id="bulkBookingCleaner"></select>
+      </label>
+      <div class="modal__actions">
+        <button type="button" class="btn btn-secondary" id="cancelBulkBookingBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmBulkBookingBtn">Confirm Booking</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Message Modal -->
+  <div id="bulkMessageModal" class="modal" hidden>
+    <div class="modal__dialog">
+      <h3>Send Message to Selected</h3>
+      <p>Compose a message to send to <strong id="bulkMessageCount">0</strong> customer(s):</p>
+      <label class="modal__field">
+        <span>Subject</span>
+        <input id="bulkMessageSubject" type="text" placeholder="Message subject..." />
+      </label>
+      <label class="modal__field">
+        <span>Message</span>
+        <textarea id="bulkMessageBody" rows="8" placeholder="Your message here..."></textarea>
+      </label>
+      <div class="modal__actions">
+        <button type="button" class="btn btn-secondary" id="cancelBulkMessageBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="sendBulkMessageBtn">Send Messages</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single Message Modal -->
+  <div id="singleMessageModal" class="modal" hidden>
+    <div class="modal__dialog">
+      <h3>Message <span id="singleMessageCustomer">Customer</span></h3>
+      <label class="modal__field">
+        <span>Subject</span>
+        <input id="singleMessageSubject" type="text" placeholder="Subject..." />
+      </label>
+      <label class="modal__field">
+        <span>Message</span>
+        <textarea id="singleMessageBody" rows="8" placeholder="Your message..."></textarea>
+      </label>
+      <div class="modal__actions">
+        <button type="button" id="cancelSingleMessageBtn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="sendSingleMessageBtn" class="btn btn-primary">Send Message</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./subscriber-add-new-customer.js?v=20251123-1"></script>
+  <script>
+    // Fallback: if modal not found (stale cached HTML), force reload bypassing SW
+    window.addEventListener('load', () => {
+      if (!document.getElementById('quoteModal')) {
+        console.warn('[Swash] Stale HTML detected, forcing cache-bypass reload');
+        setTimeout(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set('v','20251123-1');
+          window.location.replace(url.toString());
+        }, 50);
+      }
+    });
+    navigator.serviceWorker?.addEventListener('message', (event) => {
+      if (event.data?.type === 'SW_UPDATED') {
+        console.log('[Swash] Service worker updated, reloading page');
+        const url = new URL(window.location.href);
+        url.searchParams.set('sw','v55');
+        window.location.replace(url.toString());
+      }
+    });
+  </script>
+</body>
+</html>

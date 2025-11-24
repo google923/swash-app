@@ -1,6 +1,6 @@
 // stats.js - Performance analytics dashboard for Swash Admin
 
-import { app, auth, db } from "../firebase-init.js";
+import { app, auth, db } from "../public/firebase-init.js";
 import { authStateReady, handlePageRouting } from "../auth-check.js";
 import {
   collection,

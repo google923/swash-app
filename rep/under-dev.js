@@ -2,7 +2,7 @@
 // Shows a blocking overlay for reps and admins on selected pages.
 // Admins get a "Work on this" button to hide it locally.
 
-import { auth, db } from '../firebase-init.js';
+import { auth, db } from '../public/firebase-init.js';
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const PAGE_KEY = window.location.pathname; // unique per page

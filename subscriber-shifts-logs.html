@@ -43,45 +43,6 @@
 </head>
 <body>
 
-  <header class="header">
-    <div class="header-left">
-      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
-      <span id="companyNameDisplay" style="margin-left:16px;font-weight:600;color:#334155;"></span>
-    </div>
-    <div class="header-actions">
-      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
-      <div class="menu-box">
-        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
-        <nav id="menuDropdown" class="dropdown">
-          <div class="dropdown-title">Navigation</div>
-          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
-          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
-          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
-          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
-          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
-          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
-          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
-          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts &amp; Logs</a>
-          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
-          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
-          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
-          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
-          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
-          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
-          <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
-          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
-          <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
-          <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
-          <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
-          <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
-          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
-          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
-          <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
-        </nav>
-      </div>
-    </div>
-  </header>
-
   <section id="authOverlay" class="auth-overlay" aria-live="polite">
     <div class="auth-card">
       <h2>Checking authentication...</h2>
@@ -171,7 +132,9 @@
 
   <script type="module" src="./auth-check.js"></script>
   <script type="module" src="./nav.js"></script>
-  <script type="module" src="./firebase-init.js"></script>
+  <script type="module" src="./public/firebase-init.js"></script>
   <script type="module" src="./subscriber-shifts-logs.js"></script>
 </body>
 </html>
+
+

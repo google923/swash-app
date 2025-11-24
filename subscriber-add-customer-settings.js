@@ -1,8 +1,9 @@
-import { auth, db } from "./firebase-init.js";
+import { auth, db } from "./public/firebase-init.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getDoc, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { ensureSubscriberAccess } from "./lib/subscriber-access.js";
 import { tenantDoc } from "./lib/subscriber-paths.js";
+import { initSubscriberHeader, setCompanyName } from "./public/header-template.js";
 
 const DEFAULT_SETTINGS = {
   tiers: {
@@ -1227,6 +1228,9 @@ async function bootstrap(user) {
   state.viewerRole = access.viewerRole;
   state.subscriberId = access.subscriberId;
 
+  await initSubscriberHeader();
+  setCompanyName(access.viewerProfile.businessName || 'Subscriber');
+
   if (elements.overlay) {
     elements.overlay.style.display = "none";
   }
@@ -1242,7 +1246,7 @@ async function bootstrap(user) {
 }
 
 function start() {
-  initUiHandlers();
+  // Initialize header first via bootstrap
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
       window.location.href = "./subscriber-login.html";
@@ -1250,6 +1254,8 @@ function start() {
     }
     try {
       await bootstrap(user);
+      // Attach UI handlers after bootstrap
+      initUiHandlers();
     } catch (error) {
       console.error("[AddCustomerSettings] bootstrap failed", error);
       alert(error?.message || "Unable to load subscriber settings");

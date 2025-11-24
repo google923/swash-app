@@ -1,6 +1,7 @@
 // scheduler.js - cleaner rota planner with drag-and-drop rescheduling and flexible recurring cadence
 import { initMenuDropdown } from "./menu.js";
 import { authStateReady, handlePageRouting } from "../auth-check.js";
+import { initSubscriberHeader, setCompanyName, setActiveTab } from "../public/header-template.js";
 import { createCustomerChatController } from "./components/chat-controller.js";
 import { logOutboundEmailToFirestore } from "../lib/firestore-utils.js";
 import { tenantCollection, tenantDoc } from "../lib/subscriber-paths.js";
@@ -5152,6 +5153,21 @@ async function initScheduler() {
       clearLoginError();
       elements.logoutBtn?.removeAttribute("hidden");
       showAuthOverlay(false);
+      initSubscriberHeader();
+      
+      // Set company name from current subscriber if applicable
+      if (subscriberId) {
+        try {
+          const subDoc = await getDoc(doc(db, 'subscribers', subscriberId));
+          if (subDoc.exists()) {
+            const businessName = subDoc.data()?.businessName || 'Subscriber';
+            setCompanyName(businessName);
+          }
+        } catch (error) {
+          console.warn('Failed to load subscriber name:', error);
+        }
+      }
+      
       startSchedulerApp().catch((error) => {
         console.error("Scheduler initialisation failed", error);
         setLoginError("Unable to load scheduler data. Please try again.");

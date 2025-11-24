@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://app.swashcleaning.co.uk", "https://swash-app-436a1.web.app", "https://swash-vt3nz4i6z-christopher-wessells-projects.vercel.app"],
+    "method": ["GET", "HEAD", "DELETE", "PUT", "POST"],
+    "responseHeader": ["Content-Type", "Authorization"],
+    "maxAgeSeconds": 3600
+  }
+]

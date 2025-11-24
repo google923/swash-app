@@ -42,30 +42,11 @@ function storeSubscriberName(name) {
 }
 
 function setCompanyName(name) {
-  const headerLeft = document.querySelector('.header-left');
-  if (!headerLeft) return;
-
-  let chip = headerLeft.querySelector('[data-company-name]');
-  if (!chip && name) {
-    chip = document.createElement('span');
-    chip.className = 'header-company';
-    chip.dataset.companyName = '';
-    const logo = headerLeft.querySelector('.header-logo');
-    if (logo && logo.parentElement === headerLeft) {
-      headerLeft.insertBefore(chip, logo.nextSibling);
-    } else {
-      headerLeft.insertBefore(chip, headerLeft.firstChild);
-    }
-  }
-
-  if (chip) {
-    if (name) {
-      chip.textContent = name;
-      chip.hidden = false;
-    } else {
-      chip.textContent = '';
-      chip.hidden = true;
-    }
+  // Import from header-template.js to avoid duplication
+  // Use the proper setCompanyName from header-template.js instead
+  const display = document.getElementById('companyNameDisplay');
+  if (display) {
+    display.textContent = name || '';
   }
 }
 
@@ -119,7 +100,9 @@ function updateRoleBadge() {
   });
 
   if (role === 'subscriber' || role === 'admin') {
-    setCompanyName(loadStoredSubscriberName());
+    // Don't set company name here - let each page set it from their own subscriber profile
+    // This prevents stale localStorage values from showing wrong subscriber names
+    setCompanyName('');
   } else {
     setCompanyName('');
     storeSubscriberName('');

@@ -2,7 +2,7 @@
 // This module logs events to Firestore so your billing provider (or a backend job)
 // can reconcile and apply charges. Swap this out later for a direct API call.
 
-import { db } from './firebase-init.js';
+import { db } from './public/firebase-init.js';
 import {
   collection,
   addDoc,

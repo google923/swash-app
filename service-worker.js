@@ -1,6 +1,6 @@
 // Swash Service Worker
 // Provides offline caching and forwards sync events to the app shell.
-const CACHE_NAME = 'swash-cache-v54';
+const CACHE_NAME = 'swash-cache-v55'; // bumped to invalidate stale cached HTML/JS
 const OFFLINE_URLS = [
   "/index.html",
   "/pipeline.html",
@@ -15,7 +15,7 @@ const OFFLINE_URLS = [
   "/rep/scheduler.html",
   "/rep/chat.html",
   "/style.css",
-  "/firebase-init.js",
+  "/public/firebase-init.js",
   "/auth-check.js",
   "/admin.js",
   "/admin/stats.js",
@@ -76,16 +76,14 @@ self.addEventListener("install", (event) => {
 
 // activate and clean old caches
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+    self.clients.claim();
+    // Notify all clients to reload to pick up fresh assets
+    const clientsList = await self.clients.matchAll({ includeUncontrolled: true });
+    clientsList.forEach(c => c.postMessage({ type: 'SW_UPDATED', cache: CACHE_NAME }));
+  })());
 });
 
 // fetch fallback
@@ -160,6 +158,24 @@ async function networkFirst(request) {
 }
 
 async function cacheFirst(request) {
+  // For JS and HTML assets always fetch fresh (avoid stale code after deploy)
+  const url = request.url;
+  const isCode = url.endsWith('.js') || url.endsWith('.mjs') || url.endsWith('.html');
+  if (isCode) {
+    try {
+      const response = await fetch(request, { cache: 'no-store' });
+      if (response && response.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(request, response.clone());
+      }
+      return response;
+    } catch (e) {
+      // fallback to any cached variant (ignore search helps when we added version param)
+      const cached = await caches.match(request) || await caches.match(request, { ignoreSearch: true });
+      return cached || Response.error();
+    }
+  }
+
   let cached = await caches.match(request);
   if (!cached) {
     cached = await caches.match(request, { ignoreSearch: true });
@@ -174,7 +190,6 @@ async function cacheFirst(request) {
       .catch(() => {});
     return cached;
   }
-
   try {
     const response = await fetch(request);
     if (response && response.ok) {

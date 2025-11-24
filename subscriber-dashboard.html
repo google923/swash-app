@@ -15,45 +15,6 @@
 </head>
 <body>
 
-  <header class="header">
-    <div class="header-left">
-      <img class="header-logo" src="./assets/swash-icon-white.png" alt="Swash logo" />
-      <span id="companyNameDisplay" style="margin-left:16px;font-weight:600;color:#334155;"></span>
-    </div>
-    <div class="header-actions">
-      <button id="logoutBtn" class="btn btn-secondary" type="button">Sign out</button>
-      <div class="menu-box">
-        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
-        <nav id="menuDropdown" class="dropdown">
-          <div class="dropdown-title">Navigation</div>
-          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
-          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
-          <a href="/rep/add-new-customer.html" class="admin-rep-subscriber">🆕 New Quote</a>
-          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
-          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
-          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
-          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
-          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts & Logs</a>
-          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
-          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
-          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
-          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
-          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
-           <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
-           <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
-          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
-           <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
-           <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
-           <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
-           <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
-           <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
-           <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
-           <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
-        </nav>
-      </div>
-    </div>
-  </header>
-
   <section id="authOverlay" class="auth-overlay" aria-live="polite">
     <div class="auth-card">
       <h2>Checking authentication...</h2>
@@ -94,43 +55,50 @@
       </div>
     </section>
 
+    <!-- Main Pages Section -->
     <section class="card" style="margin-top:24px;">
       <header class="card-header">
         <div class="card-header-main">
-          <h3>Quick Actions</h3>
-          <p class="text-muted">Common tasks to manage your business</p>
+          <h3>Main Pages</h3>
+          <p class="text-muted">Core business management tools</p>
         </div>
       </header>
       
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;padding:20px;">
-        <a href="/pipeline.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+        <a href="/subscriber-customers.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
           <div style="font-size:32px;margin-bottom:12px;">📋</div>
           <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Customer Pipeline</div>
           <div style="font-size:14px;color:#64748b;">Track prospects and bookings</div>
         </a>
         
-        <a href="/schedule.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
-          <div style="font-size:32px;margin-bottom:12px;">📅</div>
-          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Cleaning Rota</div>
-          <div style="font-size:14px;color:#64748b;">Assign days and balance workloads</div>
+        <a href="/subscriber-add-new-customer.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">🆕</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Add New Customer</div>
+          <div style="font-size:14px;color:#64748b;">Create quotes and manage bookings</div>
         </a>
         
-        <a href="/subscriber-cleaners.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
-          <div style="font-size:32px;margin-bottom:12px;">👷</div>
-          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Cleaner Management</div>
-          <div style="font-size:14px;color:#64748b;">Maintain availability and contact info</div>
+        <a href="/subscriber-tracking.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">📍</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Live Tracking</div>
+          <div style="font-size:14px;color:#64748b;">Track reps and cleaners in real-time</div>
         </a>
+      </div>
+    </section>
 
-        <a href="/subscriber-sms-setup.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
-          <div style="font-size:32px;margin-bottom:12px;">📲</div>
-          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">SMS Centre</div>
-          <div style="font-size:14px;color:#64748b;">Buy credits and manage sender ID</div>
-        </a>
-        
-        <a href="/map.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
-          <div style="font-size:32px;margin-bottom:12px;">🗺️</div>
-          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Territory Map</div>
-          <div style="font-size:14px;color:#64748b;">Draw areas and connect them to the rota</div>
+    <!-- Stats Section -->
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h3>Stats & Performance</h3>
+          <p class="text-muted">Monitor your business metrics</p>
+        </div>
+      </header>
+      
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;padding:20px;">
+        <a href="/subscriber-performance.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">🎯</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Performance</div>
+          <div style="font-size:14px;color:#64748b;">Track conversion and retention trends</div>
         </a>
 
         <a href="/subscriber-rep-dashboard.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
@@ -144,11 +112,71 @@
           <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Shifts &amp; Logs</div>
           <div style="font-size:14px;color:#64748b;">Audit shift summaries and mileage claims</div>
         </a>
+      </div>
+    </section>
 
-        <a href="/subscriber-performance.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
-          <div style="font-size:32px;margin-bottom:12px;">🎯</div>
-          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Performance</div>
-          <div style="font-size:14px;color:#64748b;">Track conversion and retention trends</div>
+    <!-- Settings Section -->
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h3>Settings & Configuration</h3>
+          <p class="text-muted">Configure your business operations</p>
+        </div>
+      </header>
+      
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;padding:20px;">
+        <a href="/subscriber-schedule-full.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">📅</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">4-Week Planner</div>
+          <div style="font-size:14px;color:#64748b;">Drag-and-drop scheduling calendar</div>
+        </a>
+
+        <a href="/subscriber-schedule.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">📆</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Weekly Planner</div>
+          <div style="font-size:14px;color:#64748b;">View week-by-week schedule</div>
+        </a>
+        
+        <a href="/subscriber-cleaners.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">👷</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Cleaner Management</div>
+          <div style="font-size:14px;color:#64748b;">Maintain availability and contact info</div>
+        </a>
+
+        <a href="/subscriber-email-settings.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">✉️</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Email Settings</div>
+          <div style="font-size:14px;color:#64748b;">Customize email templates</div>
+        </a>
+
+        <a href="/subscriber-add-customer-settings.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">⚙️</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Quote Settings</div>
+          <div style="font-size:14px;color:#64748b;">Configure pricing and tiers</div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Billing Section -->
+    <section class="card" style="margin-top:24px;">
+      <header class="card-header">
+        <div class="card-header-main">
+          <h3>Billing & Communications</h3>
+          <p class="text-muted">Manage payments and customer messaging</p>
+        </div>
+      </header>
+      
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;padding:20px;">
+        <a href="/subscriber-sms-setup.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">📲</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">SMS Centre</div>
+          <div style="font-size:14px;color:#64748b;">Buy credits and manage sender ID</div>
+        </a>
+
+        <a href="/subscriber-billing.html" class="quick-action-card" style="display:block;padding:24px;background:white;border:2px solid #e5e7eb;border-radius:8px;text-decoration:none;transition:all 0.2s;cursor:pointer;">
+          <div style="font-size:32px;margin-bottom:12px;">💳</div>
+          <div style="font-size:18px;font-weight:600;color:#1e293b;margin-bottom:6px;">Billing & Subscription</div>
+          <div style="font-size:14px;color:#64748b;">Manage your subscription plan</div>
         </a>
       </div>
     </section>

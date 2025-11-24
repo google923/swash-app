@@ -4,7 +4,7 @@
 
 
 
-import { app, auth, db } from "./firebase-init.js";
+import { app, auth, db } from "./public/firebase-init.js";
 import { authStateReady, handlePageRouting } from "./auth-check.js";
 import { logOutboundEmailToFirestore } from "./lib/firestore-utils.js";
 import { getDocs, addDoc, updateDoc, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";

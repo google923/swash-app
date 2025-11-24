@@ -1,4 +1,5 @@
-import { app, auth, db } from "./firebase-init.js";
+import { app, auth, db } from "./public/firebase-init.js";
+import { initSubscriberHeader, setCompanyName, setActiveTab } from "./public/header-template.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import {
   addDoc,
@@ -499,21 +500,28 @@ async function bootstrap(user) {
 }
 
 function init() {
-  attachEventHandlers();
+  // Initialize header first and wait for it
+  initSubscriberHeader().then(() => {
+    attachEventHandlers();
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      window.location.href = "./subscriber-login.html";
-      return;
-    }
-    try {
-      await bootstrap(user);
-    } catch (error) {
-      console.error("SMS centre bootstrap failed", error);
-      alert(error?.message || "Unable to load SMS centre");
-      await signOut(auth);
-      window.location.href = "./subscriber-login.html";
-    }
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "./subscriber-login.html";
+        return;
+      }
+      try {
+        await bootstrap(user);
+        // Update header after bootstrap
+        const companyName = state.subscriberProfile?.companyName || state.subscriberProfile?.name || 'My Business';
+        setCompanyName(companyName);
+        setActiveTab('sms');
+      } catch (error) {
+        console.error("SMS centre bootstrap failed", error);
+        alert(error?.message || "Unable to load SMS centre");
+        await signOut(auth);
+        window.location.href = "./subscriber-login.html";
+      }
+    });
   });
 }
 

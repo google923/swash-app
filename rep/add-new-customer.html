@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
   <!-- Ensure Firebase is initialised for this page and expose db/auth on window -->
   <script type="module">
-    import { db as fdb, auth as fauth } from "../firebase-init.js";
+    import { db as fdb, auth as fauth } from "../public/firebase-init.js";
     window.db = fdb;
     window.firebaseAuth = fauth;
   </script>

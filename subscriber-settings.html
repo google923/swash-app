@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Settings - Swash</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    .settings-container { max-width:900px; margin:40px auto; }
+    .settings-tabs { display:flex; gap:0; background:#0078d7; border-bottom:none; margin-bottom:24px; }
+    .settings-tab { background:none; border:none; color:#fff; padding:12px 20px; font-weight:600; font-size:0.95rem; cursor:pointer; position:relative; transition:all 0.2s; opacity:0.8; }
+    .settings-tab:hover { opacity:0.95; }
+    .settings-tab.active { opacity:1; background:rgba(255,255,255,0.2); }
+    .settings-panel { display:none; }
+    .settings-panel.active { display:block; }
+    .settings-section { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:24px; margin-bottom:20px; }
+    .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    .settings-field { display:flex; flex-direction:column; gap:8px; }
+    .settings-field label { font-weight:600; color:#0f172a; font-size:0.9rem; }
+    .settings-field input, .settings-field select, .settings-field textarea { padding:10px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem; }
+    .settings-field input:focus, .settings-field select:focus, .settings-field textarea:focus { outline:none; border-color:#0078d7; box-shadow:0 0 0 3px rgba(0,120,215,0.1); }
+    .color-input-group { display:flex; gap:12px; align-items:flex-end; }
+    .color-input-group input[type="color"] { width:60px; height:40px; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; }
+    .color-preview { display:inline-block; width:20px; height:20px; border-radius:4px; border:1px solid #cbd5e1; vertical-align:middle; }
+    .logo-upload-group { display:flex; gap:12px; align-items:flex-start; }
+    .logo-preview { width:80px; height:80px; border:2px dashed #cbd5e1; border-radius:6px; display:flex; align-items:center; justify-content:center; background:#ffffff; }
+    .logo-preview img { max-width:100%; max-height:100%; object-fit:contain; }
+    .settings-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:24px; }
+    .btn-save { background:#0078d7; color:#fff; border:none; padding:10px 20px; border-radius:6px; font-weight:600; cursor:pointer; transition:background 0.2s; }
+    .btn-save:hover { background:#005a9e; }
+    .btn-reset { background:#e2e8f0; color:#0f172a; border:none; padding:10px 20px; border-radius:6px; font-weight:600; cursor:pointer; transition:background 0.2s; }
+    .btn-reset:hover { background:#cbd5e1; }
+    .info-text { font-size:0.85rem; color:#64748b; margin-top:4px; }
+    .card-note { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px; color:#334155; }
+    .cleaner-card { background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px; transition: all 0.2s; }
+    .cleaner-card:hover { border-color: #0078d7; box-shadow: 0 4px 12px rgba(0,120,215,0.15); }
+    .cleaner-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px; }
+    .cleaner-name { font-size: 1.2rem; font-weight: 600; color: #1e293b; }
+    .cleaner-badge { padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
+    .badge-active { background: #dcfce7; color: #166534; }
+    .badge-inactive { background: #fee2e2; color: #991b1b; }
+    .cleaner-info { margin-bottom: 16px; }
+    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+    .info-label { color: #64748b; font-size: 0.9rem; }
+    .info-value { color: #1e293b; font-weight: 600; font-size: 0.9rem; }
+    .cleaner-actions { display: flex; gap: 8px; }
+    .package-card { border:2px solid #e2e8f0; border-radius:12px; padding:20px; background:#fff; display:flex; flex-direction:column; gap:12px; transition:border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
+    .package-card:hover { border-color:#0078d7; box-shadow:0 10px 25px rgba(0,120,215,0.12); transform:translateY(-2px); }
+    .package-meta { font-size:0.9rem; color:#64748b; }
+    .history-item { border:1px solid #e2e8f0; border-radius:10px; padding:14px 16px; background:#f8fafc; display:flex; flex-direction:column; gap:6px; }
+    .history-item strong { color:#0f172a; }
+    .history-status { font-weight:600; font-size:0.85rem; padding:4px 8px; border-radius:999px; display:inline-flex; align-items:center; gap:6px; }
+    .history-status[data-status="pending"] { background:#fef9c3; color:#92400e; }
+    .history-status[data-status="completed"] { background:#dcfce7; color:#166534; }
+    .history-status[data-status="failed"] { background:#fee2e2; color:#991b1b; }
+    .notice { padding:12px 14px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; font-size:0.95rem; color:#166534; margin-top:12px; }
+    .error { padding:12px 14px; background:#fee2e2; border:1px solid #fca5a5; border-radius:8px; font-size:0.95rem; color:#991b1b; margin-top:12px; }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal.show { display: flex; }
+    .modal-content { background: white; border-radius: 12px; padding: 24px; max-width: 500px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-header h3 { margin: 0; font-size: 1.3rem; color: #1e293b; }
+    .modal-close { background: none; border: none; font-size: 1.8rem; color: #64748b; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+    .modal-close:hover { background: #f1f5f9; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-weight: 600; color: #334155; margin-bottom: 8px; font-size: 0.95rem; }
+    .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; transition: border-color 0.2s; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: #0078d7; box-shadow: 0 0 0 3px rgba(0,120,215,0.1); }
+    .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+    @media (max-width: 640px) {
+      .settings-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <section id="authOverlay" class="auth-overlay" aria-live="polite">
+    <div class="auth-card">
+      <h2>Checking authentication...</h2>
+      <p class="text-muted">Please wait while we verify your account.</p>
+    </div>
+  </section>
+
+  <main id="mainContent" class="page" style="display:none;">
+    <div class="settings-container">
+      <h1 style="margin-bottom:24px; color:#0f172a;">Settings</h1>
+      
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="quote-form">Quote Form</button>
+        <button class="settings-tab" data-tab="email">Email Settings</button>
+        <button class="settings-tab" data-tab="sms">SMS Centre</button>
+        <button class="settings-tab" data-tab="cleaners">Cleaners</button>
+        <button class="settings-tab" data-tab="reps">Reps</button>
+        <button class="settings-tab" data-tab="billing">Billing</button>
+        <button class="settings-tab" data-tab="theme">Theme Settings</button>
+      </div>
+
+      <!-- Quote Form Settings -->
+      <div class="settings-panel active" data-panel="quote-form">
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Quote Form Branding & Settings</h2>
+          <p class="text-muted" style="margin-bottom:24px;">Customize how your quote form appears to customers. <a href="./subscriber-add-customer-settings.html" style="color:#0078d7; text-decoration:underline;">View full pricing configuration</a></p>
+          
+          <div style="display:grid; gap:20px;">
+            <!-- Basic Settings -->
+            <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
+              <h3 style="margin:0 0 16px 0; color:#0f172a;">Form Text</h3>
+              <div class="settings-grid">
+                <div class="settings-field">
+                  <label for="quoteFormTitle">Form Title</label>
+                  <input type="text" id="quoteFormTitle" placeholder="e.g. Get Your Quote" />
+                  <span class="info-text">Main heading shown on the quote form</span>
+                </div>
+                <div class="settings-field">
+                  <label for="quoteFormSubtitle">Form Subtitle</label>
+                  <input type="text" id="quoteFormSubtitle" placeholder="e.g. Fast &amp; Free Quote" />
+                  <span class="info-text">Secondary text below the title</span>
+                </div>
+                <div class="settings-field" style="grid-column:1/-1;">
+                  <label for="quoteFormDescription">Form Description</label>
+                  <textarea id="quoteFormDescription" rows="3" placeholder="Description shown above the form..."></textarea>
+                  <span class="info-text">Additional details or instructions for customers</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Branding Settings -->
+            <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
+              <h3 style="margin:0 0 16px 0; color:#0f172a;">Form Branding</h3>
+              <div class="settings-grid">
+                <div class="settings-field">
+                  <label for="quoteFormLogoUrl">Logo URL</label>
+                  <input type="url" id="quoteFormLogoUrl" placeholder="https://..." />
+                  <span class="info-text">Full URL to your company logo image</span>
+                </div>
+                <div class="settings-field">
+                  <label for="quoteFormPrimaryColor">Primary Color</label>
+                  <input type="color" id="quoteFormPrimaryColor" value="#0078d7" />
+                  <span class="info-text">Buttons, links, and highlights</span>
+                </div>
+                <div class="settings-field">
+                  <label for="quoteFormAccentColor">Accent Color</label>
+                  <input type="color" id="quoteFormAccentColor" value="#0ea5e9" />
+                  <span class="info-text">Secondary highlights</span>
+                </div>
+                <div class="settings-field">
+                  <label for="quoteFormBackgroundColor">Background Color</label>
+                  <input type="color" id="quoteFormBackgroundColor" value="#ffffff" />
+                  <span class="info-text">Form background</span>
+                </div>
+                <div class="settings-field">
+                  <label for="quoteFormButtonLabel">Button Label</label>
+                  <input type="text" id="quoteFormButtonLabel" value="Start Quote" placeholder="Start Quote" />
+                  <span class="info-text">Text on the submit button</span>
+                </div>
+                <div class="settings-field">
+                  <label for="quoteFormCornerStyle">Button Style</label>
+                  <select id="quoteFormCornerStyle">
+                    <option value="rounded">Rounded</option>
+                    <option value="pill">Pill-shaped</option>
+                    <option value="square">Square</option>
+                  </select>
+                  <span class="info-text">Button border radius</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Service Tiers -->
+            <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
+              <h3 style="margin:0 0 16px 0; color:#0f172a;">Service Tiers</h3>
+              <div class="settings-grid">
+                <div class="settings-field">
+                  <label for="tierSilverLabel">Standard Tier Name</label>
+                  <input type="text" id="tierSilverLabel" value="Silver" placeholder="Silver" />
+                </div>
+                <div class="settings-field">
+                  <label for="tierSilverDescription">Standard Tier Description</label>
+                  <textarea id="tierSilverDescription" rows="2" placeholder="Windows only, every 4 weeks."></textarea>
+                </div>
+                <div class="settings-field">
+                  <label for="tierGoldLabel">Premium Tier Name</label>
+                  <input type="text" id="tierGoldLabel" value="Gold" placeholder="Gold" />
+                </div>
+                <div class="settings-field">
+                  <label for="tierGoldDescription">Premium Tier Description</label>
+                  <textarea id="tierGoldDescription" rows="2" placeholder="Frames, sills and reminders included."></textarea>
+                </div>
+                <div class="settings-field">
+                  <label for="tierGoldMultiplier">Premium Tier Price Multiplier</label>
+                  <input type="number" id="tierGoldMultiplier" step="0.01" min="1" value="1.35" />
+                  <span class="info-text">Multiplies the standard price (e.g., 1.35 = 35% more)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pricing Settings -->
+            <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
+              <h3 style="margin:0 0 16px 0; color:#0f172a;">Pricing Configuration</h3>
+              <div class="settings-grid">
+                <div class="settings-field">
+                  <label for="pricingMinimum">Minimum Clean Price (£)</label>
+                  <input type="number" id="pricingMinimum" step="0.01" min="0" value="16" />
+                  <span class="info-text">Lowest price for any clean</span>
+                </div>
+                <div class="settings-field">
+                  <label for="pricingVatIncluded">VAT Status</label>
+                  <select id="pricingVatIncluded">
+                    <option value="true" selected>Prices are VAT inclusive</option>
+                    <option value="false">Prices are before VAT</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div style="margin-top:16px;">
+                <h4 style="margin:0 0 12px 0; color:#0f172a; font-weight:600;">Base Prices by Property Size</h4>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px;">
+                  <div class="settings-field">
+                    <label for="price2bed">2 Bed (£)</label>
+                    <input type="number" id="price2bed" step="0.01" min="0" value="21" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="price3bed">3 Bed (£)</label>
+                    <input type="number" id="price3bed" step="0.01" min="0" value="24" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="price4bed">4 Bed (£)</label>
+                    <input type="number" id="price4bed" step="0.01" min="0" value="28" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="price5bed">5 Bed (£)</label>
+                    <input type="number" id="price5bed" step="0.01" min="0" value="32" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="price6bed">6 Bed (£)</label>
+                    <input type="number" id="price6bed" step="0.01" min="0" value="36" />
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top:16px;">
+                <h4 style="margin:0 0 12px 0; color:#0f172a; font-weight:600;">Extra Charges</h4>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px;">
+                  <div class="settings-field">
+                    <label for="priceExtensionAdd">Extension Add-on (£)</label>
+                    <input type="number" id="priceExtensionAdd" step="0.01" min="0" value="4" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="priceConservatoryAdd">Conservatory Add-on (£)</label>
+                    <input type="number" id="priceConservatoryAdd" step="0.01" min="0" value="6" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="priceRoofLanternEach">Roof Lantern Each (£)</label>
+                    <input type="number" id="priceRoofLanternEach" step="0.01" min="0" value="10" />
+                  </div>
+                  <div class="settings-field">
+                    <label for="priceSkylightEach">Skylight Each (£)</label>
+                    <input type="number" id="priceSkylightEach" step="0.01" min="0" value="1.50" />
+                  </div>
+                </div>
+              </div>
+
+              <p style="margin-top:16px; padding:12px; background:#f0fdf4; border:1px solid #86efac; border-radius:6px; color:#166534; font-size:0.9rem;">
+                <strong>💡 Tip:</strong> For detailed pricing configuration including house type multipliers and advanced settings, visit the <a href="./subscriber-add-customer-settings.html" style="color:#166534; text-decoration:underline; font-weight:600;">Quote Engine Configuration page</a>.
+              </p>
+            </div>
+          </div>
+
+          <div class="settings-actions" style="margin-top:24px;">
+            <button class="btn-reset" id="resetQuoteFormBtn">Reset to Defaults</button>
+            <button class="btn-save" id="saveQuoteFormBtn">Save All Settings</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Email Settings -->
+      <div class="settings-panel" data-panel="email">
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">SMTP Connection</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Connect your own email provider to send booking confirmations.</p>
+          <div class="card-note" style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:12px 14px; margin-bottom:16px; font-size:0.95rem; color:#166534;">
+            <strong>Need help?</strong> Follow the email setup guide for Gmail, Yahoo, and Outlook instructions.
+          </div>
+          <div class="settings-grid">
+            <div class="settings-field">
+              <label for="smtpHost">SMTP Host</label>
+              <input type="text" id="smtpHost" placeholder="smtp.gmail.com" required />
+            </div>
+            <div class="settings-field">
+              <label for="smtpPort">SMTP Port</label>
+              <input type="number" id="smtpPort" placeholder="465" min="1" max="65535" required />
+            </div>
+            <div class="settings-field">
+              <label for="emailFromName">From Name</label>
+              <input type="text" id="emailFromName" placeholder="Swash Cleaning" />
+            </div>
+            <div class="settings-field">
+              <label for="emailAddress">From Email</label>
+              <input type="email" id="emailAddress" placeholder="you@company.com" required />
+            </div>
+            <div class="settings-field">
+              <label for="emailUsername">SMTP Username</label>
+              <input type="text" id="emailUsername" placeholder="your email address" />
+            </div>
+            <div class="settings-field">
+              <label for="emailPassword">SMTP Password</label>
+              <input type="password" id="emailPassword" placeholder="App password" />
+            </div>
+            <div class="settings-field">
+              <label for="minSend">Min minutes between emails</label>
+              <input type="number" id="minSend" min="0" max="1440" value="0" />
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px; margin-top:16px; margin-bottom:16px;">
+            <label style="display:flex; gap:8px; align-items:center;">
+              <input type="checkbox" id="requireAuth" checked />
+              <span style="font-weight:500;">My SMTP server requires authentication</span>
+            </label>
+            <label style="display:flex; gap:8px; align-items:center;">
+              <input type="checkbox" id="useStartTls" />
+              <span style="font-weight:500;">Enable STARTTLS (recommended for ports 587/25)</span>
+            </label>
+          </div>
+
+          <div class="settings-actions">
+            <button class="btn-reset" id="resetEmailBtn">Reset</button>
+            <button class="btn-save" id="saveEmailBtn">Save Settings</button>
+          </div>
+          <p id="passwordHint" style="font-size:13px;color:#64748b;margin-top:12px;"></p>
+        </div>
+
+        <div class="settings-section" style="margin-top:24px;">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Send Test Email</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Verify your settings by sending a test message.</p>
+          <form id="testForm" style="display:flex; flex-direction:column; gap:16px;">
+            <div class="settings-grid">
+              <div class="settings-field">
+                <label for="testRecipient">Recipient</label>
+                <input type="email" id="testRecipient" placeholder="test@yourdomain.com" required />
+              </div>
+              <div class="settings-field">
+                <label for="testSubject">Subject</label>
+                <input type="text" id="testSubject" placeholder="Test email from Swash" required />
+              </div>
+            </div>
+            <div class="settings-field">
+              <label for="testMessage">Message</label>
+              <textarea id="testMessage" rows="4" style="padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-family:inherit;resize:vertical;" placeholder="Hello! This is a test email from Swash."></textarea>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <button type="submit" class="btn-save" id="sendTestBtn">Send test email</button>
+              <span id="testStatus" style="font-size:14px;color:#64748b;"></span>
+            </div>
+          </form>
+        </div>
+
+        <div class="settings-section" style="margin-top:24px;">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Recent Email Activity</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Track the last few messages sent from your account.</p>
+          <div id="logsContainer" style="min-height:120px;">
+            <p style="color:#64748b;">Loading activity...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SMS Centre -->
+      <div class="settings-panel" data-panel="sms">
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Your SMS Balance</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Manage your sender name, remaining credits, and top-ups.</p>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:20px;">
+            <div style="border:1px solid #e2e8f0; border-radius:10px; padding:18px; background:#fff; display:flex; flex-direction:column; gap:12px;">
+              <span style="font-size:0.9rem; color:#64748b;">Current credits</span>
+              <span id="creditsBalance" style="font-size:2.6rem; font-weight:700; color:#0078d7;">0</span>
+              <span style="font-size:0.9rem; color:#64748b;" id="lastTopUp">Last top-up: —</span>
+            </div>
+            <div style="border:1px solid #e2e8f0; border-radius:10px; padding:18px; background:#fff; display:flex; flex-direction:column; gap:12px;">
+              <h3 style="margin:0; font-size:1.1rem; color:#1e293b;">Sender ID</h3>
+              <p style="margin:0; color:#475569; font-size:0.95rem;">Set the name that appears on outgoing SMS messages (max 11 letters or numbers).</p>
+              <form id="senderForm" style="display:flex; flex-direction:column; gap:12px;">
+                <label style="display:flex; flex-direction:column; gap:6px; font-weight:600; color:#0f172a;">
+                  <span>Sender name</span>
+                  <input id="senderName" type="text" maxlength="11" placeholder="SWASHCLEAN" style="padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-weight:500;letter-spacing:1px;text-transform:uppercase;" />
+                </label>
+                <button type="submit" class="btn-save" id="saveSenderBtn">Save sender name</button>
+                <p id="senderStatus" style="margin:0;font-size:0.85rem;color:#64748b;"></p>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section" style="margin-top:24px;">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Buy SMS Credits</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Secure payment via GoCardless Instant Bank Pay. Credits are applied automatically after payment confirmation.</p>
+          <div id="purchaseFeedback"></div>
+          <div id="packagesContainer" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:12px;"></div>
+        </div>
+
+        <div class="settings-section" style="margin-top:24px;">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Purchase History</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Track recent top-ups and their status.</p>
+          <div id="historyContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+      </div>
+
+      <!-- Cleaners Settings -->
+      <div class="settings-panel" data-panel="cleaners">
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Your Cleaners</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Manage your team and subscription billing</p>
+          
+          <div style="background: linear-gradient(135deg, #0078d7 0%, #005a9e 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h3 style="margin: 0 0 8px 0; font-size: 1.3rem;">💡 Pricing Information</h3>
+              <p style="margin: 0; opacity: 0.9;">Each cleaner seat: £10/month</p>
+              <p style="margin: 8px 0 0 0; opacity: 0.9;">First cleaner included in your base subscription</p>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 2.5rem; font-weight: 700; margin-bottom: 4px;" id="totalCost">£10.00</div>
+              <div style="opacity: 0.9; font-size: 0.9rem;">per month</div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="margin:0; color:#0f172a;">Cleaners Grid</h3>
+            <button class="btn-save" id="addCleanerBtn" style="background:#0078d7;">+ Add Cleaner</button>
+          </div>
+
+          <div class="cleaners-grid" id="cleanersGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+            <div style="text-align:center;padding:40px;color:#64748b;grid-column:1/-1;">
+              Loading cleaners...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reps Settings -->
+      <div class="settings-panel" data-panel="reps">
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Your Reps</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Manage field reps and subscription billing</p>
+
+          <div style="background: linear-gradient(135deg, #0078d7 0%, #005a9e 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h3 style="margin: 0 0 8px 0; font-size: 1.3rem;">👟 Rep Pricing</h3>
+              <p style="margin: 0; opacity: 0.9;">Each rep seat: £10/month</p>
+              <p style="margin: 8px 0 0 0; opacity: 0.9;">First rep included in your base subscription</p>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 2.5rem; font-weight: 700; margin-bottom: 4px;" id="repsTotalCost">£10.00</div>
+              <div style="opacity: 0.9; font-size: 0.9rem;">per month</div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="margin:0; color:#0f172a;">Reps Grid</h3>
+            <button class="btn-save" id="addRepBtn" style="background:#0078d7;">+ Add Rep</button>
+          </div>
+
+          <div class="cleaners-grid" id="repsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+            <div style="text-align:center;padding:40px;color:#64748b;grid-column:1/-1;">
+              Loading reps...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Billing Settings -->
+      <div class="settings-panel" data-panel="billing">
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Billing Overview</h2>
+          <p class="text-muted" style="margin-bottom:20px;">View your subscription, payment history, and invoice details</p>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:24px;">
+            <div style="border:1px solid #e2e8f0; border-radius:10px; padding:18px; background:#fff; display:flex; flex-direction:column; gap:12px;">
+              <span style="font-size:0.9rem; color:#64748b;">Current Plan</span>
+              <span style="font-size:1.4rem; font-weight:700; color:#0078d7;" id="billingPlanName">Loading...</span>
+              <span style="font-size:0.85rem; color:#64748b;" id="billingPlanDetails">—</span>
+            </div>
+            <div style="border:1px solid #e2e8f0; border-radius:10px; padding:18px; background:#fff; display:flex; flex-direction:column; gap:12px;">
+              <span style="font-size:0.9rem; color:#64748b;">Monthly Cost</span>
+              <span style="font-size:1.4rem; font-weight:700; color:#0078d7;" id="billingMonthlyCost">£0.00</span>
+              <span style="font-size:0.85rem; color:#64748b;">Base + cleaners/reps</span>
+            </div>
+            <div style="border:1px solid #e2e8f0; border-radius:10px; padding:18px; background:#fff; display:flex; flex-direction:column; gap:12px;">
+              <span style="font-size:0.9rem; color:#64748b;">Next Payment Due</span>
+              <span style="font-size:1.4rem; font-weight:700; color:#0078d7;" id="billingNextDueDate">—</span>
+              <span style="font-size:0.85rem; color:#64748b;" id="billingDaysUntil">—</span>
+            </div>
+            <div style="border:1px solid #e2e8f0; border-radius:10px; padding:18px; background:#fff; display:flex; flex-direction:column; gap:12px;">
+              <span style="font-size:0.9rem; color:#64748b;">Account Status</span>
+              <span style="font-size:1.4rem; font-weight:700; color:#166534;" id="billingAccountStatus">Active</span>
+              <span style="font-size:0.85rem; color:#64748b;">Paid and up to date</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Payment Method</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Your account payment information and mandate details</p>
+
+          <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:16px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:start; gap:16px;">
+              <div>
+                <h3 style="margin:0 0 8px; color:#0f172a; font-size:1rem;">💳 Payment Details</h3>
+                <div style="display:flex; flex-direction:column; gap:8px; color:#475569; font-size:0.95rem;">
+                  <div><strong>Account Holder:</strong> <span id="billingAcctHolder">—</span></div>
+                  <div><strong>Payment Method:</strong> <span id="billingPaymentMethod">GoCardless Bank Transfer</span></div>
+                  <div><strong>Bank Account:</strong> <span id="billingBankAccount">••••••••</span></div>
+                  <div><strong>Sort Code:</strong> <span id="billingSortCode">••••••</span></div>
+                  <div style="margin-top:8px;"><strong>Mandate Status:</strong> <span style="background:#dcfce7; color:#166534; padding:4px 8px; border-radius:4px; font-size:0.85rem; font-weight:600;" id="billingMandateStatus">Active</span></div>
+                </div>
+              </div>
+              <button class="btn-save" id="updatePaymentBtn" style="background:#0078d7; height:fit-content;">Update Payment Method</button>
+            </div>
+          </div>
+
+          <div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:12px 14px; font-size:0.9rem; color:#92400e;">
+            <strong>📝 Mandate Information:</strong> Your GoCardless mandate allows us to collect payments on the billing date. You can cancel or modify it anytime from your GoCardless dashboard.
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Billing History</h2>
+          <p class="text-muted" style="margin-bottom:16px;">View all past invoices and payments</p>
+
+          <div style="display:flex; flex-direction:column; gap:12px;" id="billingHistoryContainer">
+            <div style="text-align:center; padding:40px; color:#64748b;">
+              Loading payment history...
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Subscription Items</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Breakdown of your current billing items</p>
+
+          <div style="display:grid; grid-template-columns:1fr; gap:12px;" id="subscriptionItemsContainer">
+            <div style="text-align:center; padding:40px; color:#64748b;">
+              Loading subscription details...
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Account Actions</h2>
+          <p class="text-muted" style="margin-bottom:16px;">Manage your subscription</p>
+
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button class="btn-save" id="downloadInvoiceBtn" style="background:#0078d7;">📥 Download Invoice</button>
+            <button class="btn-save" id="viewBillingPortalBtn" style="background:#0078d7;">💳 Billing Portal</button>
+            <button class="btn-reset" id="pauseSubscriptionBtn">⏸️ Pause Subscription</button>
+            <button class="btn-reset" id="cancelSubscriptionBtn" style="background:#fee2e2; color:#991b1b;">❌ Cancel Subscription</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Theme Settings -->
+      <div class="settings-panel" data-panel="theme">
+        <div class="settings-section">
+          <h2 style="margin-bottom:16px; color:#0f172a;">Theme Settings</h2>
+          
+          <h3 style="margin-top:20px; margin-bottom:12px; color:#0f172a; font-size:0.95rem;">Brand Logo</h3>
+          <div class="logo-upload-group">
+            <div style="flex:1;">
+              <label for="companyLogoUpload" style="display:block; margin-bottom:8px; font-weight:600; color:#0f172a;">Upload Company Logo</label>
+              <input type="file" id="companyLogoUpload" accept="image/*" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; width:100%;" />
+              <span class="info-text" style="display:block; margin-top:8px;">PNG, JPG, or GIF - max 2MB. Automatically compressed and stored securely.</span>
+            </div>
+            <div class="logo-preview" id="logoPreview" style="background:#fff;">
+              <span style="color:#cbd5e1; font-size:0.9rem;">Logo preview</span>
+            </div>
+          </div>
+
+          <h3 style="margin-top:24px; margin-bottom:12px; color:#0f172a; font-size:0.95rem;">Background Image</h3>
+          <div style="margin-bottom:20px;">
+            <label for="backgroundImageUpload" style="display:block; margin-bottom:8px; font-weight:600; color:#0f172a;">Upload Background Image</label>
+            <input type="file" id="backgroundImageUpload" accept="image/*" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; width:100%;" />
+            <span class="info-text" style="display:block; margin-top:8px;">PNG, JPG, or GIF - max 3.5MB. Automatically compressed to 75% opacity and applied to all pages.</span>
+            <div id="backgroundPreview" style="margin-top:12px; width:100%; height:120px; border:2px dashed #cbd5e1; border-radius:6px; background-size:cover; background-position:center; background-color:#f8fafc;"></div>
+          </div>
+
+          <h3 style="margin-top:24px; margin-bottom:12px; color:#0f172a; font-size:0.95rem;">Colours</h3>
+          <div class="settings-grid">
+            <div class="settings-field">
+              <label>Banner & Header Color</label>
+              <div class="color-input-group">
+                <input type="color" id="bannerColor" value="#0078d7" />
+                <span id="bannerColorValue" style="font-family:monospace; font-size:0.85rem; color:#64748b;">#0078d7</span>
+              </div>
+            </div>
+            <div class="settings-field">
+              <label>Button Color</label>
+              <div class="color-input-group">
+                <input type="color" id="buttonColor" value="#0078d7" />
+                <span id="buttonColorValue" style="font-family:monospace; font-size:0.85rem; color:#64748b;">#0078d7</span>
+              </div>
+            </div>
+            <div class="settings-field">
+              <label>Accent Color</label>
+              <div class="color-input-group">
+                <input type="color" id="accentColor" value="#22c55e" />
+                <span id="accentColorValue" style="font-family:monospace; font-size:0.85rem; color:#64748b;">#22c55e</span>
+              </div>
+            </div>
+            <div class="settings-field">
+              <label>Tab Color</label>
+              <div class="color-input-group">
+                <input type="color" id="tabColor" value="#0078d7" />
+                <span id="tabColorValue" style="font-family:monospace; font-size:0.85rem; color:#64748b;">#0078d7</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:20px; padding:16px; background:#f8fafc; border-radius:6px;">
+            <h4 style="margin:0 0 12px; color:#0f172a; font-size:0.9rem;">Preview</h4>
+            <div style="display:flex; gap:8px;">
+              <button id="previewBanner" style="background:#0078d7; color:#fff; padding:8px 16px; border:none; border-radius:4px; cursor:default; font-weight:600;">Preview Banner</button>
+              <button id="previewButton" style="background:#0078d7; color:#fff; padding:8px 16px; border:none; border-radius:4px; cursor:default; font-weight:600;">Preview Button</button>
+            </div>
+          </div>
+
+          <div class="settings-actions">
+            <button class="btn-reset" id="resetThemeBtn">Reset to Default</button>
+            <button class="btn-save" id="saveThemeBtn">Save Theme</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Add/Edit Cleaner Modal -->
+  <div id="cleanerModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Add Cleaner</h3>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      
+      <form id="cleanerForm">
+        <div class="form-group">
+          <label for="cleanerName">Cleaner Name *</label>
+          <input type="text" id="cleanerName" required placeholder="e.g., John Smith" />
+        </div>
+        
+        <div class="form-group">
+          <label for="cleanerEmail">Email</label>
+          <input type="email" id="cleanerEmail" placeholder="cleaner@example.com" />
+        </div>
+        
+        <div class="form-group">
+          <label for="cleanerPhone">Phone</label>
+          <input type="tel" id="cleanerPhone" placeholder="07XXX XXXXXX" />
+        </div>
+        
+        <div class="form-group">
+          <label for="cleanerStatus">Status *</label>
+          <select id="cleanerStatus" required>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn-reset" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn-save" id="saveCleanerBtn">Save Cleaner</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="./subscriber-settings.js?v=20251123-2"></script>
+  <script>
+    window.addEventListener('load', () => {
+      if (!document.getElementById('mainContent')) {
+        console.warn('[Swash] Stale HTML detected, forcing cache-bypass reload');
+        setTimeout(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set('v','20251123-1');
+          window.location.replace(url.toString());
+        }, 50);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -10,6 +10,12 @@
   <link rel="stylesheet" href="../style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
   <style>
+    /* Main container card with 90% opacity overlay on background only */
+    .card {
+      position: relative;
+      background-color: rgba(255, 255, 255, 0.9);
+    }
+
     /* Assign Area Days mode visuals */
     body.assign-mode .schedule-job,
     body.assign-mode .day-total,
@@ -168,47 +174,7 @@
   </style>
 </head>
 <body>
-  <header class="header">
-    <div class="header-left">
-      <img class="header-logo" src="../assets/swash-icon-white.png" alt="Swash logo" />
-      <span class="role-pill" data-role-pill data-role="guest">
-        <strong data-role-label>Guest</strong>
-      </span>
-    </div>
-    <div class="header-actions">
-      <button id="logoutBtn" class="btn btn-secondary" type="button" hidden>Sign out</button>
-      <div class="menu-box">
-        <button id="menuBtn" class="btn btn-secondary" aria-haspopup="true" aria-expanded="false">Menu</button>
-        <nav id="menuDropdown" class="dropdown">
-          <div class="dropdown-title">Navigation</div>
-          <a href="/admin/dashboard.html" class="admin-only">🏠 Admin Overview</a>
-          <a href="/pipeline.html" class="admin-only">📋 New Customer Pipeline</a>
-          <a href="/rep/add-new-customer.html">🆕 New Quote</a>
-          <a href="./scheduler.html" class="admin-rep">📅 Schedule</a>
-          <a href="/admin/subscribers.html" class="admin-only">🏢 Subscribers</a>
-          <a href="/admin/users.html" class="admin-only">👥 Manage Users</a>
-          <a href="/admin/stats.html" class="admin-only">📊 Stats</a>
-          <a href="/admin-tracking.html" class="admin-only">🛰️ Rep Tracking</a>
-          <a href="/admin/shifts-logs.html" class="admin-only">📋 Shifts &amp; Logs</a>
-          <a href="/admin/message-log.html" class="admin-only">📧 Message Log</a>
-          <a href="/rep/rep-home.html" class="rep-only">🏠 Rep Home</a>
-          <a href="/subscriber-dashboard.html" class="subscriber-only">🏠 Dashboard</a>
-          <a href="/rep/add-new-customer.html" class="subscriber-only">🆕 New Quote</a>
-          <a href="/pipeline.html" class="subscriber-only">📋 Customer Pipeline</a>
-          <a href="/schedule.html" class="subscriber-only">📅 Cleaning Rota</a>
-          <a href="/map.html" class="subscriber-only">🗺️ Territory Map</a>
-          <a href="/subscriber-cleaners.html" class="subscriber-only">👷 Cleaner Management</a>
-          <a href="/subscriber-rep-dashboard.html" class="subscriber-only">🧾 Rep Dashboard</a>
-          <a href="/subscriber-rep-log.html" class="subscriber-only">📝 Rep Log</a>
-          <a href="/subscriber-shifts-logs.html" class="subscriber-only">📋 Shifts &amp; Logs</a>
-          <a href="/subscriber-performance.html" class="subscriber-only">🎯 Performance</a>
-          <a href="/subscriber-sms-setup.html" class="subscriber-only">📲 SMS Centre</a>
-          <a href="/subscriber-email-settings.html" class="subscriber-only">✉️ Email Settings</a>
-          <a href="/subscriber-tracking.html" class="subscriber-only">📍 Live Tracking</a>
-        </nav>
-      </div>
-    </div>
-  </header>
+
 
   <section id="authOverlay" class="auth-overlay" aria-live="polite" hidden>
     <form id="loginForm" class="auth-card" novalidate>
@@ -269,32 +235,30 @@
         <p class="text-muted" id="schedulerSubheading">Generate a rolling schedule from booked customers and plan upcoming cleans.</p>
       </header>
       
-      <div class="controls scheduler-controls" aria-label="Scheduler controls">
-        <div class="controls-left">
-          <div class="scheduler-inline-group">
-            <label for="startWeek" class="control-label text-muted">Start week</label>
-            <input id="startWeek" type="date" />
+      <div class="controls scheduler-controls" aria-label="Scheduler controls" style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="scheduler-inline-group actions-cluster" style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <div class="scheduler-inline-group" style="display: flex; align-items: center; gap: 8px;">
+            <label for="startWeek" class="sr-only">Start week</label>
+            <input id="startWeek" type="date" title="Start week" style="padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem;" />
           </div>
-          <div class="scheduler-inline-group actions-cluster">
-            <button id="generate" class="btn btn-primary" type="button">Generate</button>
-            <button id="viewToday" class="btn btn-primary" type="button" title="View today's schedule">📅 View Today</button>
-            <button id="toggleSaturday" class="btn btn-secondary" type="button" title="Toggle Saturday in view">📆 Show Saturday</button>
-            <button id="openAssignMode" class="btn btn-primary" type="button" title="Assign rota days to areas">📍 Assign Days to Areas</button>
-            <button id="refresh" class="btn btn-secondary" type="button" title="Refresh data">↻ Refresh</button>
+          <button id="generate" class="btn btn-primary" type="button">Generate</button>
+          <button id="viewToday" class="btn btn-primary" type="button" title="View today's schedule">📅 View Today</button>
+          <button id="toggleSaturday" class="btn btn-secondary" type="button" title="Toggle Saturday in view">📆 Show Saturday</button>
+          <button id="openAssignMode" class="btn btn-primary" type="button" title="Assign rota days to areas">📍 Assign Days to Areas</button>
+          <button id="refresh" class="btn btn-secondary" type="button" title="Refresh data">↻ Refresh</button>
+        </div>
+
+        <div class="filters-cluster" style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">
+          <div class="area-filter">
+            <label class="sr-only" for="areaFilter">Area</label>
+            <select id="areaFilter" disabled title="Filter by area" style="padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem; background: #fff;"></select>
           </div>
-          <div class="spacer"></div>
-          <div class="filters-cluster">
-            <div class="area-filter">
-              <label class="text-muted" for="areaFilter">Area</label>
-              <select id="areaFilter" disabled></select>
-            </div>
-            <div class="cleaner-filter">
-              <label class="text-muted" for="cleanerFilter">Cleaner</label>
-              <select id="cleanerFilter"></select>
-            </div>
-            <label class="sr-only" for="scheduleSearch">Search customer or address</label>
-            <input id="scheduleSearch" type="search" placeholder="Search customer or address" />
+          <div class="cleaner-filter">
+            <label class="sr-only" for="cleanerFilter">Cleaner</label>
+            <select id="cleanerFilter" title="Filter by cleaner" style="padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem; background: #fff;"></select>
           </div>
+          <label class="sr-only" for="scheduleSearch">Search customer or address</label>
+          <input id="scheduleSearch" type="search" placeholder="Search customer or address" style="padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.85rem; min-width: 220px;" />
         </div>
       </div>
 
@@ -447,3 +411,5 @@
   </script>
 </body>
 </html>
+
+

@@ -1,4 +1,5 @@
-import { auth, db } from "./firebase-init.js";
+import { auth, db } from "./public/firebase-init.js";
+import { initSubscriberHeader, setCompanyName, setActiveTab } from "./public/header-template.js";
 import {
   onAuthStateChanged,
   signOut,
@@ -55,8 +56,11 @@ const elements = {
 
 init();
 
-function init() {
+async function init() {
   initMenu();
+  // Initialize header first and wait for it
+  await initSubscriberHeader();
+  // Bind events after header is injected
   bindEvents();
   startAuth();
 }
@@ -137,6 +141,9 @@ function bindEvents() {
 }
 
 function startAuth() {
+  // Initialize header first
+  initSubscriberHeader();
+  
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
       window.location.href = "./subscriber-login.html";
@@ -167,6 +174,11 @@ async function bootstrapSubscriber(user) {
     window.location.href = "./subscriber-billing.html";
     return;
   }
+
+  // Update header with company name and set active tab
+  const companyName = state.subscriberProfile?.companyName || state.subscriberProfile?.name || 'My Business';
+  setCompanyName(companyName);
+  setActiveTab('territories');
 
   showContent();
   initMapWhenReady();

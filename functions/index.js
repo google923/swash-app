@@ -12,6 +12,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
+const aiHelperFunctions = require("./ai-helper");
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -576,3 +577,8 @@ exports.zohoInboundEmail = functions
       return res.status(500).json({ success: false, error: "Failed to persist message" });
     }
   });
+
+// Re-export AI helper endpoints defined in ai-helper.js
+exports.aiHelper = aiHelperFunctions.aiHelper;
+exports.getCleanerWorkload = aiHelperFunctions.getCleanerWorkload;
+exports.getWeatherForecast = aiHelperFunctions.getWeatherForecast;
