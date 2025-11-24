@@ -142,10 +142,8 @@
     <div id="selectedCustomersListContainer" style="max-height:calc(60vh - 40px); overflow-y:auto;"></div>
   </div>
 
-  <main id="mainContent" class="page" style="display:none;">
-
   <!-- Quote Modal -->
-    <div id="quoteModal" class="modal" hidden>
+  <div id="quoteModal" class="modal" hidden>
       <div class="modal__dialog">
         <h3>Create New Quote</h3>
         <form id="quoteForm" autocomplete="off">
@@ -299,7 +297,7 @@
       </div>
     </div>
   </div>
-  <script type="module" src="./subscriber-add-new-customer.js?v=20251123-1"></script>
+  <script type="module" src="./subscriber-add-new-customer.js?v=20251124-fix"></script>
   <script>
     // Fallback: if modal not found (stale cached HTML), force reload bypassing SW
     window.addEventListener('load', () => {
@@ -307,7 +305,7 @@
         console.warn('[Swash] Stale HTML detected, forcing cache-bypass reload');
         setTimeout(() => {
           const url = new URL(window.location.href);
-          url.searchParams.set('v','20251123-1');
+          url.searchParams.set('v','20251124-fix');
           window.location.replace(url.toString());
         }, 50);
       }
