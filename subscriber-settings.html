@@ -106,6 +106,7 @@
           
           <div style="display:flex; gap:12px; margin-bottom:20px; border-bottom:2px solid #e2e8f0; padding-bottom:12px; overflow-x:auto;">
             <button class="preview-tab-btn active" data-tab="form-text" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#0078d7; border-bottom:3px solid #0078d7; margin-bottom:-14px; white-space:nowrap;">Form Text</button>
+            <button class="preview-tab-btn" data-tab="form-fields" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px; white-space:nowrap;">Form Fields</button>
             <button class="preview-tab-btn" data-tab="branding" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px; white-space:nowrap;">Branding</button>
             <button class="preview-tab-btn" data-tab="pricing-base" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px; white-space:nowrap;">Base Pricing</button>
             <button class="preview-tab-btn" data-tab="pricing-extras" style="padding:10px 16px; border:none; background:transparent; cursor:pointer; font-weight:600; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-14px; white-space:nowrap;">Extras & Modifiers</button>
@@ -130,6 +131,130 @@
                 <label for="quoteFormDescription">Form Description</label>
                 <textarea id="quoteFormDescription" rows="3" placeholder="Describe the quote process..."></textarea>
                 <span class="info-text">Instructions or details for customers</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Form Fields Tab -->
+          <div id="tab-form-fields" class="quote-tab" style="display:none;">
+            <div style="display:grid; gap:24px;">
+              <div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:12px; color:#92400e; font-size:0.9rem;">
+                <strong>Tip:</strong> Enable/disable fields shown on your public quote form. Mark fields as required or optional.
+              </div>
+
+              <div>
+                <h3 style="margin:0 0 16px 0; font-weight:600; color:#0f172a;">Customer Details</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledCustomerName" checked />
+                    <span>Customer Name</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldRequiredCustomerName" checked />
+                    <span>Required</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledEmail" checked />
+                    <span>Email</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldRequiredEmail" checked />
+                    <span>Required</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledMobile" checked />
+                    <span>Mobile</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldRequiredMobile" checked />
+                    <span>Required</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledAddress" checked />
+                    <span>Address</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldRequiredAddress" checked />
+                    <span>Required</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledPostcode" />
+                    <span>Postcode</span>
+                  </label>
+                  <div></div>
+                </div>
+              </div>
+
+              <div>
+                <h3 style="margin:0 0 16px 0; font-weight:600; color:#0f172a;">Property Details</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledHouseSize" checked />
+                    <span>House Size</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldRequiredHouseSize" />
+                    <span>Required</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledHouseType" checked />
+                    <span>House Type</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldRequiredHouseType" />
+                    <span>Required</span>
+                  </label>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledConservatory" checked />
+                    <span>Conservatory</span>
+                  </label>
+                  <div></div>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledExtension" checked />
+                    <span>Extension</span>
+                  </label>
+                  <div></div>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledRoofLanterns" checked />
+                    <span>Roof Lanterns</span>
+                  </label>
+                  <div></div>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledSkylights" checked />
+                    <span>Skylights</span>
+                  </label>
+                  <div></div>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledAlternating" />
+                    <span>Alternating Sides</span>
+                  </label>
+                  <div></div>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledFrontOnly" />
+                    <span>Front Only</span>
+                  </label>
+                  <div></div>
+                </div>
+              </div>
+
+              <div>
+                <h3 style="margin:0 0 16px 0; font-weight:600; color:#0f172a;">Additional Fields</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledNotes" checked />
+                    <span>Notes / Comments</span>
+                  </label>
+                  <div></div>
+                  <label class="checkbox" style="display:flex; gap:8px; align-items:center;">
+                    <input type="checkbox" id="fieldEnabledBookingDate" checked />
+                    <span>Booking Date Picker</span>
+                  </label>
+                  <div style="color:#64748b; font-size:0.85rem;"><em>Note: Only shows if you have service areas assigned</em></div>
+                </div>
+              </div>
+
+              <div>
+                <button type="button" id="saveFieldConfigBtn" class="btn btn-primary" style="width:100%; max-width:200px;">Save Form Fields Configuration</button>
               </div>
             </div>
           </div>

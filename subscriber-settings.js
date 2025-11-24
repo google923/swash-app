@@ -132,6 +132,7 @@ document.getElementById('backgroundImageUpload')?.addEventListener('change', (e)
 
 // Save buttons
 document.getElementById('saveQuoteFormBtn')?.addEventListener('click', saveQuoteFormSettings);
+document.getElementById('saveFieldConfigBtn')?.addEventListener('click', saveFieldConfiguration);
 
 // Quote Form Preview Tab Switching
 document.querySelectorAll('.preview-tab-btn').forEach(btn => {
@@ -486,6 +487,52 @@ async function saveQuoteFormSettings() {
   } catch (error) {
     console.error('Save quote form settings error:', error);
     showToast('❌ Failed to save settings', 'error');
+  }
+}
+
+async function saveFieldConfiguration() {
+  try {
+    if (!state.subscriberId) return;
+
+    const enabledFields = {
+      customerName: document.getElementById('fieldEnabledCustomerName')?.checked || false,
+      email: document.getElementById('fieldEnabledEmail')?.checked || false,
+      mobile: document.getElementById('fieldEnabledMobile')?.checked || false,
+      address: document.getElementById('fieldEnabledAddress')?.checked || false,
+      postcode: document.getElementById('fieldEnabledPostcode')?.checked || false,
+      houseSize: document.getElementById('fieldEnabledHouseSize')?.checked || false,
+      houseType: document.getElementById('fieldEnabledHouseType')?.checked || false,
+      conservatory: document.getElementById('fieldEnabledConservatory')?.checked || false,
+      extension: document.getElementById('fieldEnabledExtension')?.checked || false,
+      roofLanterns: document.getElementById('fieldEnabledRoofLanterns')?.checked || false,
+      skylights: document.getElementById('fieldEnabledSkylights')?.checked || false,
+      alternating: document.getElementById('fieldEnabledAlternating')?.checked || false,
+      frontOnly: document.getElementById('fieldEnabledFrontOnly')?.checked || false,
+      notes: document.getElementById('fieldEnabledNotes')?.checked || false,
+      bookingDate: document.getElementById('fieldEnabledBookingDate')?.checked || false
+    };
+
+    const requiredFields = {
+      customerName: document.getElementById('fieldRequiredCustomerName')?.checked || false,
+      email: document.getElementById('fieldRequiredEmail')?.checked || false,
+      mobile: document.getElementById('fieldRequiredMobile')?.checked || false,
+      address: document.getElementById('fieldRequiredAddress')?.checked || false,
+      houseSize: document.getElementById('fieldRequiredHouseSize')?.checked || false,
+      houseType: document.getElementById('fieldRequiredHouseType')?.checked || false
+    };
+
+    const config = {
+      enabledFields,
+      requiredFields,
+      updatedAt: serverTimestamp()
+    };
+
+    const configRef = tenantDoc(db, state.subscriberId, 'settings', 'quoteFormConfig');
+    await setDoc(configRef, config, { merge: true });
+    showToast('✅ Form fields configuration saved', 'success');
+  } catch (error) {
+    console.error('Save field configuration error:', error);
+    showToast('❌ Failed to save field configuration', 'error');
   }
 }
 

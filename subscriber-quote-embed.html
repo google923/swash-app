@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0078d7" />
+  <title>Get Your Quote - Swash</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./assets/favicon-192.png" type="image/png" />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
+  <style>
+    :root {
+      --primary-color: #0078d7;
+      --accent-color: #0ea5e9;
+      --background-color: #ffffff;
+      --button-text-color: #ffffff;
+      --corner-radius: 8px;
+    }
+
+    body.quote-embed {
+      background: var(--background-color);
+    }
+
+    .quote-embed-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .quote-embed-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .quote-embed-header img {
+      max-width: 120px;
+      height: auto;
+      margin-bottom: 20px;
+    }
+
+    .quote-embed-header h1 {
+      margin: 0 0 12px 0;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .quote-embed-header p {
+      margin: 0;
+      font-size: 1.05rem;
+      color: #64748b;
+    }
+
+    .quote-form-wrapper {
+      background: var(--background-color);
+      border-radius: var(--corner-radius);
+      padding: 32px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    }
+
+    .quote-form {
+      display: grid;
+      gap: 24px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-field label {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #0f172a;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.1);
+    }
+
+    .form-field.required label::after {
+      content: ' *';
+      color: #ef4444;
+    }
+
+    .form-field textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .form-field.hidden {
+      display: none;
+    }
+
+    .form-section-title {
+      grid-column: 1 / -1;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 12px;
+      margin-bottom: 0;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .checkbox-field {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .checkbox-field input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .checkbox-field label {
+      margin: 0;
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: #1e293b;
+      cursor: pointer;
+    }
+
+    .slider-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .slider-row input[type="range"] {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: #e2e8f0;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .slider-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      cursor: pointer;
+    }
+
+    .slider-row input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      cursor: pointer;
+      border: none;
+    }
+
+    .slider-value {
+      font-weight: 600;
+      color: var(--primary-color);
+      min-width: 30px;
+      text-align: center;
+    }
+
+    .price-display {
+      grid-column: 1 / -1;
+      background: #f0f9ff;
+      border: 2px solid var(--accent-color);
+      border-radius: var(--corner-radius);
+      padding: 24px;
+      text-align: center;
+    }
+
+    .price-display p {
+      margin: 0 0 8px 0;
+      font-size: 0.9rem;
+      color: #475569;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .price-display .price-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin: 0;
+    }
+
+    .price-display .price-subtitle {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .booking-section {
+      grid-column: 1 / -1;
+      background: #f8fafc;
+      border-radius: var(--corner-radius);
+      padding: 20px;
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .booking-section h3 {
+      margin: 0 0 16px 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .no-areas-message {
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: var(--corner-radius);
+      padding: 16px;
+      color: #92400e;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .territories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .territory-chip {
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 20px;
+      text-align: center;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .territory-chip:hover {
+      border-color: var(--primary-color);
+      background: #f0f9ff;
+    }
+
+    .territory-chip.selected {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .form-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    .btn {
+      padding: 14px 32px;
+      border: none;
+      border-radius: var(--corner-radius);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: var(--button-text-color);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 120, 215, 0.3);
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .alert {
+      grid-column: 1 / -1;
+      padding: 16px;
+      border-radius: var(--corner-radius);
+      border-left: 4px solid;
+    }
+
+    .alert-error {
+      background: #fee2e2;
+      border-color: #ef4444;
+      color: #991b1b;
+    }
+
+    .alert-success {
+      background: #dcfce7;
+      border-color: #22c55e;
+      color: #166534;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 1.1rem;
+      color: #64748b;
+    }
+
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      margin-left: 8px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body class="quote-embed">
+  <main class="quote-embed-container">
+    <div id="loadingContainer" class="loading">Loading quote form...</div>
+    <div id="quoteContainer" style="display:none;">
+      <div class="quote-embed-header">
+        <img id="companyLogo" src="./assets/logo.png" alt="Logo" style="display:none;" />
+        <h1 id="formTitle">Get Your Quote</h1>
+        <p id="formSubtitle">Quick & Easy</p>
+      </div>
+
+      <div class="quote-form-wrapper">
+        <form id="quoteForm" class="quote-form">
+          <!-- Customer Details Section -->
+          <div class="form-grid">
+            <h2 class="form-section-title">Your Details</h2>
+            
+            <div class="form-field required" id="field-customerName">
+              <label for="customerName">Name</label>
+              <input type="text" id="customerName" name="customerName" required />
+            </div>
+
+            <div class="form-field required" id="field-email">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" required />
+            </div>
+
+            <div class="form-field required" id="field-mobile">
+              <label for="mobile">Mobile</label>
+              <input type="tel" id="mobile" name="mobile" required />
+            </div>
+
+            <div class="form-field required" id="field-address" style="grid-column: 1 / -1;">
+              <label for="address">Address</label>
+              <input type="text" id="address" name="address" required />
+            </div>
+
+            <div class="form-field" id="field-postcode">
+              <label for="postcode">Postcode</label>
+              <input type="text" id="postcode" name="postcode" />
+            </div>
+          </div>
+
+          <!-- Property Details Section -->
+          <div class="form-grid" id="propertyDetailsSection" style="display:none;">
+            <h2 class="form-section-title">Property Details</h2>
+
+            <div class="form-field required" id="field-houseSize">
+              <label for="houseSize">House Size</label>
+              <select id="houseSize" name="houseSize" required>
+                <option value="">Select size</option>
+                <option value="2 bed">2 Bedroom</option>
+                <option value="3 bed">3 Bedroom</option>
+                <option value="4 bed">4 Bedroom</option>
+                <option value="5 bed">5 Bedroom</option>
+                <option value="6 bed">6 Bedroom</option>
+              </select>
+            </div>
+
+            <div class="form-field required" id="field-houseType">
+              <label for="houseType">House Type</label>
+              <select id="houseType" name="houseType" required>
+                <option value="">Select type</option>
+                <option value="Bungalow">Bungalow</option>
+                <option value="Maisonette">Maisonette</option>
+                <option value="Terrace">Terrace</option>
+                <option value="Semi-Detached">Semi-Detached</option>
+                <option value="Detached">Detached</option>
+                <option value="Mobile Home">Mobile Home</option>
+              </select>
+            </div>
+
+            <!-- Add-ons Section -->
+            <div class="form-field" id="field-addons" style="grid-column: 1 / -1;">
+              <label>Add-ons</label>
+              <div class="checkbox-group">
+                <div class="checkbox-field" id="field-conservatory">
+                  <input type="checkbox" id="conservatory" name="conservatory" />
+                  <label for="conservatory">Conservatory</label>
+                </div>
+                <div class="checkbox-field" id="field-extension">
+                  <input type="checkbox" id="extension" name="extension" />
+                  <label for="extension">Extension</label>
+                </div>
+                <div class="checkbox-field" id="field-alternating">
+                  <input type="checkbox" id="alternating" name="alternating" />
+                  <label for="alternating">Alternating Sides</label>
+                </div>
+                <div class="checkbox-field" id="field-frontOnly">
+                  <input type="checkbox" id="frontOnly" name="frontOnly" />
+                  <label for="frontOnly">Front Only</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sliders Section -->
+            <div class="form-field" id="field-roofLanterns" style="grid-column: 1 / -1;">
+              <label>Roof Lanterns</label>
+              <div class="slider-row">
+                <input type="range" id="roofLanterns" name="roofLanterns" min="0" max="10" value="0" step="1" />
+                <span class="slider-value" id="roofLanternsValue">0</span>
+              </div>
+            </div>
+
+            <div class="form-field" id="field-skylights" style="grid-column: 1 / -1;">
+              <label>Skylights</label>
+              <div class="slider-row">
+                <input type="range" id="skylights" name="skylights" min="0" max="10" value="0" step="1" />
+                <span class="slider-value" id="skylightsValue">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Booking Section -->
+          <div class="form-grid" id="bookingSection" style="display:none;">
+            <h2 class="form-section-title">Booking</h2>
+            
+            <div id="noAreasMessage" class="no-areas-message" style="display:none; grid-column: 1 / -1;">
+              Please <strong>assign service areas</strong> in your account settings to enable booking dates.
+            </div>
+
+            <div id="territoriesContainer" style="grid-column: 1 / -1; display:none;">
+              <label style="display:block; margin-bottom:12px; font-weight:600; color:#0f172a;">Service Area</label>
+              <div class="territories-grid" id="territoriesGrid"></div>
+            </div>
+
+            <div class="form-field required" id="field-bookingDate" style="display:none;">
+              <label for="bookingDate">First Clean Date</label>
+              <input type="date" id="bookingDate" name="bookingDate" required />
+            </div>
+          </div>
+
+          <!-- Notes Section -->
+          <div class="form-grid" id="notesSection" style="display:none;">
+            <div class="form-field" id="field-notes" style="grid-column: 1 / -1;">
+              <label for="notes">Additional Notes</label>
+              <textarea id="notes" name="notes" placeholder="Any access information, gate codes, etc..."></textarea>
+            </div>
+          </div>
+
+          <!-- Price Display -->
+          <div class="price-display" id="priceDisplay" style="display:none;">
+            <p>Estimated Price</p>
+            <p class="price-value" id="priceValue">£0.00</p>
+            <p class="price-subtitle" id="priceSubtitle">Price per clean (every 4 weeks)</p>
+          </div>
+
+          <!-- Alerts -->
+          <div id="alertContainer"></div>
+
+          <!-- Form Actions -->
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submitBtn">Get Quote</button>
+            <button type="reset" class="btn btn-secondary" id="resetBtn">Clear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="./subscriber-quote-embed.js?v=20251124-1"></script>
+</body>
+</html>
