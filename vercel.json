@@ -10,6 +10,8 @@
   ],
   "routes": [
     { "src": "^/$", "dest": "/home.html" },
+    { "src": "^/__/auth/(.*)$", "dest": "https://swash-app-436a1.firebaseapp.com/__/auth/$1" },
+    { "src": "^/__/firebase/(.*)$", "dest": "https://swash-app-436a1.firebaseapp.com/__/firebase/$1" },
     { "src": "^/marketing.html$", "dest": "/marketing.html" },
     { "src": "/api/createInstantPayLink", "dest": "/api/createInstantPayLink.js" },
     { "src": "/api/checkPaymentStatus", "dest": "/api/checkPaymentStatus.js" },
